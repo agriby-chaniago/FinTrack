@@ -1,0 +1,30 @@
+<x-guest-layout>
+    <div class="mb-4 text-sm text-platinum/80">
+        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+    </div>
+
+    @if (session('status') == 'verification-link-sent')
+        <div class="mb-4 font-medium text-sm text-green-600">
+            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
+        </div>
+    @endif
+
+    <div class="mt-4 flex items-center justify-between">
+        <form method="POST" action="{{ route('verification.send') }}">
+            @csrf
+            <x-primary-button class="bg-raisin text-night hover:bg-byzantine px-6 py-2 rounded-md font-semibold shadow-sm transition">
+                {{ __('Resend Verification Email') }}
+            </x-primary-button>
+        </form>
+
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button
+                type="submit"
+                class="underline text-sm text-platinum/80 hover:text-byzantine rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-byzantine transition"
+            >
+                {{ __('Log Out') }}
+            </button>
+        </form>
+    </div>
+</x-guest-layout>
