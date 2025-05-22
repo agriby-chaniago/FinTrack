@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-raisin sticky top-0" style="box-shadow: 0 4px 4px -2.5px rgba(0, 0, 0, 0.3);">
+<nav x-data="{ open: false }" class="bg-raisin sticky top-0 z-[9999]" style="box-shadow: 0 4px 4px -2.5px rgba(0, 0, 0, 0.3);">
     <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-20 items-center">
 

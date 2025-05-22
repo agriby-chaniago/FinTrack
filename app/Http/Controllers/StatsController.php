@@ -12,24 +12,22 @@ class StatsController extends Controller
     public function index()
     {
         $userId = Auth::id();
-
-        // Ambil 7 hari terakhir
         $startDate = Carbon::now()->subDays(6)->startOfDay();
         $endDate = Carbon::now()->endOfDay();
 
-        // Ambil semua transaksi user dalam rentang tanggal
         $transactions = Transaction::where('user_id', $userId)
             ->whereBetween('tanggal', [$startDate, $endDate])
             ->get();
 
-        // Inisialisasi array untuk data per hari
         $days = [];
         $income = [];
         $expense = [];
+        $saldo = [];
+        $currentSaldo = 0;
 
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i)->startOfDay();
-            $dayLabel = $date->translatedFormat('d M'); // Contoh: "18 Mei"
+            $dayLabel = $date->translatedFormat('d M');
             $days[] = $dayLabel;
 
             $dayTransactions = $transactions->filter(function ($transaction) use ($date) {
@@ -41,12 +39,23 @@ class StatsController extends Controller
 
             $income[] = $totalIncome;
             $expense[] = $totalExpense;
+
+            $currentSaldo += $totalIncome - $totalExpense;
+            $saldo[] = $currentSaldo;
         }
 
+        // Komposisi kategori berdasarkan jenis
+        $kategoriData = $transactions->groupBy('kategori')->map(function ($group) {
+            return $group->sum('nominal');
+        });
+
         return view('stats.index', [
-            'months' => $days, // atau ganti ke 'days' di Blade
+            'days' => $days,
             'income' => $income,
-            'expense' => $expense
+            'expense' => $expense,
+            'saldo' => $saldo,
+            'kategoriLabels' => $kategoriData->keys(),
+            'kategoriValues' => $kategoriData->values()
         ]);
     }
 }
