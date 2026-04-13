@@ -1,0 +1,211 @@
+{
+    "info": {
+        "name": "FinTrack Service3 Callback API",
+        "description": "Collection for Service 3 callback ingestion and Service 1 retrieval endpoints.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:8000"
+        },
+        {
+            "key": "user_id",
+            "value": "2"
+        },
+        {
+            "key": "other_user_id",
+            "value": "3"
+        },
+        {
+            "key": "service3_api_key",
+            "value": "fintrack3"
+        },
+        {
+            "key": "user_bearer_token",
+            "value": ""
+        },
+        {
+            "key": "correlation_id",
+            "value": "corr-postman-001"
+        },
+        {
+            "key": "analysis_id",
+            "value": "analysis-postman-001"
+        },
+        {
+            "key": "limit",
+            "value": "20"
+        }
+    ],
+    "item": [
+        {
+            "name": "Service3 Callback - Create/Upsert",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{service3_api_key}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"user_id\": {{user_id}},\n  \"correlation_id\": \"{{correlation_id}}\",\n  \"analysis_id\": \"{{analysis_id}}\",\n  \"status\": \"success\",\n  \"summary_text\": \"Rencana investasi bulanan untuk profil konservatif.\",\n  \"recommendations\": [\n    {\n      \"type\": \"investment\",\n      \"product\": \"reksa dana pasar uang\",\n      \"allocation\": 30\n    }\n  ],\n  \"goals\": [\n    {\n      \"name\": \"Dana darurat\",\n      \"target\": 15000000,\n      \"timeline_months\": 12\n    }\n  ],\n  \"raw_payload\": {\n    \"source\": \"service3\",\n    \"version\": \"v1\"\n  },\n  \"plan_period_start\": \"2026-04-01\",\n  \"plan_period_end\": \"2026-04-30\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/service3/plans/callback",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "service3", "plans", "callback"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status is 201 or 200', function () {",
+                            "    pm.expect([200, 201]).to.include(pm.response.code);",
+                            "});",
+                            "",
+                            "const body = pm.response.json();",
+                            "pm.test('Response success true', function () {",
+                            "    pm.expect(body.success).to.eql(true);",
+                            "});",
+                            "",
+                            "if (body.data && body.data.correlation_id) {",
+                            "    pm.collectionVariables.set('correlation_id', body.data.correlation_id);",
+                            "}"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Service3 Callback - Invalid Key",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "wrong-key"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"user_id\": {{user_id}},\n  \"correlation_id\": \"corr-invalid-key\",\n  \"status\": \"success\",\n  \"raw_payload\": {\n    \"source\": \"service3\"\n  }\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/service3/plans/callback",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "service3", "plans", "callback"]
+                }
+            }
+        },
+        {
+            "name": "Get Service3 Plans (Own User)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{user_bearer_token}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/users/{{user_id}}/service3/plans?limit={{limit}}",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "users",
+                        "{{user_id}}",
+                        "service3",
+                        "plans"
+                    ],
+                    "query": [
+                        {
+                            "key": "limit",
+                            "value": "{{limit}}"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Service3 Latest Plan (Own User)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{user_bearer_token}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/users/{{user_id}}/service3/plans/latest",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "users",
+                        "{{user_id}}",
+                        "service3",
+                        "plans",
+                        "latest"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Service3 Plans (Forbidden Check)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{user_bearer_token}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/users/{{other_user_id}}/service3/plans",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "users",
+                        "{{other_user_id}}",
+                        "service3",
+                        "plans"
+                    ]
+                }
+            }
+        }
+    ]
+}

@@ -56,6 +56,10 @@ return [
         'max_items' => (int) env('SERVICE2_PULL_MAX_ITEMS', 1000),
     ],
 
+    'service3_callback' => [
+        'api_key' => env('SERVICE3_CALLBACK_API_KEY', env('INTER_SERVICE_API_KEY')),
+    ],
+
     'inter_service' => [
         'api_key' => env('INTER_SERVICE_API_KEY'),
         'allow_legacy_fallback' => env('INTER_SERVICE_ALLOW_LEGACY_FALLBACK', true),

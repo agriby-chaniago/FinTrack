@@ -39,4 +39,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(AiLog::class);
     }
+
+    public function service3PlanResults(): HasMany
+    {
+        return $this->hasMany(Service3PlanResult::class);
+    }
 }

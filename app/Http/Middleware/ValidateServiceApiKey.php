@@ -36,6 +36,7 @@ class ValidateServiceApiKey
     {
         $apiKey = match ($context) {
             'service2_pull' => (string) config('services.service2_pull.api_key'),
+            'service3_callback' => (string) config('services.service3_callback.api_key'),
             default => (string) config('services.inter_service.api_key'),
         };
 

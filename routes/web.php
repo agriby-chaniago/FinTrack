@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Service3PlanController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,9 @@ Route::middleware('auth')->group(function () {
 
     // Alias untuk halaman riwayat transaksi
     Route::get('/history', [TransactionController::class, 'index'])->name('history.index');
+
+    // Halaman wadah hasil Service 3
+    Route::get('/service3/plans', [Service3PlanController::class, 'index'])->name('service3.plans.index');
 
     Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
 });

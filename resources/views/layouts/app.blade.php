@@ -42,6 +42,15 @@
                     <span class="text-xs mt-1 mb-2">Dashboard</span>
                 </a>
 
+                <!-- Service 3 -->
+                <a href="{{ route('service3.plans.index') }}"
+                    class="flex flex-col items-center text-center hover:text-byzantine {{ request()->routeIs('service3.plans.*') ? 'text-byzantine font-semibold' : '' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-7 h-7" viewBox="0 0 24 24">
+                        <path d="M12 2.25a.75.75 0 0 1 .75.75v1.652a7.5 7.5 0 0 1 6.598 6.598H21a.75.75 0 0 1 0 1.5h-1.652a7.5 7.5 0 0 1-6.598 6.598V21a.75.75 0 0 1-1.5 0v-1.652a7.5 7.5 0 0 1-6.598-6.598H3a.75.75 0 0 1 0-1.5h1.652a7.5 7.5 0 0 1 6.598-6.598V3a.75.75 0 0 1 .75-.75Zm0 3.75a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm-.75 3.25a.75.75 0 0 1 1.5 0V12c0 .2-.08.39-.22.53l-1.75 1.75a.75.75 0 0 1-1.06-1.06l1.53-1.53V9.25Z" />
+                    </svg>
+                    <span class="text-xs mt-1 mb-2">AI Plan</span>
+                </a>
+
                 <!-- Add -->
                 <a href="{{ route('transactions.create') }}"
                     class="flex flex-col items-center text-center hover:text-byzantine {{ request()->routeIs('transactions.create') ? 'text-byzantine font-semibold' : '' }}">

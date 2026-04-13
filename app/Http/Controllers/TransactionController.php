@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AiLog;
+use App\Models\Service3PlanResult;
 use App\Models\Transaction;
 use App\Services\GroqCategorizationService;
 use Illuminate\Http\Request;
@@ -84,6 +85,52 @@ class TransactionController extends Controller
                 'category',
             ]);
 
+        $latestService3Plan = Service3PlanResult::query()
+            ->where('user_id', $userId)
+            ->orderByDesc('created_at')
+            ->first();
+
+        $recentService3Plans = Service3PlanResult::query()
+            ->where('user_id', $userId)
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get([
+                'id',
+                'status',
+                'summary_text',
+                'correlation_id',
+                'analysis_id',
+                'plan_period_start',
+                'plan_period_end',
+                'created_at',
+            ]);
+
+        $service3TotalPlans = Service3PlanResult::query()
+            ->where('user_id', $userId)
+            ->count();
+
+        $service3SuccessPlans = Service3PlanResult::query()
+            ->where('user_id', $userId)
+            ->where('status', 'success')
+            ->count();
+
+        $service3FailedPlans = Service3PlanResult::query()
+            ->where('user_id', $userId)
+            ->where('status', 'failed')
+            ->count();
+
+        $service3SuccessRate = $service3TotalPlans > 0
+            ? round(($service3SuccessPlans / $service3TotalPlans) * 100, 1)
+            : 0.0;
+
+        $service3Stats = [
+            'total' => $service3TotalPlans,
+            'success' => $service3SuccessPlans,
+            'failed' => $service3FailedPlans,
+            'success_rate' => $service3SuccessRate,
+            'last_synced_at' => $latestService3Plan?->created_at,
+        ];
+
         return view('dashboard', compact(
             'totalIncome',
             'totalExpense',
@@ -91,7 +138,10 @@ class TransactionController extends Controller
             'incomeSeries',
             'expenseSeries',
             'daysFormatted',
-            'transactions'
+            'transactions',
+            'latestService3Plan',
+            'recentService3Plans',
+            'service3Stats'
         ));
     }
 

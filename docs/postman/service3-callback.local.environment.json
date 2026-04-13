@@ -1,0 +1,49 @@
+{
+    "id": "service3-callback-local-env",
+    "name": "FinTrack Service3 Callback Local",
+    "values": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:8000",
+            "enabled": true
+        },
+        {
+            "key": "user_id",
+            "value": "2",
+            "enabled": true
+        },
+        {
+            "key": "other_user_id",
+            "value": "3",
+            "enabled": true
+        },
+        {
+            "key": "service3_api_key",
+            "value": "fintrack3",
+            "enabled": true
+        },
+        {
+            "key": "user_bearer_token",
+            "value": "",
+            "enabled": true
+        },
+        {
+            "key": "correlation_id",
+            "value": "corr-postman-001",
+            "enabled": true
+        },
+        {
+            "key": "analysis_id",
+            "value": "analysis-postman-001",
+            "enabled": true
+        },
+        {
+            "key": "limit",
+            "value": "20",
+            "enabled": true
+        }
+    ],
+    "_postman_variable_scope": "environment",
+    "_postman_exported_at": "2026-04-13T00:00:00.000Z",
+    "_postman_exported_using": "GitHub Copilot"
+}

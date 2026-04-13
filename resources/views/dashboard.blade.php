@@ -124,6 +124,197 @@
         </div>
         <br>
 
+        <!-- Row 3: Service 3 Plan Result -->
+        <div class="m-2 rounded-2xl border border-white/5 bg-raisin2 p-6 shadow-md text-platinum">
+            @php
+                $dashboardSuccessRate = (float) ($service3Stats['success_rate'] ?? 0);
+                $dashboardHealthLabel = 'Perlu Ditinjau';
+                $dashboardHealthClass = 'border-[#FF8B94]/40 bg-[#FF8B94]/20 text-[#FF8B94]';
+
+                if (($service3Stats['total'] ?? 0) === 0) {
+                    $dashboardHealthLabel = 'Belum Ada Rencana';
+                    $dashboardHealthClass = 'border-white/20 bg-white/10 text-platinum';
+                } elseif ($dashboardSuccessRate >= 85) {
+                    $dashboardHealthLabel = 'Siap Dipakai';
+                    $dashboardHealthClass = 'border-[#A8E6CF]/40 bg-[#A8E6CF]/20 text-[#A8E6CF]';
+                } elseif ($dashboardSuccessRate >= 60) {
+                    $dashboardHealthLabel = 'Cukup Stabil';
+                    $dashboardHealthClass = 'border-[#FFD3B6]/40 bg-[#FFD3B6]/20 text-[#FFD3B6]';
+                }
+
+                $dashboardFreshnessText = $service3Stats['last_synced_at']
+                    ? $service3Stats['last_synced_at']->diffForHumans()
+                    : 'belum ada pembaruan rencana';
+            @endphp
+
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-platinum/60">AI Planner</p>
+                    <h2 class="text-xl font-semibold mt-1">Ringkasan Rencana Keuangan</h2>
+                    <p class="text-sm text-platinum/70 mt-2 max-w-2xl">
+                        Menampilkan hasil rencana terbaru yang siap dipakai, lengkap dengan saran utama dan target keuangan.
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {{ $dashboardHealthClass }}">
+                            Kondisi Rencana: {{ $dashboardHealthLabel }}
+                        </span>
+                        <span class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-platinum/80">
+                            Diperbarui {{ $dashboardFreshnessText }}
+                        </span>
+                        @if(($service3Stats['failed'] ?? 0) > 0)
+                            <span class="inline-flex items-center rounded-full border border-[#FF8B94]/30 bg-[#FF8B94]/15 px-3 py-1 text-xs text-[#FF8B94]">
+                                Ada {{ number_format($service3Stats['failed']) }} rencana yang perlu ditinjau
+                            </span>
+                        @endif
+                    </div>
+                </div>
+                <a
+                    href="{{ route('service3.plans.index') }}"
+                    class="inline-flex items-center gap-2 rounded-lg border border-byzantine/40 px-3 py-2 text-sm text-byzantine hover:bg-byzantine hover:text-raisin transition"
+                >
+                    Buka Halaman Rencana
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+                <div class="xl:col-span-2 rounded-2xl border border-white/5 bg-raisin p-5">
+                    @if($latestService3Plan)
+                        @php
+                            $status = strtolower((string) $latestService3Plan->status);
+                            $statusClass = $status === 'success' ? 'bg-[#A8E6CF]/20 text-[#A8E6CF]' : 'bg-[#FF8B94]/20 text-[#FF8B94]';
+                            $statusText = $status === 'success' ? 'Siap Dipakai' : 'Perlu Ditinjau';
+                            $recommendations = collect($latestService3Plan->recommendations ?? []);
+                            $goals = collect($latestService3Plan->goals ?? []);
+                        @endphp
+
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <p class="text-sm text-platinum/70">
+                                Diperbarui {{ $latestService3Plan->created_at?->format('d M Y H:i') ?? '-' }}
+                            </p>
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $statusClass }}">
+                                {{ $statusText }}
+                            </span>
+                        </div>
+
+                        <div class="rounded-xl border border-white/5 bg-night/30 p-4">
+                            <p class="text-sm uppercase tracking-wide text-platinum/60">Ringkasan Rencana</p>
+                            <p class="text-lg leading-relaxed mt-2">
+                                {{ $latestService3Plan->summary_text ?: 'Ringkasan rencana belum tersedia.' }}
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+                            <div class="rounded-xl border border-white/5 bg-night/30 p-4">
+                                <p class="text-platinum/60 text-xs uppercase tracking-wide">Periode Rencana</p>
+                                <p class="mt-2 font-medium">
+                                    {{ $latestService3Plan->plan_period_start?->format('d M Y') ?? '-' }}
+                                    -
+                                    {{ $latestService3Plan->plan_period_end?->format('d M Y') ?? '-' }}
+                                </p>
+                                <p class="mt-2 text-platinum/70">Rencana ini disusun berdasarkan data keuangan terbaru kamu.</p>
+                            </div>
+
+                            <div class="rounded-xl border border-white/5 bg-night/30 p-4">
+                                <p class="text-platinum/60 text-xs uppercase tracking-wide">Saran Utama Dari Planner</p>
+                                @if($recommendations->isEmpty())
+                                    <p class="mt-2 text-platinum/70">Belum ada saran tambahan pada rencana ini.</p>
+                                @else
+                                    <ul class="mt-2 space-y-3">
+                                        @foreach($recommendations->take(3) as $recommendation)
+                                            @php
+                                                $label = (string) ($recommendation['product'] ?? $recommendation['name'] ?? $recommendation['type'] ?? 'Rekomendasi');
+                                                $allocation = $recommendation['allocation'] ?? null;
+                                                $allocationPercent = is_numeric($allocation) ? max(0, min((int) $allocation, 100)) : null;
+                                            @endphp
+                                            <li>
+                                                <div class="flex items-center justify-between gap-3 mb-1">
+                                                    <span>{{ $label }}</span>
+                                                    @if($allocationPercent !== null)
+                                                        <span class="text-[#4FC3F7] font-semibold">{{ $allocationPercent }}%</span>
+                                                    @endif
+                                                </div>
+                                                @if($allocationPercent !== null)
+                                                    <div class="h-1.5 w-full rounded-full bg-night/60 overflow-hidden">
+                                                        <div class="h-full bg-[#4FC3F7]" @style(['width: ' . $allocationPercent . '%'])></div>
+                                                    </div>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <p class="text-platinum/60 text-xs uppercase tracking-wide">Target Keuangan</p>
+                            @if($goals->isEmpty())
+                                <p class="mt-2 text-platinum/70">Belum ada target keuangan pada rencana ini.</p>
+                            @else
+                                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    @foreach($goals->take(4) as $goal)
+                                        <div class="rounded-lg border border-white/5 bg-night/30 p-3">
+                                            <p class="font-medium">{{ (string) ($goal['name'] ?? 'Goal') }}</p>
+                                            <p class="text-xs text-platinum/70 mt-1">
+                                                Target: Rp {{ number_format((float) ($goal['target'] ?? 0), 0, ',', '.') }}
+                                            </p>
+                                            <p class="text-xs text-platinum/70">
+                                                Timeline: {{ (int) ($goal['timeline_months'] ?? 0) }} bulan
+                                            </p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="h-full flex flex-col items-center justify-center text-center py-12">
+                            <h3 class="text-xl font-semibold">Rencana Belum Tersedia</h3>
+                            <p class="text-platinum/70 mt-2 max-w-xl">
+                                Saat rencana pertama selesai dibuat, ringkasan dan target keuangan akan otomatis tampil di bagian ini.
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="rounded-2xl border border-white/5 bg-raisin p-5">
+                    <h3 class="text-base font-semibold mb-4">Riwayat Rencana</h3>
+                    @if($recentService3Plans->isEmpty())
+                        <p class="text-platinum/70 text-sm">Belum ada riwayat rencana.</p>
+                    @else
+                        <div class="relative pl-5 space-y-3">
+                            @foreach($recentService3Plans as $plan)
+                                @php
+                                    $isSuccess = strtolower((string) $plan->status) === 'success';
+                                    $historyStatusClass = $isSuccess
+                                        ? 'bg-[#A8E6CF]/20 text-[#A8E6CF]'
+                                        : 'bg-[#FF8B94]/20 text-[#FF8B94]';
+                                    $historyDotClass = $isSuccess ? 'bg-[#A8E6CF]' : 'bg-[#FF8B94]';
+                                    $historyStatusText = $isSuccess ? 'Siap Dipakai' : 'Perlu Ditinjau';
+                                @endphp
+                                <div class="relative rounded-xl border border-white/5 bg-night/25 p-4">
+                                    @if(! $loop->last)
+                                        <span class="absolute -left-[14px] top-6 h-[calc(100%+12px)] w-px bg-white/10"></span>
+                                    @endif
+                                    <span class="absolute -left-[17px] top-5 h-2.5 w-2.5 rounded-full {{ $historyDotClass }}"></span>
+
+                                    <div class="flex items-center justify-between gap-3">
+                                        <p class="text-xs text-platinum/70">{{ $plan->created_at?->format('d M Y H:i') ?? '-' }}</p>
+                                        <span class="px-2 py-1 rounded-full text-[10px] font-semibold {{ $historyStatusClass }}">
+                                            {{ $historyStatusText }}
+                                        </span>
+                                    </div>
+                                    <p class="mt-2 text-sm leading-relaxed line-clamp-3">
+                                        {{ $plan->summary_text ?: 'Ringkasan rencana belum tersedia.' }}
+                                    </p>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <br>
+
         <!-- Transaction History -->
         <h2 class="text-lg font-semibold mb-4 text-platinum pl-2">Transaction History</h2>
         <div x-data="transactionHistory()" class="bg-raisin2 rounded-2xl p-6 m-2 mt-4 shadow-md text-platinum">

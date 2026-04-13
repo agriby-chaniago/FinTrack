@@ -1,0 +1,183 @@
+{
+    "info": {
+        "name": "FinTrack Service2 Pull API",
+        "description": "Collection for Service 2 to pull transaction feed from Service 1.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:8000"
+        },
+        {
+            "key": "user_id",
+            "value": "2"
+        },
+        {
+            "key": "service2_api_key",
+            "value": "fintrack123"
+        },
+        {
+            "key": "since",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "Snapshot Feed",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{service2_api_key}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/service2/users/{{user_id}}/transactions-feed",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "service2",
+                        "users",
+                        "{{user_id}}",
+                        "transactions-feed"
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status is 200', function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "const body = pm.response.json();",
+                            "if (body && body.meta && body.meta.next_since) {",
+                            "    pm.collectionVariables.set('since', body.meta.next_since);",
+                            "}"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Delta Feed (since)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{service2_api_key}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/service2/users/{{user_id}}/transactions-feed?since={{since}}",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "service2",
+                        "users",
+                        "{{user_id}}",
+                        "transactions-feed"
+                    ],
+                    "query": [
+                        {
+                            "key": "since",
+                            "value": "{{since}}"
+                        }
+                    ]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "pm.test('Status is 200', function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "const body = pm.response.json();",
+                            "if (body && body.meta && body.meta.next_since) {",
+                            "    pm.collectionVariables.set('since', body.meta.next_since);",
+                            "}"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Snapshot Feed (no summary)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{service2_api_key}}"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/service2/users/{{user_id}}/transactions-feed?include_summary=0",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "service2",
+                        "users",
+                        "{{user_id}}",
+                        "transactions-feed"
+                    ],
+                    "query": [
+                        {
+                            "key": "include_summary",
+                            "value": "0"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Invalid Key Check",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "wrong-key"
+                    },
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/service2/users/{{user_id}}/transactions-feed",
+                    "host": ["{{base_url}}"],
+                    "path": [
+                        "api",
+                        "service2",
+                        "users",
+                        "{{user_id}}",
+                        "transactions-feed"
+                    ]
+                }
+            }
+        }
+    ]
+}
