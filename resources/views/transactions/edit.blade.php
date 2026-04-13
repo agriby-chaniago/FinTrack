@@ -76,6 +76,21 @@
                  focus:outline-none focus:ring-2 focus:ring-byzantine focus:border-byzantine transition">
             </div>
 
+            <div>
+                <label for="category" class="block mb-3 font-semibold text-platinum text-lg">Kategori AI (Groq)</label>
+                <input
+                    type="text"
+                    id="category"
+                    name="category"
+                    placeholder="Contoh: makan, tagihan, gaji, uang saku"
+                    value="{{ old('category', $transaction->category) }}"
+                    class="w-full rounded-lg border border-gray-500 bg-transparent px-5 py-3 text-platinum placeholder-gray-500
+                 focus:outline-none focus:ring-2 focus:ring-byzantine focus:border-byzantine transition">
+                <p class="mt-2 text-sm text-platinum/70">
+                    Bisa diedit manual untuk pemasukan maupun pengeluaran.
+                </p>
+            </div>
+
             <div class="flex justify-end">
                 <button
                     type="submit"

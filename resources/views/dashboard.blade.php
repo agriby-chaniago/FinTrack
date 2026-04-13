@@ -131,7 +131,8 @@
                 <thead>
                     <tr class="border-b border-raisin">
                         <th class="py-3 px-4 font-medium tracking-wide">Tanggal</th>
-                        <th class="py-3 px-4 font-medium tracking-wide">Kategori</th>
+                        <th class="py-3 px-4 font-medium tracking-wide">Kategori Transaksi</th>
+                        <th class="py-3 px-4 font-medium tracking-wide">Kategori AI (Groq)</th>
                         <th class="py-3 px-4 font-medium tracking-wide">Nominal</th>
                         <th class="py-3 px-4 font-medium tracking-wide">Deskripsi</th>
                     </tr>
@@ -139,20 +140,26 @@
                 <tbody>
                     <template x-for="(tx, index) in transactions" :key="index">
                         <tr class="border-b border-raisin hover:bg-raisin transition-colors duration-200">
-                            <td class="py-3 px-4" x-text="tx.tanggal"></td>
+                            <td class="py-3 px-4" x-text="formatDate(displayDate(tx))"></td>
                             <td class="py-3 px-4">
                                 <span
-                                    :class="tx.kategori === 'pemasukan' ? 'text-[#A8E6CF]' : 'text-[#FF8B94]'"
-                                    x-text="tx.kategori.charAt(0).toUpperCase() + tx.kategori.slice(1)">
+                                    :class="transactionCategoryColorClass(tx)"
+                                    x-text="displayTransactionCategory(tx)">
                                 </span>
                             </td>
-                            <td class="py-3 px-4 font-mono" x-text="formatCurrency(tx.nominal)"></td>
-                            <td class="py-3 px-4" x-text="tx.deskripsi"></td>
+                            <td class="py-3 px-4">
+                                <span
+                                    :class="aiCategoryColorClass(tx)"
+                                    x-text="displayAiCategory(tx)">
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 font-mono" x-text="formatCurrency(displayAmount(tx))"></td>
+                            <td class="py-3 px-4" x-text="displayDescription(tx)"></td>
                         </tr>
                     </template>
                     <template x-if="transactions.length === 0">
                         <tr>
-                            <td colspan="4" class="py-6 text-center text-platinum/70 italic">
+                            <td colspan="5" class="py-6 text-center text-platinum/70 italic">
                                 No transactions found.
                             </td>
                         </tr>
@@ -225,10 +232,123 @@
         </div>
     </div>
 
+    <script id="dashboard-transactions-data" type="application/json">{!! json_encode($transactions) !!}</script>
+    <script id="dashboard-income-series-data" type="application/json">{!! json_encode($incomeSeries) !!}</script>
+    <script id="dashboard-expense-series-data" type="application/json">{!! json_encode($expenseSeries) !!}</script>
+    <script id="dashboard-days-data" type="application/json">{!! json_encode($daysFormatted) !!}</script>
+
     <script>
+        function readDashboardJson(id, fallback) {
+            const element = document.getElementById(id);
+
+            if (!element) {
+                return fallback;
+            }
+
+            try {
+                const parsed = JSON.parse(element.textContent || 'null');
+                return parsed ?? fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
         function transactionHistory() {
             return {
-                transactions: @json($transactions),
+                transactions: readDashboardJson('dashboard-transactions-data', []),
+                normalizeType(tx) {
+                    if (tx.type) return tx.type;
+                    if (tx.kategori === 'pemasukan') return 'income';
+                    if (tx.kategori === 'pengeluaran') return 'expense';
+
+                    return '';
+                },
+                displayDate(tx) {
+                    return tx.transaction_date ?? tx.tanggal ?? '-';
+                },
+                formatDate(value) {
+                    if (!value || value === '-') {
+                        return '-';
+                    }
+
+                    const parsed = new Date(value);
+
+                    if (!Number.isNaN(parsed.getTime())) {
+                        return new Intl.DateTimeFormat('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        }).format(parsed);
+                    }
+
+                    const fallback = value.toString();
+
+                    return fallback.includes('T') ? fallback.split('T')[0] : fallback;
+                },
+                displayAmount(tx) {
+                    return Number(tx.amount ?? tx.nominal ?? 0);
+                },
+                displayDescription(tx) {
+                    return (tx.description ?? tx.deskripsi ?? '').toString();
+                },
+                displayTransactionCategory(tx) {
+                    const type = this.normalizeType(tx);
+
+                    if (type === 'income') {
+                        return 'Pemasukan';
+                    }
+
+                    if (type === 'expense') {
+                        return 'Pengeluaran';
+                    }
+
+                    const value = (tx.kategori ?? '').toString();
+
+                    if (value === '') {
+                        return '-';
+                    }
+
+                    return value.charAt(0).toUpperCase() + value.slice(1);
+                },
+                displayAiCategory(tx) {
+                    const value = (tx.category ?? '').toString().trim();
+
+                    if (value === '') {
+                        return 'Lainnya';
+                    }
+
+                    return value
+                        .split(' ')
+                        .filter(Boolean)
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                },
+                transactionCategoryColorClass(tx) {
+                    const type = this.normalizeType(tx);
+
+                    if (type === 'income') {
+                        return 'text-[#A8E6CF]';
+                    }
+
+                    if (type === 'expense') {
+                        return 'text-[#FF8B94]';
+                    }
+
+                    return 'text-platinum';
+                },
+                aiCategoryColorClass(tx) {
+                    const type = this.normalizeType(tx);
+
+                    if (type === 'income') {
+                        return 'text-[#4FC3F7]';
+                    }
+
+                    if (type === 'expense') {
+                        return 'text-[#FFD3B6]';
+                    }
+
+                    return 'text-platinum/70';
+                },
                 formatCurrency(value) {
                     return new Intl.NumberFormat('id-ID', {
                         style: 'currency',
@@ -244,9 +364,9 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const incomeData = @json($incomeSeries);
-            const expenseData = @json($expenseSeries);
-            const categories = @json($daysFormatted);
+            const incomeData = readDashboardJson('dashboard-income-series-data', []);
+            const expenseData = readDashboardJson('dashboard-expense-series-data', []);
+            const categories = readDashboardJson('dashboard-days-data', []);
 
             const options = {
                 chart: {
@@ -306,9 +426,9 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const incomeData = @json($incomeSeries);
-            const expenseData = @json($expenseSeries);
-            const categories = @json($daysFormatted); // sudah diformat di controller
+            const incomeData = readDashboardJson('dashboard-income-series-data', []);
+            const expenseData = readDashboardJson('dashboard-expense-series-data', []);
+            const categories = readDashboardJson('dashboard-days-data', []); // sudah diformat di controller
 
             const options = {
                 chart: {

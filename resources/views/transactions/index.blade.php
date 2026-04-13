@@ -13,20 +13,133 @@
                 search: '',
                 transactions: [],
 
+                normalizeDescription(transaction) {
+                    return (transaction.description ?? transaction.deskripsi ?? '').toString();
+                },
+                normalizeType(transaction) {
+                    if (transaction.type) return transaction.type;
+                    if (transaction.kategori === 'pemasukan') return 'income';
+                    if (transaction.kategori === 'pengeluaran') return 'expense';
+
+                    return '';
+                },
+                normalizeTransactionCategory(transaction) {
+                    const type = this.normalizeType(transaction);
+
+                    if (type === 'income') {
+                        return 'pemasukan';
+                    }
+
+                    if (type === 'expense') {
+                        return 'pengeluaran';
+                    }
+
+                    return (transaction.kategori ?? '').toString().toLowerCase();
+                },
+                normalizeAiCategory(transaction) {
+                    const value = (transaction.category ?? '').toString().trim();
+
+                    return value !== '' ? value : 'lainnya';
+                },
+                normalizeAmount(transaction) {
+                    return Number(transaction.amount ?? transaction.nominal ?? 0);
+                },
+                normalizeDate(transaction) {
+                    return transaction.transaction_date ?? transaction.tanggal ?? '-';
+                },
+                formatDate(value) {
+                    if (!value || value === '-') {
+                        return '-';
+                    }
+
+                    const parsed = new Date(value);
+
+                    if (!Number.isNaN(parsed.getTime())) {
+                        return new Intl.DateTimeFormat('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        }).format(parsed);
+                    }
+
+                    const fallback = value.toString();
+
+                    return fallback.includes('T') ? fallback.split('T')[0] : fallback;
+                },
+
                 get filteredTransactions() {
-                    return this.transactions.filter(t =>
-                        t.deskripsi.toLowerCase().includes(this.search.toLowerCase()) ||
-                        t.kategori.toLowerCase().includes(this.search.toLowerCase())
-                    );
+                    const keyword = this.search.toLowerCase();
+
+                    return this.transactions.filter(transaction => {
+                        const description = this.normalizeDescription(transaction).toLowerCase();
+                        const transactionCategory = this.normalizeTransactionCategory(transaction).toLowerCase();
+                        const aiCategory = this.normalizeAiCategory(transaction).toLowerCase();
+                        const type = this.normalizeType(transaction).toLowerCase();
+
+                        return description.includes(keyword)
+                            || transactionCategory.includes(keyword)
+                            || aiCategory.includes(keyword)
+                            || type.includes(keyword);
+                    });
                 },
                 formatCurrency(value) {
                     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
                 },
-                formatKategori(kategori) {
-                    return kategori === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran';
+                formatTransactionCategory(transaction) {
+                    const category = this.normalizeTransactionCategory(transaction);
+
+                    if (category === '') {
+                        return '-';
+                    }
+
+                    if (category === 'pemasukan') {
+                        return 'Pemasukan';
+                    }
+
+                    if (category === 'pengeluaran') {
+                        return 'Pengeluaran';
+                    }
+
+                    return category.charAt(0).toUpperCase() + category.slice(1);
+                },
+                formatAiCategory(transaction) {
+                    const category = this.normalizeAiCategory(transaction);
+
+                    return category
+                        .split(' ')
+                        .filter(Boolean)
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                },
+                transactionCategoryColorClass(transaction) {
+                    const type = this.normalizeType(transaction);
+
+                    if (type === 'income') {
+                        return 'text-green-400';
+                    }
+
+                    if (type === 'expense') {
+                        return 'text-red-400';
+                    }
+
+                    return 'text-platinum';
+                },
+                aiCategoryColorClass(transaction) {
+                    const type = this.normalizeType(transaction);
+
+                    if (type === 'income') {
+                        return 'text-cyan-300';
+                    }
+
+                    if (type === 'expense') {
+                        return 'text-yellow-300';
+                    }
+
+                    return 'text-platinum/70';
                 },
                 init() {
-                    this.transactions = JSON.parse(document.getElementById('transactions-data').textContent);
+                    const parsed = JSON.parse(document.getElementById('transactions-data').textContent);
+                    this.transactions = Array.isArray(parsed) ? parsed : [];
                 }
             }"
             x-init="init()"
@@ -43,7 +156,8 @@
                 <thead>
                     <tr class="border-b border-raisin">
                         <th class="py-3 px-4 font-medium tracking-wide">Tanggal</th>
-                        <th class="py-3 px-4 font-medium tracking-wide">Kategori</th>
+                        <th class="py-3 px-4 font-medium tracking-wide">Kategori Transaksi</th>
+                        <th class="py-3 px-4 font-medium tracking-wide">Kategori AI (Groq)</th>
                         <th class="py-3 px-4 font-medium tracking-wide">Nominal</th>
                         <th class="py-3 px-4 font-medium tracking-wide">Deskripsi</th>
                         <th class="py-3 px-4 font-medium tracking-wide text-center">Aksi</th>
@@ -52,15 +166,21 @@
                 <tbody>
                     <template x-for="transaction in filteredTransactions" :key="transaction.id">
                         <tr class="border-b border-raisin hover:bg-raisin transition-colors duration-200">
-                            <td class="py-3 px-4" x-text="transaction.tanggal"></td>
+                            <td class="py-3 px-4" x-text="formatDate(normalizeDate(transaction))"></td>
                             <td class="py-3 px-4">
                                 <span
-                                    :class="transaction.kategori === 'pemasukan' ? 'text-green-400' : 'text-red-400'"
-                                    x-text="formatKategori(transaction.kategori)"
+                                    :class="transactionCategoryColorClass(transaction)"
+                                    x-text="formatTransactionCategory(transaction)"
                                 ></span>
                             </td>
-                            <td class="py-3 px-4 font-mono" x-text="formatCurrency(transaction.nominal)"></td>
-                            <td class="py-3 px-4" x-text="transaction.deskripsi"></td>
+                            <td class="py-3 px-4">
+                                <span
+                                    :class="aiCategoryColorClass(transaction)"
+                                    x-text="formatAiCategory(transaction)"
+                                ></span>
+                            </td>
+                            <td class="py-3 px-4 font-mono" x-text="formatCurrency(normalizeAmount(transaction))"></td>
+                            <td class="py-3 px-4" x-text="normalizeDescription(transaction)"></td>
                             <td class="py-3 px-4 text-center space-x-2">
                                 <a
                                     :href="`/transactions/${transaction.id}/edit`"
@@ -78,7 +198,7 @@
                     </template>
                     <template x-if="filteredTransactions.length === 0">
                         <tr>
-                            <td colspan="5" class="py-6 text-center text-platinum/70 italic">
+                            <td colspan="6" class="py-6 text-center text-platinum/70 italic">
                                 Tidak ada transaksi ditemukan.
                             </td>
                         </tr>

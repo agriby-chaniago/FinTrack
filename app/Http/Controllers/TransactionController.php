@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AiLog;
 use App\Models\Transaction;
+use App\Services\GroqCategorizationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Throwable;
 
 class TransactionController extends Controller
 {
@@ -14,7 +18,7 @@ class TransactionController extends Controller
      */
     public function index()
     {
-        $transactions = Transaction::where('user_id', auth()->id())
+        $transactions = Transaction::where('user_id', Auth::id())
             ->orderBy('tanggal', 'desc')
             ->get();
 
@@ -26,7 +30,7 @@ class TransactionController extends Controller
      */
     public function dashboard()
     {
-        $userId = auth()->id();
+        $userId = (int) Auth::id();
 
         $totalIncome = Transaction::where('user_id', $userId)
             ->where('kategori', 'pemasukan')
@@ -68,7 +72,17 @@ class TransactionController extends Controller
         $transactions = Transaction::where('user_id', $userId)
             ->orderBy('tanggal', 'desc')
             ->limit(10)
-            ->get(['tanggal', 'kategori', 'nominal', 'deskripsi']);
+            ->get([
+                'tanggal',
+                'kategori',
+                'nominal',
+                'deskripsi',
+                'transaction_date',
+                'type',
+                'amount',
+                'description',
+                'category',
+            ]);
 
         return view('dashboard', compact(
             'totalIncome',
@@ -92,7 +106,7 @@ class TransactionController extends Controller
     /**
      * Simpan transaksi baru.
      */
-    public function store(Request $request)
+    public function store(Request $request, GroqCategorizationService $categorizationService)
     {
         $validated = $request->validate([
             'tanggal'   => 'required|date',
@@ -101,7 +115,24 @@ class TransactionController extends Controller
             'nominal'   => 'required|integer|min:1',
         ]);
 
-        $validated['user_id'] = auth()->id();
+        $validated['user_id'] = (int) Auth::id();
+
+        $type = $this->mapLegacyCategoryToType($validated['kategori']);
+        $aiCategory = $this->resolveAiCategory($categorizationService, $validated['deskripsi'], $type);
+
+        if ($aiCategory !== '') {
+            AiLog::create([
+                'user_id' => $validated['user_id'],
+                'input_text' => $validated['deskripsi'],
+                'ai_response' => $aiCategory,
+            ]);
+        }
+
+        $validated['transaction_date'] = $validated['tanggal'];
+        $validated['type'] = $type;
+        $validated['amount'] = $validated['nominal'];
+        $validated['description'] = $validated['deskripsi'];
+        $validated['category'] = $aiCategory;
 
         Transaction::create($validated);
 
@@ -113,7 +144,10 @@ class TransactionController extends Controller
      */
     public function show(Transaction $transaction)
     {
-        $this->authorize('view', $transaction);
+        if ($transaction->user_id !== (int) Auth::id()) {
+            abort(403);
+        }
+
         return view('transactions.show', compact('transaction'));
     }
 
@@ -122,7 +156,7 @@ class TransactionController extends Controller
      */
     public function edit(Transaction $transaction)
     {
-        if ($transaction->user_id !== auth()->id()) {
+        if ($transaction->user_id !== (int) Auth::id()) {
             abort(403);
         }
 
@@ -132,11 +166,11 @@ class TransactionController extends Controller
     /**
      * Update transaksi dari modal.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, GroqCategorizationService $categorizationService)
     {
         $transaction = Transaction::findOrFail($id);
 
-        if ($transaction->user_id !== auth()->id()) {
+        if ($transaction->user_id !== (int) Auth::id()) {
             abort(403);
         }
 
@@ -145,7 +179,51 @@ class TransactionController extends Controller
             'kategori'  => 'required|in:pemasukan,pengeluaran',
             'deskripsi' => 'required|string|max:255',
             'nominal'   => 'required|integer|min:1',
+            'category'  => 'nullable|string|max:100',
         ]);
+
+        $type = $this->mapLegacyCategoryToType($validated['kategori']);
+        $aiCategory = $transaction->category ?? '';
+        $descriptionChanged = $transaction->deskripsi !== $validated['deskripsi'];
+        $currentType = $transaction->type ?: $this->mapLegacyCategoryToType((string) $transaction->kategori);
+        $typeChanged = $currentType !== $type;
+        $manualCategory = Str::of((string) ($validated['category'] ?? ''))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\s-]/', ' ')
+            ->squish()
+            ->value();
+
+        unset($validated['category']);
+
+        if ($manualCategory !== '') {
+            $aiCategory = $manualCategory;
+        }
+
+        if ($manualCategory === '' && ($aiCategory === '' || $descriptionChanged || $typeChanged)) {
+            $aiCategory = $this->resolveAiCategory($categorizationService, $validated['deskripsi'], $type);
+
+            if ($aiCategory !== '') {
+                AiLog::create([
+                    'user_id' => $transaction->user_id,
+                    'input_text' => $validated['deskripsi'],
+                    'ai_response' => $aiCategory,
+                ]);
+            }
+        }
+
+        if ($manualCategory !== '' && $manualCategory !== ($transaction->category ?? '')) {
+            AiLog::create([
+                'user_id' => $transaction->user_id,
+                'input_text' => $validated['deskripsi'],
+                'ai_response' => $manualCategory,
+            ]);
+        }
+
+        $validated['transaction_date'] = $validated['tanggal'];
+        $validated['type'] = $type;
+        $validated['amount'] = $validated['nominal'];
+        $validated['description'] = $validated['deskripsi'];
+        $validated['category'] = $aiCategory;
 
         $transaction->update($validated);
 
@@ -159,12 +237,26 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::findOrFail($id);
 
-        if ($transaction->user_id !== auth()->id()) {
+        if ($transaction->user_id !== (int) Auth::id()) {
             abort(403);
         }
 
         $transaction->delete();
 
         return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil dihapus.');
+    }
+
+    private function mapLegacyCategoryToType(string $legacyCategory): string
+    {
+        return $legacyCategory === 'pemasukan' ? 'income' : 'expense';
+    }
+
+    private function resolveAiCategory(GroqCategorizationService $categorizationService, string $description, string $type): string
+    {
+        try {
+            return $categorizationService->categorize($description, $type);
+        } catch (Throwable) {
+            return 'lainnya';
+        }
     }
 }

@@ -35,4 +35,30 @@ return [
         ],
     ],
 
+    'groq' => [
+        'base_url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
+        'api_key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'llama-3.1-8b-instant'),
+    ],
+
+    'analyzer' => [
+        'url' => env('ANALYZER_SERVICE_URL', 'http://localhost:8002/api/analyze'),
+        'api_key' => env('ANALYZER_SERVICE_API_KEY', env('INTER_SERVICE_API_KEY')),
+    ],
+
+    'planner' => [
+        'url' => env('PLANNER_SERVICE_URL', 'http://localhost:8003/api/plan'),
+        'api_key' => env('PLANNER_SERVICE_API_KEY', env('INTER_SERVICE_API_KEY')),
+    ],
+
+    'service2_pull' => [
+        'api_key' => env('SERVICE2_PULL_API_KEY', env('INTER_SERVICE_API_KEY')),
+        'max_items' => (int) env('SERVICE2_PULL_MAX_ITEMS', 1000),
+    ],
+
+    'inter_service' => [
+        'api_key' => env('INTER_SERVICE_API_KEY'),
+        'allow_legacy_fallback' => env('INTER_SERVICE_ALLOW_LEGACY_FALLBACK', true),
+    ],
+
 ];
