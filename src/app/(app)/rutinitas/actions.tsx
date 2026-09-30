@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
@@ -26,7 +25,6 @@ type OccurrenceProps = {
  * `Ubah detail` for the actual date and amount, and the no-event outcome.
  */
 export function OccurrenceActions(props: OccurrenceProps) {
-  const router = useRouter();
   const today = todayInJakarta();
   const defaultDate = props.expectedDate && props.expectedDate <= today ? props.expectedDate : today;
   const [editing, setEditing] = useState(false);
@@ -51,13 +49,11 @@ export function OccurrenceActions(props: OccurrenceProps) {
         setRevisionOffer(day);
       }
       setEditing(false);
-      router.refresh();
     }
   }
 
   async function markNoEvent() {
-    const result = await resolve.submit({ outcome: noEvent });
-    if (result.ok) router.refresh();
+    await resolve.submit({ outcome: noEvent });
   }
 
   if (props.status === "CONFIRMED") {
@@ -130,7 +126,6 @@ function nextMonth(today: string): string {
 
 /** `Tutup target`: explicit and final; allocations and transfers stay. */
 export function CloseTargetButton({ targetId }: { targetId: string }) {
-  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const close = useMutation(`/api/v1/transfer-targets/${targetId}/close`);
   if (!confirming) {
@@ -149,8 +144,7 @@ export function CloseTargetButton({ targetId }: { targetId: string }) {
           className={buttonClass.danger}
           disabled={close.pending}
           onClick={async () => {
-            const result = await close.submit({});
-            if (result.ok) router.refresh();
+            await close.submit({});
           }}
         >
           Ya, tutup target
@@ -166,7 +160,6 @@ export function CloseTargetButton({ targetId }: { targetId: string }) {
 
 /** Daily-income exception: an ACTIVE day with a different actual amount (Rp0 = not received). */
 export function OverrideForm({ ruleId, minDate }: { ruleId: string; minDate: string }) {
-  const router = useRouter();
   const today = todayInJakarta();
   const [date, setDate] = useState(today);
   const [amount, setAmount] = useState<string | null>("0");
@@ -179,7 +172,6 @@ export function OverrideForm({ ruleId, minDate }: { ruleId: string; minDate: str
         event.preventDefault();
         const result = await save.submit({ businessDate: date, amount });
         setSaved(result.ok);
-        if (result.ok) router.refresh();
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
@@ -193,7 +185,6 @@ export function OverrideForm({ ruleId, minDate }: { ruleId: string; minDate: str
         <button type="button" className={buttonClass.secondary} disabled={save.pending} onClick={async () => {
           const result = await save.submit({ businessDate: date, amount: null });
           setSaved(result.ok);
-          if (result.ok) router.refresh();
         }}>
           Kembalikan ke nominal default
         </button>

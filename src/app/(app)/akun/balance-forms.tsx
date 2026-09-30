@@ -29,7 +29,6 @@ export function BalanceConfirmationForm({ accountId, nowInput, onDone }: { accou
         if (result.ok) {
           onDone?.();
           router.push(`/akun/${accountId}#rekonsiliasi`);
-          router.refresh();
         }
       }}
     >
@@ -52,7 +51,6 @@ type Choice = "MISSING_EVENT" | "TYPO" | "ADJUST";
  * confirmation, or make an explicit adjustment for an unknown cause.
  */
 export function DiscrepancyResolver(props: { view: ReconciliationView; accountId: string; weekly: boolean; cutoverDate: string }) {
-  const router = useRouter();
   const today = todayInJakarta();
   const discrepancy = props.view.discrepancy;
   const positive = !discrepancy.startsWith("-");
@@ -71,7 +69,7 @@ export function DiscrepancyResolver(props: { view: ReconciliationView; accountId
       event.setError(["Isi nominal."]);
       return;
     }
-    const result = await event.submit({
+    await event.submit({
       direction: positive ? "INCOME" : "EXPENSE",
       accountId: props.accountId,
       amount,
@@ -79,7 +77,6 @@ export function DiscrepancyResolver(props: { view: ReconciliationView; accountId
       note: note.trim() || undefined,
       ...(cutoverDayAnswer ? { cutoverDayAnswer } : {}),
     });
-    if (result.ok) router.refresh();
   }
 
   return (
@@ -132,8 +129,7 @@ export function DiscrepancyResolver(props: { view: ReconciliationView; accountId
               replace.setError(["Isi saldo yang benar."]);
               return;
             }
-            const result = await replace.submit({ physicalBalance: replacement });
-            if (result.ok) router.refresh();
+            await replace.submit({ physicalBalance: replacement });
           }}
         >
           <p className="text-sm text-muted">
@@ -152,8 +148,7 @@ export function DiscrepancyResolver(props: { view: ReconciliationView; accountId
           className="space-y-4"
           onSubmit={async (e) => {
             e.preventDefault();
-            const result = await adjust.submit({ balanceConfirmationId: props.view.confirmationId, reason: "UNKNOWN_DISCREPANCY", note: note.trim() || undefined });
-            if (result.ok) router.refresh();
+            await adjust.submit({ balanceConfirmationId: props.view.confirmationId, reason: "UNKNOWN_DISCREPANCY", note: note.trim() || undefined });
           }}
         >
           <p className="text-sm text-muted">
@@ -172,7 +167,6 @@ export function DiscrepancyResolver(props: { view: ReconciliationView; accountId
 
 /** `Catat income/expense lain` from Detail Akun. */
 export function OtherEventForm({ accountId, weekly, cutoverDate }: { accountId: string; weekly: boolean; cutoverDate: string }) {
-  const router = useRouter();
   const today = todayInJakarta();
   const [direction, setDirection] = useState<"INCOME" | "EXPENSE">("INCOME");
   const [formKey, setFormKey] = useState(0);
@@ -193,7 +187,6 @@ export function OtherEventForm({ accountId, weekly, cutoverDate }: { accountId: 
       setAmount(null);
       setNote("");
       setFormKey((key) => key + 1);
-      router.refresh();
     }
   }
 

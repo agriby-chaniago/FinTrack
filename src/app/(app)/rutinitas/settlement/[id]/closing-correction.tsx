@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
@@ -9,7 +8,6 @@ import { buttonClass } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 
 export function ClosingCorrectionForm({ settlementId, cashTracked }: { settlementId: string; cashTracked: boolean }) {
-  const router = useRouter();
   const [amount, setAmount] = useState<string | null>(null);
   const [cash, setCash] = useState<string | null>(null);
   const save = useMutation<{ closingPhysicalBalance?: string; closingCashBalance?: string }>(`/api/v1/settlements/${settlementId}/closing-corrections`);
@@ -22,8 +20,7 @@ export function ClosingCorrectionForm({ settlementId, cashTracked }: { settlemen
           save.setError(["Isi saldo yang benar."]);
           return;
         }
-        const result = await save.submit({ ...(amount ? { closingPhysicalBalance: amount } : {}), ...(cash ? { closingCashBalance: cash } : {}) });
-        if (result.ok) router.refresh();
+        await save.submit({ ...(amount ? { closingPhysicalBalance: amount } : {}), ...(cash ? { closingCashBalance: cash } : {}) });
       }}
     >
       <AmountInput label="Saldo DANA yang benar" hint="Kosongkan jika tidak berubah." value={amount} onChange={setAmount} />

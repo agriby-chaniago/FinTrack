@@ -80,7 +80,6 @@ function ClosingFields(props: {
 }
 
 export function StartSettlement(props: { mode: "NORMAL" | "OVERDUE"; periodStart: string; normalEnd: string; today: string; nowInput: string; cash: CashState }) {
-  const router = useRouter();
   const { nowInput } = props;
   const [cash, setCash] = useState<CashValues>({ closing: null, start: false, startAmount: null });
   const [catchUp, setCatchUp] = useState(false);
@@ -105,8 +104,7 @@ export function StartSettlement(props: { mode: "NORMAL" | "OVERDUE"; periodStart
           create.setError(issues);
           return;
         }
-        const result = await create.submit({ endDate, closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body });
-        if (result.ok) router.refresh();
+        await create.submit({ endDate, closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body });
       }}
     >
       <Card>
@@ -202,7 +200,6 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
               const result = await update.submit({ closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body }, { ifMatch: draft.version });
               if (result.ok) {
                 setEditing(false);
-                router.refresh();
               }
             }}
           >
@@ -266,8 +263,7 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
             className={buttonClass.danger}
             disabled={remove.pending}
             onClick={async () => {
-              const result = await remove.submit(undefined);
-              if (result.ok) router.refresh();
+              await remove.submit(undefined);
             }}
           >
             Ya, hapus draft

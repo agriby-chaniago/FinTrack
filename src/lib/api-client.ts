@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { revalidateAppData } from "@/app/revalidate";
+
 import { errorMessage, issueMessages } from "./labels";
 
 export type ApiResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number; code: string; messages: string[]; details?: unknown };
@@ -57,13 +59,16 @@ export function useMutation<TBody, TResult = unknown>(path: string | (() => stri
       ifMatch: options.ifMatch,
       idempotencyKey: method === "POST" || method === "PUT" ? attempt.current.key : undefined,
     });
-    setPending(false);
     if (result.ok) {
       attempt.current = null;
       setNeedsCutoverAnswer(false);
-    } else if (result.code === "CUTOVER_DAY_CONFIRMATION_REQUIRED") {
+      // Every successful change invalidates cached and prefetched pages and refreshes this one.
+      await revalidateAppData().catch(() => undefined);
+    }
+    setPending(false);
+    if (!result.ok && result.code === "CUTOVER_DAY_CONFIRMATION_REQUIRED") {
       setNeedsCutoverAnswer(true);
-    } else {
+    } else if (!result.ok) {
       setError(result.messages);
     }
     return result;

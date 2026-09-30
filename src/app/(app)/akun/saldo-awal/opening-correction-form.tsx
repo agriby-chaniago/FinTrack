@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
@@ -13,7 +12,6 @@ type External = { accountId: string; subjectName: string; amount: string | null 
 
 /** Superseding opening snapshot: same accounts, corrected balances and external positions. */
 export function OpeningCorrectionForm({ snapshot }: { snapshot: OpeningSnapshotView }) {
-  const router = useRouter();
   const [balances, setBalances] = useState<Record<string, string | null>>(Object.fromEntries(snapshot.accounts.map((a) => [a.accountId, a.physicalBalance])));
   const [externals, setExternals] = useState<External[]>(snapshot.externals);
   const [saved, setSaved] = useState(false);
@@ -40,7 +38,6 @@ export function OpeningCorrectionForm({ snapshot }: { snapshot: OpeningSnapshotV
         );
         if (result.ok) {
           setSaved(true);
-          router.refresh();
         }
       }}
     >

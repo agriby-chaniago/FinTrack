@@ -99,6 +99,10 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
  * Four primary destinations in the same order on desktop (sidebar) and mobile
  * (bottom navigation). `+ Catat` is an action, never a fifth tab; Pengaturan
  * is secondary (PRD: Information architecture).
+ *
+ * The destinations are fully prefetched (data included) so switching tabs is
+ * instant. Prefetched pages stay fresh for `staleTimes.static` (next.config),
+ * and every saved change purges them (useMutation → revalidateAppData).
  */
 export function AppShell({ children, theme }: { children: ReactNode; theme: ThemePreference }) {
   const pathname = usePathname();
@@ -117,6 +121,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  prefetch
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
                   className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
                 >
@@ -164,6 +169,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
             <li key={item.href}>
               <Link
                 href={item.href}
+                prefetch
                 aria-current={isActive(pathname, item.href) ? "page" : undefined}
                 className="flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-primary"
               >

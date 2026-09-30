@@ -65,6 +65,10 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: End-to-end tests against next dev and local Supabase
         run: pnpm test:e2e
+      - name: Production build for prefetch and cache tests
+        run: pnpm build
+      - name: End-to-end tests against next start (prefetch and cache purge)
+        run: pnpm test:e2e:prod
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

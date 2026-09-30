@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
@@ -27,7 +26,6 @@ const NEW_SUBJECT = "__new__";
 /** Every external-fund movement (PRD: External fund workflow), one form. */
 export function ExternalMovementForm(props: { context: RecordingContext; types: MovementType[]; subjectId?: string }) {
   const { context } = props;
-  const router = useRouter();
   const today = todayInJakarta();
   const [type, setType] = useState<MovementType>(props.types[0]);
   const creates = type === "RECEIPT" || type === "CONVERT_TO_EXTERNAL";
@@ -84,7 +82,6 @@ export function ExternalMovementForm(props: { context: RecordingContext; types: 
     });
     if (result.ok) {
       setDone(result.data);
-      router.refresh();
     }
   }
 

@@ -55,7 +55,6 @@ type DailyView = {
 };
 
 export function DailyIncomeSetting({ daily }: { daily: DailyView }) {
-  const router = useRouter();
   const [date, setDate] = useState(daily.defaultTransitionDate);
   const schedule = useMutation<Record<string, unknown>>(`/api/v1/daily-income/${daily.ruleId}/transitions`);
   const cancel = useMutation<undefined>(`/api/v1/daily-income/${daily.ruleId}/transitions/${daily.upcomingTransition?.id ?? ""}`, "DELETE");
@@ -77,8 +76,7 @@ export function DailyIncomeSetting({ daily }: { daily: DailyView }) {
             className={buttonClass.link}
             disabled={cancel.pending}
             onClick={async () => {
-              const result = await cancel.submit(undefined);
-              if (result.ok) router.refresh();
+              await cancel.submit(undefined);
             }}
           >
             Batalkan jadwal
@@ -89,8 +87,7 @@ export function DailyIncomeSetting({ daily }: { daily: DailyView }) {
           className="flex flex-wrap items-end gap-3"
           onSubmit={async (event) => {
             event.preventDefault();
-            const result = await schedule.submit({ toState, effectiveDate: date });
-            if (result.ok) router.refresh();
+            await schedule.submit({ toState, effectiveDate: date });
           }}
         >
           <DateField label={toState === "PAUSED" ? "Jeda mulai tanggal" : "Aktif kembali mulai tanggal"} value={date} min={daily.minimumTransitionDate} onChange={setDate} />
@@ -110,7 +107,6 @@ function nextCycle(current: string): string {
 }
 
 export function EndRuleForm({ path, currentCycle, label }: { path: string; currentCycle: string; label: string }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [lastCycle, setLastCycle] = useState(currentCycle);
   const end = useMutation<{ lastCycle: string }>(path, "PATCH");
@@ -129,7 +125,6 @@ export function EndRuleForm({ path, currentCycle, label }: { path: string; curre
         const result = await end.submit({ lastCycle });
         if (result.ok) {
           setOpen(false);
-          router.refresh();
         }
       }}
     >
@@ -149,7 +144,6 @@ export function EndRuleForm({ path, currentCycle, label }: { path: string; curre
 }
 
 export function RevisionForm(props: { ruleId: string; currentCycle: string; expectedDay: number | null; expectedAmount: string | null; subscription: boolean }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [cycle, setCycle] = useState(nextCycle(props.currentCycle));
   const [day, setDay] = useState<number | null>(props.expectedDay);
@@ -172,7 +166,6 @@ export function RevisionForm(props: { ruleId: string; currentCycle: string; expe
         setSaved(result.ok);
         if (result.ok) {
           setOpen(false);
-          router.refresh();
         }
       }}
     >
@@ -196,7 +189,6 @@ export function RevisionForm(props: { ruleId: string; currentCycle: string; expe
 }
 
 export function AddSubscriptionForm() {
-  const router = useRouter();
   const [formKey, setFormKey] = useState(0);
   const [name, setName] = useState("");
   const [day, setDay] = useState<number | null>(null);
@@ -226,7 +218,6 @@ export function AddSubscriptionForm() {
           setAmount(null);
           setIncludeCurrent(false);
           setFormKey((key) => key + 1);
-          router.refresh();
         }
       }}
     >
@@ -246,7 +237,6 @@ export function AddSubscriptionForm() {
 }
 
 export function FloorSetting({ accountId, accountName, floor }: { accountId: string; accountName: string; floor: string }) {
-  const router = useRouter();
   const [amount, setAmount] = useState<string | null>(floor);
   const [saved, setSaved] = useState(false);
   const save = useMutation<Record<string, unknown>>("/api/v1/settings", "PATCH");
@@ -261,7 +251,6 @@ export function FloorSetting({ accountId, accountName, floor }: { accountId: str
         }
         const result = await save.submit({ retainedFloor: { accountId, amount } });
         setSaved(result.ok);
-        if (result.ok) router.refresh();
       }}
     >
       <AmountInput label={`Saldo minimum ditahan di ${accountName}`} hint="Berlaku untuk target transfer berikutnya; target yang sudah ada tidak berubah." value={amount} onChange={setAmount} />
@@ -297,7 +286,6 @@ export function DefaultSourceSetting({ accounts, current }: { accounts: { id: st
 }
 
 export function CategoryRow({ id, name, archived }: { id: string; name: string; archived: boolean }) {
-  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const update = useMutation<Record<string, unknown>>(`/api/v1/categories/${id}`, "PATCH");
@@ -306,7 +294,6 @@ export function CategoryRow({ id, name, archived }: { id: string; name: string; 
     const result = await update.submit(body);
     if (result.ok) {
       setEditing(false);
-      router.refresh();
     }
   }
 

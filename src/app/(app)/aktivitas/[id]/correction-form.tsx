@@ -55,7 +55,6 @@ export function CorrectionForm(props: Props) {
     if (result.ok) {
       const replacement = result.data.entryIds.at(-1);
       router.push(replacement ? `/aktivitas/${replacement}` : "/aktivitas");
-      router.refresh();
     }
   }
 
@@ -104,8 +103,7 @@ export function CorrectionForm(props: Props) {
                   className={buttonClass.danger}
                   disabled={correct.pending}
                   onClick={async () => {
-                    const result = await correct.submit({ action: "VOID" });
-                    if (result.ok) router.refresh();
+                    await correct.submit({ action: "VOID" });
                   }}
                 >
                   Ya, batalkan catatan
