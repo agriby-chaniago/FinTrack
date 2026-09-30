@@ -19,9 +19,14 @@ const env = (name: string): string => {
 
 const adminUrl = env("ADMIN_DATABASE_URL");
 const pooledAppUrl = env("DATABASE_URL");
-const directAppUrl = `postgresql://fintrack_app:${encodeURIComponent(env("FINTRACK_APP_DB_PASSWORD"))}@127.0.0.1:54322/postgres`;
-const directProbeUrl = `postgresql://fintrack_probe:${encodeURIComponent(env("FINTRACK_PROBE_DB_PASSWORD"))}@127.0.0.1:54322/postgres`;
-const directBackupUrl = `postgresql://fintrack_backup:${encodeURIComponent(env("FINTRACK_BACKUP_DB_PASSWORD"))}@127.0.0.1:54322/postgres`;
+// "Direct" means one server session per client connection: the local database
+// port, or the session-mode pooler on hosted Supabase (TEST_DIRECT_*_URL).
+const localDirect = (role: string, passwordEnv: string) =>
+  `postgresql://${role}:${encodeURIComponent(env(passwordEnv))}@127.0.0.1:54322/postgres`;
+const directAppUrl = process.env.TEST_DIRECT_APP_URL ?? localDirect("fintrack_app", "FINTRACK_APP_DB_PASSWORD");
+const directProbeUrl = process.env.TEST_DIRECT_PROBE_URL ?? localDirect("fintrack_probe", "FINTRACK_PROBE_DB_PASSWORD");
+const directBackupUrl =
+  process.env.TEST_DIRECT_BACKUP_URL ?? localDirect("fintrack_backup", "FINTRACK_BACKUP_DB_PASSWORD");
 
 const admin = postgres(adminUrl, { max: 1, onnotice: () => {} });
 const probe = postgres(directProbeUrl, { max: 1, onnotice: () => {} });

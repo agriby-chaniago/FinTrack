@@ -9,8 +9,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    // Loads .env and .env.local (copied from .env.example for local Supabase).
-    env: loadEnv("", process.cwd(), ""),
+    // Loads .env and .env.local (local Supabase). FINTRACK_ENV=staging also loads
+    // .env.staging.local, which takes precedence, to run the suites against staging.
+    env: loadEnv(process.env.FINTRACK_ENV ?? "", process.cwd(), ""),
     projects: [
       {
         extends: true,
