@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   title: "FinTrack",
   description: "Low-input personal cashflow tracking",
   applicationName: "FinTrack",
-  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "FinTrack", statusBarStyle: "default" },
 };
 

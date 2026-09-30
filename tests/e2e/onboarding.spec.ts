@@ -155,4 +155,12 @@ test("owner signs in and completes onboarding with the locked fixture", async ({
     await page.getByRole("link", { name: /Dosen/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Dosen" })).toBeVisible();
   });
+
+  await test.step("installable but online-only", async () => {
+    const manifest = await (await page.request.get("/manifest.webmanifest")).json();
+    expect(manifest).toMatchObject({ display: "standalone", start_url: "/" });
+    expect(manifest.icons.some((icon: { purpose: string }) => icon.purpose === "maskable")).toBe(true);
+    for (const icon of manifest.icons as { src: string }[]) expect((await page.request.get(icon.src)).status()).toBe(200);
+    expect(await page.evaluate(async () => (await navigator.serviceWorker?.getRegistrations())?.length ?? 0)).toBe(0);
+  });
 });
