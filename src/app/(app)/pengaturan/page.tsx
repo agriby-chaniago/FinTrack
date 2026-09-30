@@ -31,13 +31,11 @@ export default async function PengaturanPage() {
   const now = new Date();
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
-    const [settings, daily, rules, categories, context] = await Promise.all([
-      getSettings(tx, ownerId),
-      dailyIncomeView(tx, ownerId, now),
-      listRecurringRules(tx, ownerId, now),
-      listCategories(tx, ownerId, { includeArchived: true }),
-      recordingContext(tx, ownerId),
-    ]);
+    const settings = await getSettings(tx, ownerId);
+    const daily = await dailyIncomeView(tx, ownerId, now);
+    const rules = await listRecurringRules(tx, ownerId, now);
+    const categories = await listCategories(tx, ownerId, { includeArchived: true });
+    const context = await recordingContext(tx, ownerId);
     return { settings, daily, rules, categories, context };
   });
   if (result.status !== "OWNER") redirect("/login");

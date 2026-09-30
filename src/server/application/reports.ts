@@ -264,17 +264,15 @@ async function danaCard(tx: OwnerTx, ownerId: string, router: Awaited<ReturnType
 /** Everything Beranda shows, in the locked reading order (PRD: Dashboard hierarchy). */
 export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
   const today = businessDateOf(now);
-  // Cycles first (they may create the occurrences of a new month); the rest only reads.
-  // The Supabase transaction pooler runs a transaction's queries one at a time,
-  // so the round-trip count, not concurrency, is what the budget test guards.
+  // Cycles first: they may create the occurrences of a newly started month.
   const cycles = await listMonthlyCycles(tx, ownerId, now);
-  const [overview, { router, dana }, targets, month, externalSubjects] = await Promise.all([
-    accountsOverview(tx, ownerId, now, { cycles }),
-    settlementRouter(tx, ownerId, now).then(async (router) => ({ router, dana: await danaCard(tx, ownerId, router, today) })),
-    listTargets(tx, ownerId),
-    monthLedgerSummary(tx, ownerId, cycleKeyOf(today)),
-    listExternalSubjects(tx, ownerId),
-  ]);
+  // One transaction runs one query at a time (pg would reject overlapping ones), so load in order.
+  const overview = await accountsOverview(tx, ownerId, now, { cycles });
+  const router = await settlementRouter(tx, ownerId, now);
+  const dana = await danaCard(tx, ownerId, router, today);
+  const targets = await listTargets(tx, ownerId);
+  const month = await monthLedgerSummary(tx, ownerId, cycleKeyOf(today));
+  const externalSubjects = await listExternalSubjects(tx, ownerId);
   const confirmedPersonalCash = overview.accounts.reduce((sum, a) => sum + parseIdrDecimal(a.confirmedPersonal), 0n);
 
   const warnings = overview.accounts.flatMap((a) => {

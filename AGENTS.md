@@ -41,10 +41,12 @@ Every query is a round trip from Vercel to the Supabase transaction pooler, whic
 
 - The runtime driver is node-postgres (`src/server/db/client.ts`): one round trip per query. Run raw SQL only through `sqlRows()` (`src/server/db/rows.ts`); raw timestamps come back as strings, so cast or format them in SQL.
 - Every non-local connection uses verified TLS with the pinned Supabase root CA: pass `ssl: databaseSsl(url)` (`src/server/db/supabase-ca.ts`) to any new client, script included.
+- Never overlap queries on one transaction (no `Promise.all` over queries inside `withOwnerDb`): pg 9 rejects it, the pooler serializes it anyway, and a DB-test guard fails on it.
 - Load data in sets, not per row or per account: one query for all accounts, cycles, or targets, then combine in TypeScript. Keep business rules in TypeScript and give batch and single-item callers one implementation (the single-item function wraps the batch one).
 - Page loads only read. The one exception is creating the occurrences of a newly started month; targets and other derived records are written by the mutation that makes them due.
 - Add every new page loader to `tests/perf/query-budget.integration.test.ts` with a budget that must not grow with history length.
 - Client mutations go through `useMutation` (`src/lib/api-client.ts`), which purges the client cache and prefetched tabs via `revalidateAppData()` after each success. A change made any other way must call `revalidateAppData()` itself, or a prefetched tab can show pre-change balances. `pnpm test:e2e:prod` (after `pnpm build`) checks this on a production build.
+- The main tabs are fully prefetched only after the first page has loaded and the browser is idle (`useWarmedUp` in the app shell), so prefetching never slows the first open.
 - Each app route has a `loading.tsx` skeleton (`src/components/skeletons.tsx`) so navigation responds before data arrives.
 
 <!-- BEGIN:nextjs-agent-rules -->

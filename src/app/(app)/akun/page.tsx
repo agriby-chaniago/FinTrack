@@ -10,7 +10,8 @@ import { runAsPageOwner } from "@/server/auth/page-owner";
 export default async function AkunPage() {
   const now = new Date();
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
-    const [overview, subjects] = await Promise.all([accountsOverview(tx, ownerId, now), listExternalSubjects(tx, ownerId)]);
+    const overview = await accountsOverview(tx, ownerId, now);
+    const subjects = await listExternalSubjects(tx, ownerId);
     return { overview, subjects };
   });
   if (result.status !== "OWNER") redirect("/login");

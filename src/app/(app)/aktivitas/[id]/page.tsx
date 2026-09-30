@@ -15,7 +15,8 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
-    const [activity, categories] = await Promise.all([listActivity(tx, ownerId, { limit: 20, thread: id }), listCategories(tx, ownerId, { includeArchived: false })]);
+    const activity = await listActivity(tx, ownerId, { limit: 20, thread: id });
+    const categories = await listCategories(tx, ownerId, { includeArchived: false });
     return { thread: activity.items, categories };
   });
   if (result.status !== "OWNER") redirect("/login");

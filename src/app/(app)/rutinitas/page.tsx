@@ -31,12 +31,10 @@ export default async function RutinitasPage() {
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
     // Cycles may create a new month's occurrences; the rest only reads.
     const cycles = await listMonthlyCycles(tx, ownerId, now);
-    const [targets, router, history, daily] = await Promise.all([
-      listTargets(tx, ownerId),
-      settlementRouter(tx, ownerId, now),
-      settlementHistory(tx, ownerId),
-      dailyIncomeView(tx, ownerId, now),
-    ]);
+    const targets = await listTargets(tx, ownerId);
+    const router = await settlementRouter(tx, ownerId, now);
+    const history = await settlementHistory(tx, ownerId);
+    const daily = await dailyIncomeView(tx, ownerId, now);
     return { router, history, cycles, targets, suggestions: await transferSuggestions(tx, ownerId, { targets }), daily };
   });
   if (result.status !== "OWNER") redirect("/login");
