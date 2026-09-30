@@ -107,10 +107,11 @@ describe("posting the locked external-funds fixture", () => {
     const byName = Object.fromEntries(body.data.accounts.map((a: { displayName: string }) => [a.displayName, a]));
     expect(byName.BCA).toMatchObject({ physical: "271999.93", external: "251999.93", personal: "20000", shortfall: "0" });
     expect(byName.Jago).toMatchObject({ physical: "180000", external: "90000", personal: "90000" });
-    expect(byName.DANA).toMatchObject({ physical: "0", personal: "0", status: "OPEN_WEEK", openWeekDisclosure: true });
+    // DANA accrues Rp50.000 per day since the cutover and its first week is overdue.
+    expect(byName.DANA).toMatchObject({ external: "0", status: "NEEDS_REVIEW", openWeekDisclosure: true });
     expect(byName.BCA.status).toBe("CALCULATED_AFTER_CONFIRMATION");
     expect(byName.BCA.confirmedPersonal).toBe("400000");
-    expect(body.data.personalCashRecorded).toBe("110000");
+    expect(Number(body.data.personalCashRecorded)).toBe(110000 + Number(byName.DANA.personal));
     expect(body.data.accounts.map((a: { displayName: string }) => a.displayName)).toEqual(["Jago", "BCA", "DANA"]);
   });
 

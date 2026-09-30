@@ -173,10 +173,12 @@ describe("special expenses and categories", () => {
 
 describe("other events", () => {
   it("records other income anywhere but rejects ordinary expense on the weekly-settlement account", async () => {
+    // DANA also accrues daily income through today, so compare the change only.
+    const before = Number((await balances()).DANA.personal);
     expect((await post(postEvent, { direction: "INCOME", accountId: owner.accountIds.daily, amount: "20000", businessDate: "2026-09-02" })).status).toBe(201);
     const rejected = await post(postEvent, { direction: "EXPENSE", accountId: owner.accountIds.daily, amount: "1000", businessDate: "2026-09-02" });
     expect(rejected.body.error!.details).toEqual({ issues: ["USE_SPECIAL_EXPENSE_FOR_WEEKLY_ACCOUNT"] });
-    expect((await balances()).DANA.personal).toBe("20000");
+    expect(Number((await balances()).DANA.personal) - before).toBe(20000);
   });
 });
 
