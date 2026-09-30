@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, date, index, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigint, check, date, index, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { account, externalHolding, specialExpenseCategory } from "./onboarding";
 import { appOwner, fintrack } from "./platform";
@@ -25,6 +25,18 @@ export const ledgerEntry = fintrack.table(
     reportingClassification: text("reporting_classification"),
     categoryId: uuid("category_id").references(() => specialExpenseCategory.id),
     note: text("note"),
+    /** Reporting group used by metrics (PRD: Metrics dan perhitungan). */
+    eventClass: text("event_class").notNull(),
+    /** External movement subtype (receipt, return, owner-use, move, conversions). */
+    movementType: text("movement_type"),
+    /** REVERSAL or REPLACEMENT of `correctsEntryId` for open-period corrections. */
+    correctionRole: text("correction_role"),
+    correctsEntryId: uuid("corrects_entry_id").references((): AnyPgColumn => ledgerEntry.id),
+    /** For CORRECTION_POSTING: the kind of the settled record being corrected. */
+    correctedKind: text("corrected_kind"),
+    /** Feature record that produced this entry, e.g. a settlement or an occurrence resolution. */
+    sourceType: text("source_type"),
+    sourceId: uuid("source_id"),
   },
   (t) => [
     check(
@@ -36,6 +48,28 @@ export const ledgerEntry = fintrack.table(
       sql`${t.reportingClassification} is null or ${t.reportingClassification} in ('OTHER_GIFT_INCOME', 'OWNERSHIP_OUTFLOW')`,
     ),
     check("ledger_entry_note_length_check", sql`${t.note} is null or char_length(${t.note}) <= 500`),
+    check(
+      "ledger_entry_event_class_check",
+      sql`${t.eventClass} in ('MONTHLY_INCOME', 'OTHER_INCOME', 'SPECIAL_EXPENSE', 'RECURRING_EXPENSE', 'OTHER_EXPENSE', 'PERSONAL_TRANSFER', 'EXTERNAL_MOVEMENT', 'LIVING', 'ADJUSTMENT')`,
+    ),
+    check(
+      "ledger_entry_movement_type_check",
+      sql`(${t.kind} = 'EXTERNAL_MOVEMENT') = (${t.movementType} is not null) or ${t.kind} = 'CORRECTION_POSTING'`,
+    ),
+    check(
+      "ledger_entry_correction_role_check",
+      sql`${t.correctionRole} is null or (${t.correctionRole} in ('REVERSAL', 'REPLACEMENT') and ${t.correctsEntryId} is not null)`,
+    ),
+    check(
+      "ledger_entry_correction_posting_check",
+      sql`(${t.kind} = 'CORRECTION_POSTING') = (${t.correctedKind} is not null)`,
+    ),
+    check(
+      "ledger_entry_special_category_check",
+      sql`(${t.eventClass} = 'SPECIAL_EXPENSE') = (${t.categoryId} is not null)`,
+    ),
+    index("ledger_entry_corrects_idx").on(t.correctsEntryId),
+    index("ledger_entry_source_idx").on(t.sourceType, t.sourceId),
     // Canonical ledger order (PRD v0.18): business date, recorded time, id.
     index("ledger_entry_canonical_idx").on(t.ownerId, t.effectiveBusinessDate, t.recordedAt, t.id),
   ],

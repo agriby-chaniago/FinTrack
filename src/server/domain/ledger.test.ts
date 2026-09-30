@@ -24,22 +24,36 @@ const leg = (accountId: string, physical: string, external = "0", holdingId: str
   holdingId: external === "0" ? holdingId : (holdingId ?? DOSEN),
 });
 
-const entry = (kind: LedgerEntryDraft["kind"], legs: LedgerLeg[], reportingClassification: LedgerEntryDraft["reportingClassification"] = null) => ({
+const classOf: Record<string, LedgerEntryDraft["eventClass"]> = {
+  INCOME: "OTHER_INCOME",
+  EXPENSE: "OTHER_EXPENSE",
+  TRANSFER: "PERSONAL_TRANSFER",
+  EXTERNAL_MOVEMENT: "EXTERNAL_MOVEMENT",
+};
+
+const entry = (
+  kind: LedgerEntryDraft["kind"],
+  legs: LedgerLeg[],
+  reportingClassification: LedgerEntryDraft["reportingClassification"] = null,
+  movementType: LedgerEntryDraft["movementType"] = null,
+): LedgerEntryDraft => ({
   kind,
+  eventClass: classOf[kind] ?? "ADJUSTMENT",
   effectiveBusinessDate: "2027-03-01",
   reportingClassification,
+  movementType,
   legs,
 });
 
 /** PRD "Locked onboarding and external-funds fixture", steps 1–7. */
 const fixtureSteps: LedgerEntryDraft[] = [
-  entry("EXTERNAL_MOVEMENT", [leg(BCA, "200000", "200000")]), // receipt
-  entry("EXTERNAL_MOVEMENT", [leg(BCA, "-150000", "-150000")]), // partial return
-  entry("EXTERNAL_MOVEMENT", [leg(BCA, "-80000", "-80000")]), // authorized owner-use
+  entry("EXTERNAL_MOVEMENT", [leg(BCA, "200000", "200000")], null, "RECEIPT"),
+  entry("EXTERNAL_MOVEMENT", [leg(BCA, "-150000", "-150000")], null, "RETURN"),
+  entry("EXTERNAL_MOVEMENT", [leg(BCA, "-80000", "-80000")], null, "OWNER_USE"),
   entry("TRANSFER", [leg(BCA, "-250000", "-150000"), leg(JAGO, "250000", "150000")]), // mixed transfer
   entry("EXPENSE", [leg(BCA, "-350000")]), // personal expense
   entry("TRANSFER", [leg(JAGO, "-70000"), leg(BCA, "70000")]), // personal replenishment
-  entry("EXTERNAL_MOVEMENT", [leg(JAGO, "0", "-60000")], "OTHER_GIFT_INCOME"), // ownership release
+  entry("EXTERNAL_MOVEMENT", [leg(JAGO, "0", "-60000")], "OTHER_GIFT_INCOME", "CONVERT_TO_PERSONAL"),
 ];
 
 const openings = new Map([
@@ -94,9 +108,11 @@ describe("ledgerIssues", () => {
     [entry("EXPENSE", [leg(BCA, "-1", "-1")]), "EXTERNAL_NOT_ALLOWED"],
     [entry("TRANSFER", [leg(BCA, "-100"), leg(JAGO, "90")]), "TRANSFER_MUST_BALANCE"],
     [entry("TRANSFER", [leg(BCA, "-100"), leg(BCA, "100")]), "TRANSFER_NEEDS_TWO_ACCOUNTS"],
-    [entry("EXTERNAL_MOVEMENT", [leg(BCA, "100")]), "EXTERNAL_EFFECT_REQUIRED"],
-    [entry("EXTERNAL_MOVEMENT", [leg(JAGO, "0", "-60000")]), "CLASSIFICATION_MISMATCH"],
-    [entry("EXTERNAL_MOVEMENT", [leg(BCA, "100", "100")], "OTHER_GIFT_INCOME"), "CLASSIFICATION_MISMATCH"],
+    [entry("EXTERNAL_MOVEMENT", [leg(BCA, "100")], null, "RECEIPT"), "EXTERNAL_EFFECT_REQUIRED"],
+    [entry("EXTERNAL_MOVEMENT", [leg(JAGO, "0", "-60000")], null, "CONVERT_TO_PERSONAL"), "CLASSIFICATION_MISMATCH"],
+    [entry("EXTERNAL_MOVEMENT", [leg(BCA, "100", "100")], "OTHER_GIFT_INCOME", "RECEIPT"), "CLASSIFICATION_MISMATCH"],
+    [entry("EXTERNAL_MOVEMENT", [leg(BCA, "-100", "-100")], null, "RECEIPT"), "MOVEMENT_TYPE_MISMATCH"],
+    [entry("EXTERNAL_MOVEMENT", [leg(BCA, "100", "100")]), "MOVEMENT_TYPE_MISMATCH"],
     [entry("INCOME", [leg(BCA, "0")]), "EMPTY_LEG"],
     [entry("INCOME", []), "NO_LEGS"],
   ])("rejects %#", (draft, code) => {
@@ -104,7 +120,7 @@ describe("ledgerIssues", () => {
   });
 
   it("requires a holding exactly when the external effect is non-zero", () => {
-    expect(ledgerIssues(entry("EXTERNAL_MOVEMENT", [{ accountId: BCA, physicalEffect: 1n, externalEffect: 1n, holdingId: null }]))).toContain(
+    expect(ledgerIssues(entry("EXTERNAL_MOVEMENT", [{ accountId: BCA, physicalEffect: 1n, externalEffect: 1n, holdingId: null }], null, "RECEIPT"))).toContain(
       "HOLDING_REQUIRED",
     );
     expect(ledgerIssues(entry("INCOME", [{ accountId: BCA, physicalEffect: 1n, externalEffect: 0n, holdingId: DOSEN }]))).toContain(
@@ -112,8 +128,14 @@ describe("ledgerIssues", () => {
     );
   });
 
+  it("requires a reference for reversals and settled-history corrections, skipping sign rules", () => {
+    const reversal = { ...entry("EXPENSE", [leg(BCA, "100")]), correctionRole: "REVERSAL" as const };
+    expect(ledgerIssues(reversal)).toEqual(["CORRECTION_REFERENCE_REQUIRED"]);
+    expect(ledgerIssues({ ...reversal, correctsEntryId: "original" })).toEqual([]);
+  });
+
   it("classifies personal → external conversions as ownership outflow", () => {
-    expect(ledgerIssues(entry("EXTERNAL_MOVEMENT", [leg(BCA, "0", "25000")], "OWNERSHIP_OUTFLOW"))).toEqual([]);
+    expect(ledgerIssues(entry("EXTERNAL_MOVEMENT", [leg(BCA, "0", "25000")], "OWNERSHIP_OUTFLOW", "CONVERT_TO_EXTERNAL"))).toEqual([]);
   });
 });
 

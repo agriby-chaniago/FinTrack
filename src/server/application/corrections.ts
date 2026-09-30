@@ -1,0 +1,171 @@
+// Corrections of confirmed records (PRD: Correction dan reconciliation). Open
+// periods use a linked reversal and replacement (or a reversal-only void);
+// settled history uses CORRECTION_POSTING through the settlement flow.
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { parseIdrDecimal } from "@/lib/money";
+import { ApiError } from "@/server/api/errors";
+import { businessDate, cutoverDayAnswer, note, positiveAmount } from "@/server/api/schemas";
+import type { OwnerTx } from "@/server/db/owner";
+import { ledgerEntry, ledgerLeg } from "@/server/db/schema/ledger";
+import type { EventClass, LedgerEntryDraft, LedgerEntryKind, MovementType, ReportingClassification } from "@/server/domain/ledger";
+
+import { requireActiveCashAccounts, weeklySettlementAccountIds } from "./accounts";
+import { otherEventDraft, specialExpenseDraft, createOrReuseCategory } from "./events";
+import { externalMovementDraft } from "./external-funds";
+import { assertExternalHoldingsNonNegative, postLedgerEntry } from "./ledger";
+import { correctSettledEntry, settledSettlementFor } from "./settlement-corrections";
+
+export const correctionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("VOID") }),
+  z.object({
+    action: z.literal("REPLACE"),
+    amount: positiveAmount,
+    businessDate,
+    note,
+    accountId: z.uuid().optional(),
+    categoryId: z.uuid().optional(),
+    newCategoryName: z.string().trim().min(1).max(60).optional(),
+    cutoverDayAnswer,
+  }),
+]);
+export type CorrectionInput = z.infer<typeof correctionSchema>;
+
+const correctableClasses = new Set<EventClass>(["SPECIAL_EXPENSE", "OTHER_INCOME", "OTHER_EXPENSE", "EXTERNAL_MOVEMENT"]);
+
+export type LoadedEntry = typeof ledgerEntry.$inferSelect & { legs: (typeof ledgerLeg.$inferSelect)[] };
+
+export async function loadEntry(tx: OwnerTx, ownerId: string, entryId: string): Promise<LoadedEntry> {
+  const [entry] = await tx
+    .select()
+    .from(ledgerEntry)
+    .where(and(eq(ledgerEntry.ownerId, ownerId), eq(ledgerEntry.id, entryId)));
+  if (!entry) throw new ApiError("NOT_FOUND");
+  const legs = await tx
+    .select()
+    .from(ledgerLeg)
+    .where(and(eq(ledgerLeg.ownerId, ownerId), eq(ledgerLeg.entryId, entryId)));
+  return { ...entry, legs };
+}
+
+/** A record is current when it is not a reversal and nothing has reversed it yet. */
+export async function assertCurrentRecord(tx: OwnerTx, ownerId: string, entry: LoadedEntry): Promise<void> {
+  if (entry.correctionRole === "REVERSAL" || entry.kind === "CORRECTION_POSTING") {
+    throw new ApiError("VALIDATION_FAILED", { issues: ["NOT_A_CORRECTABLE_RECORD"] });
+  }
+  const [reversal] = await tx
+    .select({ id: ledgerEntry.id })
+    .from(ledgerEntry)
+    .where(
+      and(eq(ledgerEntry.ownerId, ownerId), eq(ledgerEntry.correctsEntryId, entry.id), eq(ledgerEntry.correctionRole, "REVERSAL")),
+    );
+  if (reversal) throw new ApiError("VALIDATION_FAILED", { issues: ["ALREADY_CORRECTED"] });
+}
+
+/** Exact negation of a record, dated on the original business date. */
+export function reversalDraft(entry: LoadedEntry): LedgerEntryDraft {
+  return {
+    kind: entry.kind as LedgerEntryKind,
+    eventClass: entry.eventClass as EventClass,
+    effectiveBusinessDate: entry.effectiveBusinessDate,
+    reportingClassification: entry.reportingClassification as ReportingClassification | null,
+    movementType: entry.movementType as MovementType | null,
+    correctionRole: "REVERSAL",
+    correctsEntryId: entry.id,
+    legs: entry.legs.map((leg) => ({
+      accountId: leg.accountId,
+      physicalEffect: -leg.physicalEffectMinor,
+      externalEffect: -leg.externalEffectMinor,
+      holdingId: leg.holdingId,
+    })),
+  };
+}
+
+async function replacementFor(
+  tx: OwnerTx,
+  ownerId: string,
+  entry: LoadedEntry,
+  input: Extract<CorrectionInput, { action: "REPLACE" }>,
+): Promise<{ draft: LedgerEntryDraft; categoryId: string | null }> {
+  const amount = parseIdrDecimal(input.amount);
+  const originalAccount = entry.legs[0].accountId;
+  switch (entry.eventClass as EventClass) {
+    case "SPECIAL_EXPENSE": {
+      const accountId = input.accountId ?? originalAccount;
+      await requireActiveCashAccounts(tx, ownerId, [accountId]);
+      const categoryId = input.newCategoryName
+        ? await createOrReuseCategory(tx, ownerId, input.newCategoryName)
+        : (input.categoryId ?? entry.categoryId);
+      return { draft: specialExpenseDraft(accountId, amount, input.businessDate), categoryId };
+    }
+    case "OTHER_INCOME":
+    case "OTHER_EXPENSE": {
+      const accountId = input.accountId ?? originalAccount;
+      await requireActiveCashAccounts(tx, ownerId, [accountId]);
+      if (entry.eventClass === "OTHER_EXPENSE" && (await weeklySettlementAccountIds(tx, ownerId)).has(accountId)) {
+        throw new ApiError("VALIDATION_FAILED", { issues: ["USE_SPECIAL_EXPENSE_FOR_WEEKLY_ACCOUNT"] });
+      }
+      return { draft: otherEventDraft(entry.kind as "INCOME" | "EXPENSE", accountId, amount, input.businessDate), categoryId: null };
+    }
+    case "EXTERNAL_MOVEMENT": {
+      // Subject, subtype, and accounts stay; amount, date, and note may change.
+      const type = entry.movementType as MovementType;
+      const from = entry.legs.find((leg) => leg.physicalEffectMinor < 0n) ?? entry.legs[0];
+      const to = entry.legs.find((leg) => leg.physicalEffectMinor > 0n);
+      const accounts = type === "INTERNAL_TRANSFER" ? { accountId: from.accountId, toAccountId: to!.accountId } : { accountId: originalAccount };
+      return { draft: externalMovementDraft(type, entry.legs[0].holdingId!, accounts, amount, input.businessDate), categoryId: null };
+    }
+    default:
+      throw new ApiError("VALIDATION_FAILED", { issues: ["NOT_A_CORRECTABLE_RECORD"] });
+  }
+}
+
+export type CorrectionResult = { mode: "OPEN_PERIOD" | "SETTLED_HISTORY"; entryIds: string[] };
+
+/**
+ * `Koreksi` on a confirmed record. Nothing is edited: an open-period record
+ * gets a linked reversal plus replacement (or only the reversal for a void);
+ * a record inside a settled DANA period gets a CORRECTION_POSTING instead.
+ */
+export async function correctEntry(
+  tx: OwnerTx,
+  ownerId: string,
+  entryId: string,
+  input: CorrectionInput,
+  now: Date,
+): Promise<CorrectionResult> {
+  const entry = await loadEntry(tx, ownerId, entryId);
+  await assertCurrentRecord(tx, ownerId, entry);
+  if (!correctableClasses.has(entry.eventClass as EventClass)) {
+    throw new ApiError("VALIDATION_FAILED", { issues: ["USE_DEDICATED_CORRECTION_FLOW"] });
+  }
+
+  const replacement = input.action === "REPLACE" ? await replacementFor(tx, ownerId, entry, input) : null;
+
+  const settlementId = await settledSettlementFor(tx, ownerId, entry);
+  if (settlementId) {
+    return correctSettledEntry(tx, ownerId, entry, replacement, now);
+  }
+
+  const reversal = await postLedgerEntry(tx, ownerId, reversalDraft(entry), {
+    now,
+    categoryId: entry.categoryId,
+    cutoverDayAnswer: "NOT_IN_OPENING",
+    deferHoldingCheck: true,
+  });
+  const ids = reversal.recorded ? [reversal.entryId] : [];
+
+  if (replacement && input.action === "REPLACE") {
+    const posted = await postLedgerEntry(
+      tx,
+      ownerId,
+      { ...replacement.draft, correctionRole: "REPLACEMENT", correctsEntryId: entry.id },
+      { now, categoryId: replacement.categoryId, note: input.note ?? entry.note, cutoverDayAnswer: input.cutoverDayAnswer, deferHoldingCheck: true },
+    );
+    if (posted.recorded) ids.push(posted.entryId);
+  }
+
+  await assertExternalHoldingsNonNegative(tx, ownerId);
+  return { mode: "OPEN_PERIOD", entryIds: ids };
+}

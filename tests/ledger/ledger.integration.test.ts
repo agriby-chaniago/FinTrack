@@ -40,19 +40,26 @@ function post(draft: LedgerEntryDraft, cutoverDayAnswer?: CutoverDayAnswer) {
   );
 }
 
-const step = (date: string, kind: LedgerEntryDraft["kind"], legs: LedgerLeg[], classification: LedgerEntryDraft["reportingClassification"] = null) =>
-  ({ kind, effectiveBusinessDate: date, reportingClassification: classification, legs }) satisfies LedgerEntryDraft;
+const classOf = { INCOME: "OTHER_INCOME", EXPENSE: "OTHER_EXPENSE", TRANSFER: "PERSONAL_TRANSFER", EXTERNAL_MOVEMENT: "EXTERNAL_MOVEMENT" } as const;
+
+const step = (
+  date: string,
+  kind: keyof typeof classOf,
+  legs: LedgerLeg[],
+  classification: LedgerEntryDraft["reportingClassification"] = null,
+  movementType: LedgerEntryDraft["movementType"] = null,
+): LedgerEntryDraft => ({ kind, eventClass: classOf[kind], effectiveBusinessDate: date, reportingClassification: classification, movementType, legs });
 
 /** PRD fixture steps 1–7 on consecutive days after the cutover. */
 function fixtureSteps(): LedgerEntryDraft[] {
   return [
-    step("2026-09-02", "EXTERNAL_MOVEMENT", [leg("monthly", "200000", "200000")]),
-    step("2026-09-03", "EXTERNAL_MOVEMENT", [leg("monthly", "-150000", "-150000")]),
-    step("2026-09-04", "EXTERNAL_MOVEMENT", [leg("monthly", "-80000", "-80000")]),
+    step("2026-09-02", "EXTERNAL_MOVEMENT", [leg("monthly", "200000", "200000")], null, "RECEIPT"),
+    step("2026-09-03", "EXTERNAL_MOVEMENT", [leg("monthly", "-150000", "-150000")], null, "RETURN"),
+    step("2026-09-04", "EXTERNAL_MOVEMENT", [leg("monthly", "-80000", "-80000")], null, "OWNER_USE"),
     step("2026-09-05", "TRANSFER", [leg("monthly", "-250000", "-150000"), leg("reserve", "250000", "150000")]),
     step("2026-09-06", "EXPENSE", [leg("monthly", "-350000")]),
     step("2026-09-07", "TRANSFER", [leg("reserve", "-70000"), leg("monthly", "70000")]),
-    step("2026-09-08", "EXTERNAL_MOVEMENT", [leg("reserve", "0", "-60000")], "OTHER_GIFT_INCOME"),
+    step("2026-09-08", "EXTERNAL_MOVEMENT", [leg("reserve", "0", "-60000")], "OTHER_GIFT_INCOME", "CONVERT_TO_PERSONAL"),
   ];
 }
 
@@ -116,7 +123,7 @@ describe("posting the locked external-funds fixture", () => {
 
   it("rejects a return that would make the Dosen holding negative and writes nothing", async () => {
     const before = await entryCount();
-    await expect(post(step("2026-09-02", "EXTERNAL_MOVEMENT", [leg("monthly", "-432000", "-432000")]))).rejects.toMatchObject({
+    await expect(post(step("2026-09-02", "EXTERNAL_MOVEMENT", [leg("monthly", "-432000", "-432000")], null, "RETURN"))).rejects.toMatchObject({
       code: "INVARIANT_VIOLATION",
     });
     expect(await entryCount()).toBe(before);
@@ -125,7 +132,7 @@ describe("posting the locked external-funds fixture", () => {
   it("rejects a backdated return that breaks a later movement's history", async () => {
     for (const draft of fixtureSteps().slice(0, 4)) await post(draft);
     // Moving Rp150.000 to Jago on 5 September needs that much still at BCA on that date.
-    await expect(post(step("2026-09-02", "EXTERNAL_MOVEMENT", [leg("monthly", "-400000", "-400000")]))).rejects.toMatchObject({
+    await expect(post(step("2026-09-02", "EXTERNAL_MOVEMENT", [leg("monthly", "-400000", "-400000")], null, "RETURN"))).rejects.toMatchObject({
       code: "INVARIANT_VIOLATION",
     });
   });

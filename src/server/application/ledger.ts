@@ -28,7 +28,23 @@ export type PostOptions = {
   readonly cutoverDayAnswer?: CutoverDayAnswer;
   readonly categoryId?: string | null;
   readonly note?: string | null;
+  /**
+   * Skip the external-holding replay; the caller must run
+   * assertExternalHoldingsNonNegative() once after posting related entries
+   * (for example a reversal and its replacement).
+   */
+  readonly deferHoldingCheck?: boolean;
 };
+
+/** Replays every external holding position and rejects any negative point in history. */
+export async function assertExternalHoldingsNonNegative(tx: OwnerTx, ownerId: string): Promise<void> {
+  const negative = negativeHoldingPositions(
+    await effectiveOpeningExternals(tx, ownerId),
+    await orderedExternalEffects(tx, ownerId),
+  );
+  // Throwing rolls back the whole transaction, including rows already inserted.
+  if (negative.length > 0) throw new ApiError("INVARIANT_VIOLATION", { negativeHoldings: negative });
+}
 
 export type PostResult = { recorded: true; entryId: string } | { recorded: false; reason: "ALREADY_IN_OPENING" };
 
@@ -67,6 +83,7 @@ export async function postLedgerEntry(
   options: PostOptions,
 ): Promise<PostResult> {
   const issues: string[] = [...ledgerIssues(draft)];
+  if ((draft.eventClass === "SPECIAL_EXPENSE") !== Boolean(options.categoryId)) issues.push("CATEGORY_MISMATCH");
   if (!isBusinessDate(draft.effectiveBusinessDate)) issues.push("INVALID_BUSINESS_DATE");
   else if (draft.effectiveBusinessDate > businessDateOf(options.now)) issues.push("BUSINESS_DATE_IN_FUTURE");
   if (issues.length > 0) throw new ApiError("VALIDATION_FAILED", { issues });
@@ -106,8 +123,15 @@ export async function postLedgerEntry(
     .values({
       ownerId,
       kind: draft.kind,
+      eventClass: draft.eventClass,
       effectiveBusinessDate: draft.effectiveBusinessDate,
       reportingClassification: draft.reportingClassification,
+      movementType: draft.movementType ?? null,
+      correctionRole: draft.correctionRole ?? null,
+      correctsEntryId: draft.correctsEntryId ?? null,
+      correctedKind: draft.correctedKind ?? null,
+      sourceType: draft.sourceType ?? null,
+      sourceId: draft.sourceId ?? null,
       categoryId: options.categoryId ?? null,
       note: options.note ?? null,
     })
@@ -124,14 +148,7 @@ export async function postLedgerEntry(
     })),
   );
 
-  if (holdingIds.length > 0) {
-    const negative = negativeHoldingPositions(
-      await effectiveOpeningExternals(tx, ownerId),
-      await orderedExternalEffects(tx, ownerId),
-    );
-    // Throwing rolls back the whole transaction, including the rows above.
-    if (negative.length > 0) throw new ApiError("INVARIANT_VIOLATION", { negativeHoldings: negative });
-  }
+  if (holdingIds.length > 0 && !options.deferHoldingCheck) await assertExternalHoldingsNonNegative(tx, ownerId);
 
   return { recorded: true, entryId: entry.id };
 }

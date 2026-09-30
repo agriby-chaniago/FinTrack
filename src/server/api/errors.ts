@@ -14,6 +14,9 @@ export type ApiErrorCode =
   | "ONBOARDING_NOT_CONFIRMED"
   | "INVARIANT_VIOLATION"
   | "CUTOVER_DAY_CONFIRMATION_REQUIRED"
+  | "IDEMPOTENCY_KEY_REQUIRED"
+  | "IDEMPOTENCY_KEY_REUSED"
+  | "NOT_FOUND"
   | "INTERNAL_ERROR";
 
 const statusByCode: Record<ApiErrorCode, number> = {
@@ -29,6 +32,9 @@ const statusByCode: Record<ApiErrorCode, number> = {
   ONBOARDING_NOT_CONFIRMED: 409,
   INVARIANT_VIOLATION: 409,
   CUTOVER_DAY_CONFIRMATION_REQUIRED: 422,
+  IDEMPOTENCY_KEY_REQUIRED: 428,
+  IDEMPOTENCY_KEY_REUSED: 409,
+  NOT_FOUND: 404,
   INTERNAL_ERROR: 500,
 };
 
@@ -45,6 +51,9 @@ const messageByCode: Record<ApiErrorCode, string> = {
   ONBOARDING_NOT_CONFIRMED: "Onboarding belum dikonfirmasi.",
   INVARIANT_VIOLATION: "Perubahan ini melanggar aturan pembukuan.",
   CUTOVER_DAY_CONFIRMATION_REQUIRED: "Sudah termasuk saldo awal?",
+  IDEMPOTENCY_KEY_REQUIRED: "Idempotency-Key wajib dikirim untuk perubahan keuangan.",
+  IDEMPOTENCY_KEY_REUSED: "Idempotency-Key sudah dipakai untuk permintaan lain.",
+  NOT_FOUND: "Data tidak ditemukan.",
   INTERNAL_ERROR: "Terjadi kesalahan pada server.",
 };
 

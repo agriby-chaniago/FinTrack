@@ -36,6 +36,20 @@
       "when": 1790753625699,
       "tag": "0004_ledger_recorded_at_precision",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790754315338,
+      "tag": "0005_ledger_classification",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790754407635,
+      "tag": "0006_idempotency",
+      "breakpoints": true
     }
   ]
 }

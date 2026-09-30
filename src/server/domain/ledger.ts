@@ -17,6 +17,32 @@ export type LedgerEntryKind = (typeof ledgerEntryKinds)[number];
 /** Personal reporting classification for ownership conversions (PRD: External funds). */
 export type ReportingClassification = "OTHER_GIFT_INCOME" | "OWNERSHIP_OUTFLOW";
 
+/** Reporting group of an entry; corrections inherit the group of what they correct. */
+export const eventClasses = [
+  "MONTHLY_INCOME",
+  "OTHER_INCOME",
+  "SPECIAL_EXPENSE",
+  "RECURRING_EXPENSE",
+  "OTHER_EXPENSE",
+  "PERSONAL_TRANSFER",
+  "EXTERNAL_MOVEMENT",
+  "LIVING",
+  "ADJUSTMENT",
+] as const;
+export type EventClass = (typeof eventClasses)[number];
+
+export const movementTypes = [
+  "RECEIPT",
+  "RETURN",
+  "OWNER_USE",
+  "INTERNAL_TRANSFER",
+  "CONVERT_TO_PERSONAL",
+  "CONVERT_TO_EXTERNAL",
+] as const;
+export type MovementType = (typeof movementTypes)[number];
+
+export type CorrectionRole = "REVERSAL" | "REPLACEMENT";
+
 /**
  * One account effect. `physicalEffect` changes the provider balance and
  * `externalEffect` changes what external subjects own; the personal effect is
@@ -31,9 +57,16 @@ export type LedgerLeg = {
 
 export type LedgerEntryDraft = {
   readonly kind: LedgerEntryKind;
+  readonly eventClass: EventClass;
   readonly effectiveBusinessDate: string;
   readonly reportingClassification: ReportingClassification | null;
   readonly legs: readonly LedgerLeg[];
+  readonly movementType?: MovementType | null;
+  readonly correctionRole?: CorrectionRole | null;
+  readonly correctsEntryId?: string | null;
+  readonly correctedKind?: LedgerEntryKind | null;
+  readonly sourceType?: string | null;
+  readonly sourceId?: string | null;
 };
 
 export const personalEffect = (leg: Pick<LedgerLeg, "physicalEffect" | "externalEffect">): MinorUnits =>
@@ -51,7 +84,9 @@ export type LedgerIssueCode =
   | "TRANSFER_NEEDS_TWO_ACCOUNTS"
   | "TRANSFER_MUST_BALANCE"
   | "EXTERNAL_EFFECT_REQUIRED"
-  | "CLASSIFICATION_MISMATCH";
+  | "CLASSIFICATION_MISMATCH"
+  | "MOVEMENT_TYPE_MISMATCH"
+  | "CORRECTION_REFERENCE_REQUIRED";
 
 const sum = (values: MinorUnits[]) => values.reduce((total, value) => total + value, 0n);
 
@@ -71,6 +106,13 @@ export function ledgerIssues(entry: LedgerEntryDraft): LedgerIssueCode[] {
   }
 
   const totalPersonal = sum(legs.map(personalEffect));
+
+  if ((entry.correctionRole || entry.kind === "CORRECTION_POSTING") && !entry.correctsEntryId) {
+    issues.add("CORRECTION_REFERENCE_REQUIRED");
+  }
+  // Reversals and settled-history deltas are validated against the corrected
+  // record by the correction flow; their signs legitimately oppose the kind.
+  if (entry.correctionRole === "REVERSAL" || entry.kind === "CORRECTION_POSTING") return [...issues];
 
   switch (entry.kind) {
     case "INCOME":
@@ -98,6 +140,7 @@ export function ledgerIssues(entry: LedgerEntryDraft): LedgerIssueCode[] {
       const expected: ReportingClassification | null =
         totalPersonal > 0n ? "OTHER_GIFT_INCOME" : totalPersonal < 0n ? "OWNERSHIP_OUTFLOW" : null;
       if (entry.reportingClassification !== expected) issues.add("CLASSIFICATION_MISMATCH");
+      if (!movementShapeMatches(entry.movementType ?? null, legs)) issues.add("MOVEMENT_TYPE_MISMATCH");
       break;
     }
     default:
@@ -105,6 +148,32 @@ export function ledgerIssues(entry: LedgerEntryDraft): LedgerIssueCode[] {
   }
 
   return [...issues];
+}
+
+/** Leg shape required by each external movement subtype (PRD: Efek setiap kejadian). */
+function movementShapeMatches(type: MovementType | null, legs: readonly LedgerLeg[]): boolean {
+  const [only] = legs;
+  switch (type) {
+    case "RECEIPT":
+      return legs.length === 1 && only.physicalEffect > 0n && only.externalEffect === only.physicalEffect;
+    case "RETURN":
+    case "OWNER_USE":
+      return legs.length === 1 && only.physicalEffect < 0n && only.externalEffect === only.physicalEffect;
+    case "INTERNAL_TRANSFER":
+      return (
+        legs.length === 2 &&
+        legs[0].accountId !== legs[1].accountId &&
+        legs.every((leg) => leg.physicalEffect === leg.externalEffect) &&
+        legs[0].physicalEffect + legs[1].physicalEffect === 0n &&
+        legs[0].holdingId === legs[1].holdingId
+      );
+    case "CONVERT_TO_PERSONAL":
+      return legs.length === 1 && only.physicalEffect === 0n && only.externalEffect < 0n;
+    case "CONVERT_TO_EXTERNAL":
+      return legs.length === 1 && only.physicalEffect === 0n && only.externalEffect > 0n;
+    default:
+      return false;
+  }
 }
 
 /**
