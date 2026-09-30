@@ -11,6 +11,9 @@ export type ApiErrorCode =
   | "STALE_VERSION"
   | "ONBOARDING_NOT_STARTED"
   | "ONBOARDING_ALREADY_CONFIRMED"
+  | "ONBOARDING_NOT_CONFIRMED"
+  | "INVARIANT_VIOLATION"
+  | "CUTOVER_DAY_CONFIRMATION_REQUIRED"
   | "INTERNAL_ERROR";
 
 const statusByCode: Record<ApiErrorCode, number> = {
@@ -23,6 +26,9 @@ const statusByCode: Record<ApiErrorCode, number> = {
   STALE_VERSION: 409,
   ONBOARDING_NOT_STARTED: 409,
   ONBOARDING_ALREADY_CONFIRMED: 409,
+  ONBOARDING_NOT_CONFIRMED: 409,
+  INVARIANT_VIOLATION: 409,
+  CUTOVER_DAY_CONFIRMATION_REQUIRED: 422,
   INTERNAL_ERROR: 500,
 };
 
@@ -36,6 +42,9 @@ const messageByCode: Record<ApiErrorCode, string> = {
   STALE_VERSION: "Data sudah berubah. Muat ulang lalu coba lagi.",
   ONBOARDING_NOT_STARTED: "Onboarding belum dimulai.",
   ONBOARDING_ALREADY_CONFIRMED: "Onboarding sudah dikonfirmasi.",
+  ONBOARDING_NOT_CONFIRMED: "Onboarding belum dikonfirmasi.",
+  INVARIANT_VIOLATION: "Perubahan ini melanggar aturan pembukuan.",
+  CUTOVER_DAY_CONFIRMATION_REQUIRED: "Sudah termasuk saldo awal?",
   INTERNAL_ERROR: "Terjadi kesalahan pada server.",
 };
 
