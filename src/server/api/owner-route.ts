@@ -27,7 +27,7 @@ export type OwnerRouteContext = {
   readonly params: Record<string, string>;
 };
 
-type RouteSegmentContext = { params: Promise<Record<string, string | string[] | undefined>> };
+type RouteSegmentContext = { params?: Promise<Record<string, string | string[] | undefined> | undefined> };
 
 export type OwnerRouteOptions = {
   /** Injected in tests; production uses the process-wide runtime handle. */
@@ -113,7 +113,8 @@ export function ownerRoute(
 ): (request: Request, segment?: RouteSegmentContext) => Promise<Response> {
   return async (request, segment) => {
     const requestId = crypto.randomUUID();
-    const rawParams = segment ? await segment.params : {};
+    // Static routes receive a segment whose params resolve to undefined.
+    const rawParams = (await segment?.params) ?? {};
     const params = Object.fromEntries(
       Object.entries(rawParams).flatMap(([key, value]) => (typeof value === "string" ? [[key, value]] : [])),
     );

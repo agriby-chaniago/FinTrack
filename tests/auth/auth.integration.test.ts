@@ -104,6 +104,15 @@ describe("GET /api/v1/session", () => {
     expect(((await response.json()) as { data: { authUserId: string } }).data.authUserId).toBe(ownerId);
   });
 
+  it("accepts the segment context Next.js passes to static routes", async () => {
+    // Next.js 16 passes `{ params }` resolving to undefined for routes without dynamic segments.
+    const { accessToken } = await signIn(ownerEmail);
+    const segment = { params: Promise.resolve(undefined) } as unknown as { params: Promise<Record<string, string>> };
+    const response = await getSession(sessionRequest({ authorization: `Bearer ${accessToken}` }), segment);
+
+    expect(response.status).toBe(200);
+  });
+
   it("returns the same owner principal for the website cookie session", async () => {
     const cookie = await cookieHeaderFor(ownerEmail);
     const response = await getSession(sessionRequest({ cookie }));
