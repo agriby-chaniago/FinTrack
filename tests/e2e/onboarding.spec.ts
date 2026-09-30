@@ -163,4 +163,29 @@ test("owner signs in and completes onboarding with the locked fixture", async ({
     for (const icon of manifest.icons as { src: string }[]) expect((await page.request.get(icon.src)).status()).toBe(200);
     expect(await page.evaluate(async () => (await navigator.serviceWorker?.getRegistrations())?.length ?? 0)).toBe(0);
   });
+
+  await test.step("Pengaturan installs through the browser prompt", async () => {
+    type Probe = Window & { installPrompted?: boolean };
+    await page.goto("/pengaturan");
+    const install = page.locator("section", { has: page.getByRole("heading", { name: "Pasang aplikasi" }) });
+    // Hydrated, and no browser prompt yet: the menu steps show instead of a button.
+    await expect(install.getByText(/menu browser/)).toBeVisible();
+    await expect(install.getByRole("button", { name: "Pasang FinTrack" })).toHaveCount(0);
+
+    // A stand-in for Chromium's event; `false` means FinTrack kept it (no mini-infobar).
+    const notCancelled = await page.evaluate(() =>
+      window.dispatchEvent(
+        Object.assign(new Event("beforeinstallprompt", { cancelable: true }), {
+          prompt: async () => {
+            (window as Probe).installPrompted = true;
+          },
+          userChoice: Promise.resolve({ outcome: "accepted", platform: "web" }),
+        }),
+      ),
+    );
+    expect(notCancelled).toBe(false);
+    await install.getByRole("button", { name: "Pasang FinTrack" }).click();
+    await expect(install.getByText(/^FinTrack terpasang\./)).toBeVisible();
+    expect(await page.evaluate(() => (window as Probe).installPrompted)).toBe(true);
+  });
 });
