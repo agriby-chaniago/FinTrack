@@ -58,6 +58,7 @@ export async function listActivity(
     source_id: string | null;
     reversed_by_role: string | null;
     has_replacement: boolean;
+    settled_status: "VOIDED" | "CORRECTED" | null;
     subject_name: string | null;
   }>(sql`
     select e.id, e.kind, e.event_class, e.movement_type, e.reporting_classification,
@@ -69,6 +70,17 @@ export async function listActivity(
              where r.owner_id = ${ownerId} and r.corrects_entry_id = e.id and r.correction_role = 'REVERSAL' limit 1) as reversed_by_role,
            exists (select 1 from fintrack.ledger_entry r
              where r.owner_id = ${ownerId} and r.corrects_entry_id = e.id and r.correction_role = 'REPLACEMENT') as has_replacement,
+           (select case when count(*) = 0 then null
+                        when sum(abs(x.physical)) + sum(abs(x.external)) = 0 then 'VOIDED' else 'CORRECTED' end
+              from (select l.account_id, l.holding_id,
+                           sum(l.physical_effect_minor) as physical, sum(l.external_effect_minor) as external
+                      from fintrack.ledger_leg l
+                     where l.entry_id = e.id
+                        or l.entry_id in (select p.id from fintrack.ledger_entry p
+                                           where p.owner_id = ${ownerId} and p.corrects_entry_id = e.id and p.kind = 'CORRECTION_POSTING')
+                     group by 1, 2) x
+             where exists (select 1 from fintrack.ledger_entry p
+                            where p.owner_id = ${ownerId} and p.corrects_entry_id = e.id and p.kind = 'CORRECTION_POSTING')) as settled_status,
            (select s.display_name from fintrack.ledger_leg l
               join fintrack.external_holding h on h.id = l.holding_id
               join fintrack.external_subject s on s.id = h.subject_id
@@ -107,7 +119,7 @@ export async function listActivity(
     correctedKind: row.corrected_kind,
     sourceType: row.source_type,
     sourceId: row.source_id,
-    status: row.reversed_by_role ? (row.has_replacement ? "CORRECTED" : "VOIDED") : "ACTIVE",
+    status: row.reversed_by_role ? (row.has_replacement ? "CORRECTED" : "VOIDED") : (row.settled_status ?? "ACTIVE"),
     legs: legs
       .filter((leg) => leg.entry_id === row.id)
       .map((leg) => {

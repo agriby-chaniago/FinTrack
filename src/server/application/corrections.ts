@@ -64,6 +64,7 @@ export async function assertCurrentRecord(tx: OwnerTx, ownerId: string, entry: L
       and(eq(ledgerEntry.ownerId, ownerId), eq(ledgerEntry.correctsEntryId, entry.id), eq(ledgerEntry.correctionRole, "REVERSAL")),
     );
   if (reversal) throw new ApiError("VALIDATION_FAILED", { issues: ["ALREADY_CORRECTED"] });
+  // Settled records may receive further CORRECTION_POSTING deltas; those do not block.
 }
 
 /** Exact negation of a record, dated on the original business date. */

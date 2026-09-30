@@ -34,6 +34,8 @@ export type PostOptions = {
    * (for example a reversal and its replacement).
    */
   readonly deferHoldingCheck?: boolean;
+  /** Set by settlement code itself; other posts into settled history trigger a resync. */
+  readonly skipSettlementResync?: boolean;
 };
 
 /** Replays every external holding position and rejects any negative point in history. */
@@ -150,10 +152,24 @@ export async function postLedgerEntry(
 
   if (holdingIds.length > 0 && !options.deferHoldingCheck) await assertExternalHoldingsNonNegative(tx, ownerId);
 
+  if (!options.skipSettlementResync) {
+    // A record dated inside settled DANA history reclassifies that period's
+    // corrected living expense instead of changing cash twice (PRD S8).
+    const { dailyRuleFor, lastSettledEnd } = await import("./daily-income");
+    const { resyncSettlements } = await import("./settlement");
+    for (const accountId of accountIds) {
+      if (!(await dailyRuleFor(tx, ownerId, accountId))) continue;
+      const settledEnd = await lastSettledEnd(tx, ownerId, accountId);
+      if (settledEnd && draft.effectiveBusinessDate <= settledEnd) {
+        await resyncSettlements(tx, ownerId, accountId, draft.effectiveBusinessDate, options.now);
+      }
+    }
+  }
+
   return { recorded: true, entryId: entry.id };
 }
 
-export type BalanceStatus = "CONFIRMED" | "CALCULATED_AFTER_CONFIRMATION" | "OPEN_WEEK";
+export type BalanceStatus = "CONFIRMED" | "CALCULATED_AFTER_CONFIRMATION" | "OPEN_WEEK" | "NEEDS_REVIEW";
 
 export type AccountBalanceView = {
   id: string;
@@ -235,18 +251,36 @@ export async function accountBalances(
     where a.owner_id = ${ownerId} and a.is_active and a.is_cash_account
     order by a.sort_order, a.id`);
 
+  const { dailyRuleFor, lastSettledEnd, recognizedIncomeFor } = await import("./daily-income");
+  const { weeklyAccountFreshness } = await import("./freshness");
+  const today = businessDateOf(asOf?.instant ?? new Date());
+
   let personalCash = 0n;
-  const accounts = rows.map((row): AccountBalanceView => {
-    const physical = BigInt(row.opening_physical) + BigInt(row.moved_physical);
+  const accounts: AccountBalanceView[] = [];
+  for (const row of rows) {
+    let physical = BigInt(row.opening_physical) + BigInt(row.moved_physical);
     const external = BigInt(row.opening_external) + BigInt(row.moved_external);
+    let status: BalanceStatus = row.movement_count > 0 ? "CALCULATED_AFTER_CONFIRMATION" : "CONFIRMED";
+    let confirmedPersonal = BigInt(row.opening_physical) - BigInt(row.opening_external);
+    let lastConfirmedAt = new Date(row.cutover_at).toISOString();
+    let openWeekDisclosure = false;
+
+    const rule = row.has_daily_income ? await dailyRuleFor(tx, ownerId, row.id) : undefined;
+    if (rule) {
+      // Daily income is evaluated lazily through the as-of date (PRD: no cron).
+      physical += (await recognizedIncomeFor(tx, ownerId, row.id, rule.effectiveStartDate, today)).recognized;
+      const freshness = await weeklyAccountFreshness(tx, ownerId, row.id, rule.effectiveStartDate, await lastSettledEnd(tx, ownerId, row.id), today);
+      status = freshness.status ?? status;
+      openWeekDisclosure = freshness.openWeek;
+      if (freshness.confirmed) {
+        confirmedPersonal = freshness.confirmed.personal;
+        lastConfirmedAt = freshness.confirmed.at;
+      }
+    }
+
     const personal = physical - external;
     personalCash += personal;
-    const status: BalanceStatus = row.has_daily_income
-      ? "OPEN_WEEK"
-      : row.movement_count > 0
-        ? "CALCULATED_AFTER_CONFIRMATION"
-        : "CONFIRMED";
-    return {
+    accounts.push({
       id: row.id,
       displayName: row.display_name,
       providerName: row.provider_name,
@@ -255,12 +289,12 @@ export async function accountBalances(
       external: toIdrDecimal(external),
       personal: toIdrDecimal(personal),
       shortfall: toIdrDecimal(personal < 0n ? -personal : 0n),
-      confirmedPersonal: toIdrDecimal(BigInt(row.opening_physical) - BigInt(row.opening_external)),
-      lastConfirmedAt: new Date(row.cutover_at).toISOString(),
+      confirmedPersonal: toIdrDecimal(confirmedPersonal),
+      lastConfirmedAt,
       status,
-      openWeekDisclosure: row.has_daily_income,
-    };
-  });
+      openWeekDisclosure,
+    });
+  }
 
   return { accounts, personalCashRecorded: toIdrDecimal(personalCash) };
 }
