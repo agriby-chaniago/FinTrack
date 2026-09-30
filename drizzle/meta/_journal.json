@@ -29,6 +29,13 @@
       "when": 1790753149304,
       "tag": "0003_ledger_core",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790753625699,
+      "tag": "0004_ledger_recorded_at_precision",
+      "breakpoints": true
     }
   ]
 }

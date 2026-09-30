@@ -26,6 +26,9 @@ export default defineConfig({
         test: {
           name: "db",
           include: ["tests/**/*.integration.test.ts"],
+          // Hosted staging adds network latency on every query.
+          testTimeout: 60_000,
+          hookTimeout: 60_000,
           // Integration tests share one local database.
           fileParallelism: false,
         },

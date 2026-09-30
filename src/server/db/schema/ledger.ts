@@ -19,7 +19,9 @@ export const ledgerEntry = fintrack.table(
       .references(() => appOwner.id),
     kind: text("kind").notNull(),
     effectiveBusinessDate: date("effective_business_date", { mode: "string" }).notNull(),
-    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+    // Millisecond precision so the value round-trips exactly through JavaScript
+    // Date when used as an as-of reference (PRD v0.18 inclusion rule).
+    recordedAt: timestamp("recorded_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     reportingClassification: text("reporting_classification"),
     categoryId: uuid("category_id").references(() => specialExpenseCategory.id),
     note: text("note"),

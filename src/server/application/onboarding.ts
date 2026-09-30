@@ -153,22 +153,23 @@ export async function confirmOnboarding(
   const cutoverAt = new Date(draft.cutoverAt!);
   const boundaries = automationBoundaries(draft, cutoverAt);
 
-  const accountIds = {} as Record<AccountKey, string>;
-  for (const [index, definition] of draft.accounts.entries()) {
-    const [row] = await tx
-      .insert(account)
-      .values({
-        ownerId,
-        sortOrder: (index + 1) * 10,
-        displayName: cleanDisplayName(definition.displayName),
-        providerName: cleanDisplayName(definition.providerName),
-        accountType: definition.accountType,
-        purposeLabel: cleanDisplayName(definition.purposeLabel),
-        activationCutoverAt: cutoverAt,
-      })
-      .returning({ id: account.id });
-    accountIds[definition.key] = row.id;
-  }
+  // Ids are generated here so each kind of row needs a single INSERT.
+  const accountIds = Object.fromEntries(draft.accounts.map((definition) => [definition.key, crypto.randomUUID()])) as Record<
+    AccountKey,
+    string
+  >;
+  await tx.insert(account).values(
+    draft.accounts.map((definition, index) => ({
+      id: accountIds[definition.key],
+      ownerId,
+      sortOrder: (index + 1) * 10,
+      displayName: cleanDisplayName(definition.displayName),
+      providerName: cleanDisplayName(definition.providerName),
+      accountType: definition.accountType,
+      purposeLabel: cleanDisplayName(definition.purposeLabel),
+      activationCutoverAt: cutoverAt,
+    })),
+  );
 
   await tx
     .update(onboardingSnapshot)
@@ -185,29 +186,33 @@ export async function confirmOnboarding(
   );
 
   // One subject per normalized name with its default holding (UI MVP).
-  const holdingBySubject = new Map<string, string>();
+  const subjects = new Map<string, { subjectId: string; holdingId: string; displayName: string }>();
   for (const external of draft.externals) {
     const normalized = normalizeName(external.subjectName);
-    let holdingId = holdingBySubject.get(normalized);
-    if (!holdingId) {
-      const [subject] = await tx
-        .insert(externalSubject)
-        .values({ ownerId, displayName: cleanDisplayName(external.subjectName), normalizedName: normalized })
-        .returning({ id: externalSubject.id });
-      const [holding] = await tx
-        .insert(externalHolding)
-        .values({ ownerId, subjectId: subject.id, isDefault: true })
-        .returning({ id: externalHolding.id });
-      holdingId = holding.id;
-      holdingBySubject.set(normalized, holdingId);
+    if (!subjects.has(normalized)) {
+      subjects.set(normalized, {
+        subjectId: crypto.randomUUID(),
+        holdingId: crypto.randomUUID(),
+        displayName: cleanDisplayName(external.subjectName),
+      });
     }
-    await tx.insert(openingExternalPosition).values({
-      ownerId,
-      snapshotId: draftRow.id,
-      accountId: accountIds[external.accountKey],
-      holdingId,
-      amountMinor: amount(external.amount),
-    });
+  }
+  if (subjects.size > 0) {
+    await tx
+      .insert(externalSubject)
+      .values([...subjects].map(([normalizedName, s]) => ({ id: s.subjectId, ownerId, displayName: s.displayName, normalizedName })));
+    await tx
+      .insert(externalHolding)
+      .values([...subjects.values()].map((s) => ({ id: s.holdingId, ownerId, subjectId: s.subjectId, isDefault: true })));
+    await tx.insert(openingExternalPosition).values(
+      draft.externals.map((external) => ({
+        ownerId,
+        snapshotId: draftRow.id,
+        accountId: accountIds[external.accountKey],
+        holdingId: subjects.get(normalizeName(external.subjectName))!.holdingId,
+        amountMinor: amount(external.amount),
+      })),
+    );
   }
 
   const { routines } = draft;
@@ -241,26 +246,27 @@ export async function confirmOnboarding(
       expectedDay: routines.bankFee.expectedDay,
       expectedAmountMinor: routines.bankFee.expectedAmount === null ? null : amount(routines.bankFee.expectedAmount),
     },
-  ];
-  for (const obligation of obligations) {
-    const [rule] = await tx
-      .insert(recurringExpenseRule)
-      .values({
-        ownerId,
-        accountId: accountIds.monthly,
-        kind: obligation.kind,
-        displayName: obligation.displayName,
-        firstCycle: obligation.firstCycle,
-      })
-      .returning({ id: recurringExpenseRule.id });
-    await tx.insert(recurringExpenseRuleRevision).values({
+  ].map((obligation) => ({ ...obligation, ruleId: crypto.randomUUID() }));
+
+  await tx.insert(recurringExpenseRule).values(
+    obligations.map((obligation) => ({
+      id: obligation.ruleId,
       ownerId,
-      ruleId: rule.id,
+      accountId: accountIds.monthly,
+      kind: obligation.kind,
+      displayName: obligation.displayName,
+      firstCycle: obligation.firstCycle,
+    })),
+  );
+  await tx.insert(recurringExpenseRuleRevision).values(
+    obligations.map((obligation) => ({
+      ownerId,
+      ruleId: obligation.ruleId,
       effectiveFromCycle: obligation.firstCycle,
       expectedDay: obligation.expectedDay,
       expectedAmountMinor: obligation.expectedAmountMinor,
-    });
-  }
+    })),
+  );
 
   await tx.insert(monthlyAccountSetting).values({
     ownerId,

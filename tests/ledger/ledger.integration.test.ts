@@ -56,11 +56,11 @@ function fixtureSteps(): LedgerEntryDraft[] {
   ];
 }
 
+/** End-of-day position: every entry of that business date counts. */
 async function balancesAt(date: string) {
   const instant = new Date(`${date}T23:59:00+07:00`);
-  return asOwner(clients.runtime, user.id, (tx, principal) =>
-    accountBalances(tx, principal.ownerId, { instant, recordedAt: now() }),
-  );
+  const recordedAt = new Date("9999-12-31T00:00:00Z");
+  return asOwner(clients.runtime, user.id, (tx, principal) => accountBalances(tx, principal.ownerId, { instant, recordedAt }));
 }
 
 async function api(handler: (request: Request) => Promise<Response>, init: RequestInit = {}) {
@@ -167,12 +167,13 @@ describe("posting guards", () => {
   });
 
   it("orders same-day events by recorded time for as-of balances", async () => {
-    await post(step("2026-09-02", "EXPENSE", [leg("monthly", "-10000")]));
-    const between = new Date();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const first = await post(step("2026-09-02", "EXPENSE", [leg("monthly", "-10000")]));
     await post(step("2026-09-02", "EXPENSE", [leg("monthly", "-5000")]));
 
-    const asOf = { instant: new Date("2026-09-02T21:00:00+07:00"), recordedAt: between };
+    // The as-of record time comes from the database clock, as a real confirmation would.
+    const [{ recorded_at }] = await clients.admin<{ recorded_at: Date }[]>`
+      select recorded_at from fintrack.ledger_entry where id = ${first.recorded ? first.entryId : ""}`;
+    const asOf = { instant: new Date("2026-09-02T21:00:00+07:00"), recordedAt: recorded_at };
     const { accounts } = await asOwner(clients.runtime, user.id, (tx, principal) => accountBalances(tx, principal.ownerId, asOf));
     expect(accounts.find((a) => a.displayName === "BCA")!.physical).toBe("821999.93");
   });

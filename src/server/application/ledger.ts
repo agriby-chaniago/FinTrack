@@ -155,16 +155,24 @@ export type AccountBalanceView = {
 };
 
 /**
- * Calculated balances for every active cash account as of `asOf` (default:
- * now). The opening snapshot acts as the latest physical confirmation until
+ * Calculated balances for every active cash account. Without `asOf` every
+ * confirmed entry counts (future business dates are rejected at posting), so
+ * the result never depends on clock differences between app and database.
+ * With `asOf`, `recordedAt` must come from a database record (for example a
+ * balance confirmation) so both sides of the comparison use the same clock.
+ * The opening snapshot acts as the latest physical confirmation until
  * balance confirmations exist.
  */
 export async function accountBalances(
   tx: OwnerTx,
   ownerId: string,
-  asOf: { instant: Date; recordedAt: Date },
+  asOf?: { instant: Date; recordedAt: Date },
 ): Promise<{ accounts: AccountBalanceView[]; personalCashRecorded: string }> {
-  const asOfDate = businessDateOf(asOf.instant);
+  const inclusion = asOf
+    ? sql`and (e.effective_business_date < ${businessDateOf(asOf.instant)}::date
+               or (e.effective_business_date = ${businessDateOf(asOf.instant)}::date
+                   and e.recorded_at <= ${asOf.recordedAt.toISOString()}::timestamptz))`
+    : sql``;
   const rows = await tx.execute<{
     id: string;
     display_name: string;
@@ -193,9 +201,7 @@ export async function accountBalances(
       select l.account_id, sum(l.physical_effect_minor) as physical, sum(l.external_effect_minor) as external,
              count(*)::int as movement_count
       from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
-      where e.owner_id = ${ownerId} and l.owner_id = ${ownerId}
-        and (e.effective_business_date < ${asOfDate}::date
-             or (e.effective_business_date = ${asOfDate}::date and e.recorded_at <= ${asOf.recordedAt.toISOString()}::timestamptz))
+      where e.owner_id = ${ownerId} and l.owner_id = ${ownerId} ${inclusion}
       group by l.account_id
     )
     select a.id, a.display_name, a.provider_name, a.purpose_label,
