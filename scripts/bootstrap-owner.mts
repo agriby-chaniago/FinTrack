@@ -9,6 +9,7 @@ import { parseArgs } from "node:util";
 import postgres from "postgres";
 
 import { BindOwnerError, bindOwner } from "../src/server/bootstrap/bind-owner.ts";
+import { databaseSsl } from "../src/server/db/supabase-ca.ts";
 
 const { values } = parseArgs({
   // pnpm forwards a literal "--" separator; drop it so flags are still parsed.
@@ -26,7 +27,7 @@ if (!url || !authUserId) {
   process.exit(1);
 }
 
-const sql = postgres(url, { max: 1, onnotice: () => {} });
+const sql = postgres(url, { ssl: databaseSsl(url), max: 1, onnotice: () => {} });
 try {
   const result = await bindOwner(sql, authUserId, { rebind: values.rebind });
   console.log(`Owner binding: ${result}`);

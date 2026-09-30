@@ -17,32 +17,18 @@ import { listExternalSubjects } from "./external-funds";
 import { listMonthlyCycles } from "./monthly";
 import { correctedLivingExpenses, settlementRouter } from "./settlement";
 import { listTargets, reserveAccountId, transferSuggestions } from "./transfers";
+import { sqlRows } from "@/server/db/rows";
 
 export type ReportView = "corrected" | "as_settled";
 
 const amount = (value: MinorUnits) => toIdrDecimal(value);
 
 /**
- * Calendar-month report. Events sit on their actual business dates; DANA
- * living expense is allocated with CALENDAR_DAY_PRORATA_V1. The as-settled
- * view ignores every change made to settled history after settlement.
+ * Recorded ledger totals for a business-date range, classified once for every
+ * report (month report and the Beranda summary share this function). Living
+ * expense is not here: it comes from settlements.
  */
-export async function monthReport(tx: OwnerTx, ownerId: string, month: string, view: ReportView, now: Date) {
-  if (!isCycleKey(month)) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
-  const first = `${month}-01`;
-  const last = `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}`;
-  const today = businessDateOf(now);
-  const reserve = await reserveAccountId(tx, ownerId);
-  const rule = await dailyRuleFor(tx, ownerId);
-
-  const settledRows = rule
-    ? await tx
-        .select()
-        .from(settlement)
-        .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
-        .orderBy(asc(settlement.startDate))
-    : [];
-
+async function ledgerTotals(tx: OwnerTx, ownerId: string, first: string, last: string, reserve: string, view: ReportView) {
   // As-settled: drop settled-history corrections and records added to a settled range after its settlement.
   const asSettledFilter =
     view === "as_settled"
@@ -53,7 +39,7 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
             and e.effective_business_date between s.start_date and s.end_date and e.recorded_at > s.settled_at)`
       : sql``;
 
-  const legs = await tx.execute<{
+  const legs = await sqlRows<{
     kind: string;
     event_class: string;
     classification: string | null;
@@ -63,7 +49,7 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
     category_name: string | null;
     personal: string;
     original_reserve_inflow: boolean | null;
-  }>(sql`
+  }>(tx, sql`
     select e.kind, e.event_class, e.reporting_classification as classification, e.correction_role as role,
            l.account_id, e.category_id, c.display_name as category_name,
            (l.physical_effect_minor - l.external_effect_minor)::text as personal,
@@ -133,6 +119,46 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
       }
     }
   }
+
+  return { totals, specialByCategory, specialByAccount };
+}
+
+/** Beranda's month-to-date reserve and special-expense figures, without the full month report. */
+export async function monthLedgerSummary(tx: OwnerTx, ownerId: string, month: string) {
+  if (!isCycleKey(month)) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
+  const first = `${month}-01`;
+  const last = `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}`;
+  const reserve = await reserveAccountId(tx, ownerId);
+  const { totals } = await ledgerTotals(tx, ownerId, first, last, reserve, "corrected");
+  return {
+    month,
+    reserve: { accountId: reserve, grossSaved: amount(totals.grossSaved), netGrowth: amount(totals.netReserveGrowth) },
+    specialOutflow: amount(totals.specialOutflow),
+  };
+}
+
+/**
+ * Calendar-month report. Events sit on their actual business dates; DANA
+ * living expense is allocated with CALENDAR_DAY_PRORATA_V1. The as-settled
+ * view ignores every change made to settled history after settlement.
+ */
+export async function monthReport(tx: OwnerTx, ownerId: string, month: string, view: ReportView, now: Date) {
+  if (!isCycleKey(month)) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
+  const first = `${month}-01`;
+  const last = `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}`;
+  const today = businessDateOf(now);
+  const reserve = await reserveAccountId(tx, ownerId);
+  const rule = await dailyRuleFor(tx, ownerId);
+
+  const settledRows = rule
+    ? await tx
+        .select()
+        .from(settlement)
+        .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
+        .orderBy(asc(settlement.startDate))
+    : [];
+
+  const { totals, specialByCategory, specialByAccount } = await ledgerTotals(tx, ownerId, first, last, reserve, view);
 
   // Daily income per business date in the month.
   let dailyIncome = 0n;
@@ -246,7 +272,7 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
     accountsOverview(tx, ownerId, now, { cycles }),
     settlementRouter(tx, ownerId, now).then(async (router) => ({ router, dana: await danaCard(tx, ownerId, router, today) })),
     listTargets(tx, ownerId),
-    monthReport(tx, ownerId, cycleKeyOf(today), "corrected", now),
+    monthLedgerSummary(tx, ownerId, cycleKeyOf(today)),
     listExternalSubjects(tx, ownerId),
   ]);
   const confirmedPersonalCash = overview.accounts.reduce((sum, a) => sum + parseIdrDecimal(a.confirmedPersonal), 0n);
@@ -300,7 +326,7 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
     accounts: overview.accounts,
     dana,
     bca: { currentCycle, latestCompletedCycle },
-    reserve: { monthToDate: month.reserve, specialOutflowMonthToDate: month.outflow.special, month: month.month },
+    reserve: { monthToDate: month.reserve, specialOutflowMonthToDate: month.specialOutflow, month: month.month },
     external,
   };
 }

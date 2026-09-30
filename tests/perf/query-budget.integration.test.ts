@@ -3,8 +3,6 @@
 // page loader has a query budget that must not grow with history length.
 import { randomUUID } from "node:crypto";
 
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { PATCH as patchSettlement } from "@/app/api/v1/settlements/[id]/route";
@@ -16,11 +14,15 @@ import { listActivity } from "@/server/application/activity";
 import { dailyIncomeView } from "@/server/application/daily-income";
 import { listExternalSubjects } from "@/server/application/external-funds";
 import { listMonthlyCycles } from "@/server/application/monthly";
+import { listCategories } from "@/server/application/events";
+import { listRecurringRules } from "@/server/application/monthly";
 import { getOnboardingState } from "@/server/application/onboarding";
+import { recordingContext } from "@/server/application/recording-context";
+import { getSettings } from "@/server/application/settings";
 import { dashboard, settlementHistory } from "@/server/application/reports";
 import { settlementRouter } from "@/server/application/settlement";
 import { listTargets, transferSuggestions } from "@/server/application/transfers";
-import type { RuntimeDb } from "@/server/db/client";
+import { createRuntimeDb, type RuntimeDb } from "@/server/db/client";
 import { withOwnerDb, type OwnerTx } from "@/server/db/owner";
 
 import { closeClients, createAuthUser, resetWithConfirmedFixture, testClients, type ConfirmedOwner, type TestUser } from "../helpers/owner";
@@ -29,8 +31,15 @@ const clients = testClients();
 let user: TestUser;
 let owner: ConfirmedOwner;
 let queries = 0;
-const client = postgres(process.env.DATABASE_URL!, { prepare: false, max: 2, onnotice: () => {}, debug: () => void (queries += 1) });
-const db = drizzle(client) as unknown as RuntimeDb;
+// Counts every statement the runtime pool sends, including BEGIN and COMMIT.
+const db: RuntimeDb = createRuntimeDb(process.env.DATABASE_URL!, { max: 2 });
+db.$client.on("connect", (connection) => {
+  const query = connection.query.bind(connection) as (...args: unknown[]) => unknown;
+  (connection as unknown as { query: (...args: unknown[]) => unknown }).query = (...args: unknown[]) => {
+    queries += 1;
+    return query(...args);
+  };
+});
 
 type Handler = (request: Request, segment?: { params: Promise<Record<string, string>> }) => Promise<Response>;
 async function call(handler: Handler, method: string, body: unknown, params: Record<string, string> = {}, ifMatch?: number) {
@@ -63,7 +72,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await clients.admin`truncate fintrack.app_owner cascade`;
   await clients.authAdmin.auth.admin.deleteUser(user.id);
-  await client.end();
+  await db.$client.end();
   await closeClients(clients);
 });
 
@@ -71,10 +80,10 @@ describe("query budget per page (grows with neither weeks nor months)", () => {
   const now = new Date();
   const pages: [string, number, (tx: OwnerTx, ownerId: string) => Promise<unknown>][] = [
     ["layout", 5, (tx, o) => getOnboardingState(tx, o, now)],
-    ["Beranda", 52, (tx, o) => dashboard(tx, o, now)],
+    ["Beranda", 44, (tx, o) => dashboard(tx, o, now)],
     [
       "Rutinitas",
-      42,
+      40,
       async (tx, o) => {
         await listMonthlyCycles(tx, o, now);
         const targets = await listTargets(tx, o);
@@ -84,8 +93,20 @@ describe("query budget per page (grows with neither weeks nor months)", () => {
         await dailyIncomeView(tx, o, now);
       },
     ],
-    ["Akun", 26, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
+    ["Akun", 24, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
     ["Aktivitas", 7, (tx, o) => listActivity(tx, o, { limit: 50 })],
+    ["Catat (form context)", 19, (tx, o) => recordingContext(tx, o)],
+    [
+      "Pengaturan",
+      31,
+      async (tx, o) => {
+        await getSettings(tx, o);
+        await dailyIncomeView(tx, o, now);
+        await listRecurringRules(tx, o, now);
+        await listCategories(tx, o, { includeArchived: true });
+        await recordingContext(tx, o);
+      },
+    ],
   ];
   for (const [name, budget, load] of pages) {
     it(`${name} stays within ${budget} queries`, async () => {

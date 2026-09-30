@@ -12,6 +12,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=pg-tools.sh
 source "$here/pg-tools.sh"
+use_database "$BACKUP_DATABASE_URL"
 
 mkdir -m 700 "$BUNDLE_DIR"
 BUNDLE_DIR="$(cd "$BUNDLE_DIR" && pwd)"

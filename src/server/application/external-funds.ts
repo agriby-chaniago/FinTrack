@@ -13,6 +13,7 @@ import { cleanDisplayName, normalizeName } from "@/server/domain/names";
 
 import { requireActiveCashAccounts } from "./accounts";
 import { postLedgerEntry, type PostResult } from "./ledger";
+import { sqlRows } from "@/server/db/rows";
 
 const common = { amount: positiveAmount, businessDate, note, cutoverDayAnswer };
 const subjectRef = { subjectId: z.uuid().optional(), subjectName: z.string().trim().min(1).max(80).optional() };
@@ -140,7 +141,7 @@ export type ExternalSubjectView = {
 
 /** Subjects with their current outstanding position per account. */
 export async function listExternalSubjects(tx: OwnerTx, ownerId: string): Promise<ExternalSubjectView[]> {
-  const rows = await tx.execute<{
+  const rows = await sqlRows<{
     subject_id: string;
     display_name: string;
     is_archived: boolean;
@@ -148,7 +149,7 @@ export async function listExternalSubjects(tx: OwnerTx, ownerId: string): Promis
     account_id: string | null;
     account_name: string | null;
     amount: string | null;
-  }>(sql`
+  }>(tx, sql`
     with effective as (
       select id from fintrack.onboarding_snapshot
       where owner_id = ${ownerId} and status = 'CONFIRMED' and superseded_by_id is null

@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { strToU8, Zip, ZipDeflate } from "fflate";
 
 import type { OwnerTx } from "@/server/db/owner";
+import { sqlRows } from "@/server/db/rows";
 
 export const EXPORT_FORMAT_VERSION = 1;
 
@@ -54,13 +55,13 @@ export type ExportDataset = { table: string; columns: string[]; rows: Row[] };
 
 /** Reads every exported table for the owner inside the caller's transaction. */
 export async function readExportSnapshot(tx: OwnerTx, ownerId: string): Promise<ExportDataset[]> {
-  const columnRows = await tx.execute<{ table_name: string; column_name: string }>(sql`
+  const columnRows = await sqlRows<{ table_name: string; column_name: string }>(tx, sql`
     select table_name, column_name from information_schema.columns
     where table_schema = 'fintrack' order by table_name, ordinal_position`);
   const datasets: ExportDataset[] = [];
   for (const { table, orderBy } of exportedTables) {
     // Minor-unit amounts become exact decimal strings; jsonb keeps numeric precision.
-    const rows = await tx.execute<{ row: Row }>(sql`
+    const rows = await sqlRows<{ row: Row }>(tx, sql`
       select (select jsonb_object_agg(key, case when key like '%\_minor' and jsonb_typeof(value) = 'number'
                                              then to_jsonb(value #>> '{}') else value end)
               from jsonb_each(to_jsonb(t))) as row

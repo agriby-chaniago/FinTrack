@@ -39,6 +39,7 @@ import {
   routeTargets,
   type Route,
 } from "./transfers";
+import { sqlRows } from "@/server/db/rows";
 
 type OccurrenceType = "MONTHLY_INCOME" | "RECURRING_EXPENSE";
 
@@ -53,7 +54,7 @@ async function monthlyRoute(tx: OwnerTx, ownerId: string, accountId: string): Pr
  */
 export async function syncMonthlyOccurrences(tx: OwnerTx, ownerId: string, now: Date): Promise<void> {
   const current = cycleKeyOf(businessDateOf(now));
-  const rules = await tx.execute<{ kind: "INCOME" | "EXPENSE"; id: string; first: string; last: string | null; amount: string | null; latest: string | null }>(sql`
+  const rules = await sqlRows<{ kind: "INCOME" | "EXPENSE"; id: string; first: string; last: string | null; amount: string | null; latest: string | null }>(tx, sql`
     select 'INCOME' as kind, r.id, r.first_expected_cycle as first, r.last_expected_cycle as last,
            r.expected_amount_minor::text as amount, max(o.cycle_key) as latest
     from fintrack.monthly_income_rule r
@@ -63,7 +64,8 @@ export async function syncMonthlyOccurrences(tx: OwnerTx, ownerId: string, now: 
     select 'EXPENSE', r.id, r.first_cycle, r.last_cycle, null, max(o.cycle_key)
     from fintrack.recurring_expense_rule r
     left join fintrack.recurring_expense_occurrence o on o.rule_id = r.id
-    where r.owner_id = ${ownerId} group by r.id`);
+    where r.owner_id = ${ownerId} group by r.id
+    order by 1, 2`);
 
   for (const rule of rules) {
     const last = rule.last && rule.last < current ? rule.last : current;
@@ -128,7 +130,7 @@ type Actual = { date: string; amount: string; entryId: string };
 async function actualsOf(tx: OwnerTx, ownerId: string, entryIds: string[]): Promise<Map<string, Actual>> {
   if (entryIds.length === 0) return new Map();
   const roots = sql.join(entryIds.map((id) => sql`${id}::uuid`), sql`, `);
-  const rows = await tx.execute<{ root: string; current: string; date: string; amount: string; reversed: boolean }>(sql`
+  const rows = await sqlRows<{ root: string; current: string; date: string; amount: string; reversed: boolean }>(tx, sql`
     with recursive chain(root, current, depth) as (
       select e.id, e.id, 0 from fintrack.ledger_entry e where e.owner_id = ${ownerId} and e.id in (${roots})
       union all
@@ -166,11 +168,18 @@ async function loadCycles(tx: OwnerTx, ownerId: string): Promise<CycleData[]> {
     .from(monthlyIncomeOccurrence)
     .innerJoin(monthlyIncomeRule, eq(monthlyIncomeRule.id, monthlyIncomeOccurrence.ruleId))
     .where(eq(monthlyIncomeOccurrence.ownerId, ownerId));
+  // Explicit order (by expected day, then name) keeps each cycle's obligations stable in the UI.
   const obligations = await tx
     .select({ occurrence: recurringExpenseOccurrence, rule: recurringExpenseRule })
     .from(recurringExpenseOccurrence)
     .innerJoin(recurringExpenseRule, eq(recurringExpenseRule.id, recurringExpenseOccurrence.ruleId))
-    .where(eq(recurringExpenseOccurrence.ownerId, ownerId));
+    .where(eq(recurringExpenseOccurrence.ownerId, ownerId))
+    .orderBy(
+      asc(recurringExpenseOccurrence.cycleKey),
+      sql`${recurringExpenseOccurrence.expectedDay} asc nulls last`,
+      asc(recurringExpenseRule.displayName),
+      asc(recurringExpenseRule.id),
+    );
   const resolutions = await currentResolutions(tx, ownerId, [...incomes.map((i) => i.occurrence.id), ...obligations.map((o) => o.occurrence.id)]);
 
   const cycles = new Map<string, CycleData>();
@@ -281,7 +290,7 @@ export async function recalculateBcaChain(tx: OwnerTx, ownerId: string, accountI
       .limit(1);
     const basis = first.basis as Basis;
     if (!basis.frozenOn) continue;
-    const [delta] = await tx.execute<{ total: string }>(sql`
+    const [delta] = await sqlRows<{ total: string }>(tx, sql`
       select coalesce(sum(l.physical_effect_minor - l.external_effect_minor), 0)::text as total
       from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
       where e.owner_id = ${ownerId} and l.account_id = ${accountId}
@@ -292,7 +301,7 @@ export async function recalculateBcaChain(tx: OwnerTx, ownerId: string, accountI
     let prior = 0n;
     for (const t of earlier) {
       if (!t.version?.isActionable) continue;
-      const [linked] = await tx.execute<{ total: string }>(sql`
+      const [linked] = await sqlRows<{ total: string }>(tx, sql`
         select coalesce(sum(sign * magnitude_minor), 0)::text as total from fintrack.transfer_allocation
         where owner_id = ${ownerId} and target_id = ${t.id}::uuid and created_at <= ${first.createdAt.toISOString()}::timestamptz`);
       const remaining = t.version.amountMinor - (BigInt(linked.total) < 0n ? 0n : BigInt(linked.total));
@@ -464,7 +473,7 @@ export async function listMonthlyCycles(tx: OwnerTx, ownerId: string, now: Date)
   );
   // Confirmed amount per obligation rule and cycle: the latest earlier one suggests the next amount.
   const confirmedByRule = new Map<string, { cycleKey: string; amount: string }[]>();
-  for (const row of await tx.execute<{ rule_id: string; cycle_key: string; amount: string }>(sql`
+  for (const row of await sqlRows<{ rule_id: string; cycle_key: string; amount: string }>(tx, sql`
     select o.rule_id, o.cycle_key, abs(sum(l.physical_effect_minor))::text as amount
     from fintrack.occurrence_resolution r
     join fintrack.recurring_expense_occurrence o on o.id = r.occurrence_id

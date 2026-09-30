@@ -17,6 +17,7 @@ import { withOwnerDb, type AuthPrincipal, type OwnerTransactionConfig, type Owne
 import { idempotencyRecord } from "@/server/db/schema/api";
 
 import { ApiError, toErrorResponse } from "./errors";
+import { sqlRows } from "@/server/db/rows";
 
 export type OwnerRouteContext = {
   readonly request: Request;
@@ -54,7 +55,7 @@ async function runIdempotent(
   const requestHash = createHash("sha256")
     .update(`${request.method} ${new URL(request.url).pathname}\n${bodyText}`)
     .digest("hex");
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`fintrack.idempotency:${principal.ownerId}:${key}`}, 0))`);
+  await sqlRows(tx, sql`select pg_advisory_xact_lock(hashtextextended(${`fintrack.idempotency:${principal.ownerId}:${key}`}, 0))`);
 
   const [existing] = await tx
     .select()

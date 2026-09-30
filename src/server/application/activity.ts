@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { toIdrDecimal } from "@/lib/money";
 import type { OwnerTx } from "@/server/db/owner";
+import { sqlRows } from "@/server/db/rows";
 
 export type ActivityLeg = { accountId: string; accountName: string; physical: string; external: string; personal: string };
 
@@ -42,7 +43,7 @@ export async function listActivity(
   // A thread is one record plus the corrections linked to it (detail view).
   const thread = options.thread ? sql`and (e.id = ${options.thread}::uuid or e.corrects_entry_id = ${options.thread}::uuid)` : sql``;
 
-  const entries = await tx.execute<{
+  const entries = await sqlRows<{
     id: string;
     kind: string;
     event_class: string;
@@ -62,7 +63,7 @@ export async function listActivity(
     has_replacement: boolean;
     settled_status: "VOIDED" | "CORRECTED" | null;
     subject_name: string | null;
-  }>(sql`
+  }>(tx, sql`
     select e.id, e.kind, e.event_class, e.movement_type, e.reporting_classification,
            e.effective_business_date::text as business_date,
            to_char(e.recorded_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as recorded_at,
@@ -96,7 +97,7 @@ export async function listActivity(
   const page = entries.slice(0, limit);
   const ids = page.map((row) => row.id);
   const legs = ids.length
-    ? await tx.execute<{ entry_id: string; account_id: string; account_name: string; physical: string; external: string }>(sql`
+    ? await sqlRows<{ entry_id: string; account_id: string; account_name: string; physical: string; external: string }>(tx, sql`
         select l.entry_id, l.account_id, a.display_name as account_name,
                l.physical_effect_minor::text as physical, l.external_effect_minor::text as external
         from fintrack.ledger_leg l join fintrack.account a on a.id = l.account_id
@@ -139,7 +140,7 @@ export async function listActivity(
 
   // Opening snapshots appear in the audit history on the first page only.
   if (!options.before && !options.thread) {
-    const snapshots = await tx.execute<{ id: string; confirmed_at: string; cutover_at: string; supersedes_id: string | null; superseded: boolean }>(sql`
+    const snapshots = await sqlRows<{ id: string; confirmed_at: string; cutover_at: string; supersedes_id: string | null; superseded: boolean }>(tx, sql`
       select id, to_char(confirmed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as confirmed_at,
              to_char(cutover_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as cutover_at,
              supersedes_id, superseded_by_id is not null as superseded

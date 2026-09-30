@@ -1,23 +1,25 @@
 // Ledger posting and balance queries. Runs inside withOwnerDb(); every query
 // filters by owner_id explicitly in addition to RLS.
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { businessDateOf, isBusinessDate } from "@/lib/business-time";
 import { toIdrDecimal, type MinorUnits } from "@/lib/money";
 import { ApiError } from "@/server/api/errors";
 import type { OwnerTx } from "@/server/db/owner";
 import { ledgerEntry, ledgerLeg } from "@/server/db/schema/ledger";
-import { account, externalHolding } from "@/server/db/schema/onboarding";
+import { account, dailyIncomeRule, externalHolding } from "@/server/db/schema/onboarding";
+import { settlement } from "@/server/db/schema/settlement";
 import {
   cutoverRelation,
   ledgerIssues,
   negativeHoldingPositions,
   type LedgerEntryDraft,
 } from "@/server/domain/ledger";
+import { sqlRows } from "@/server/db/rows";
 
 /** Serialises ledger writes per owner so invariant checks see a stable ledger. */
 export async function lockLedger(tx: OwnerTx, ownerId: string): Promise<void> {
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`fintrack.ledger:${ownerId}`}, 0))`);
+  await sqlRows(tx, sql`select pg_advisory_xact_lock(hashtextextended(${`fintrack.ledger:${ownerId}`}, 0))`);
 }
 
 /** Answer to "Sudah termasuk saldo awal?" for an event dated on the cutover day. */
@@ -54,7 +56,7 @@ type OpeningExternal = { accountId: string; holdingId: string; amount: MinorUnit
 type ExternalEffect = { accountId: string; holdingId: string; externalEffect: MinorUnits };
 
 export async function effectiveOpeningExternals(tx: OwnerTx, ownerId: string): Promise<OpeningExternal[]> {
-  const rows = await tx.execute<{ account_id: string; holding_id: string; amount: string }>(sql`
+  const rows = await sqlRows<{ account_id: string; holding_id: string; amount: string }>(tx, sql`
     select e.account_id, e.holding_id, e.amount_minor::text as amount
     from fintrack.opening_external_position e
     join fintrack.onboarding_snapshot s on s.id = e.snapshot_id
@@ -65,7 +67,7 @@ export async function effectiveOpeningExternals(tx: OwnerTx, ownerId: string): P
 
 /** External effects in canonical ledger order: business date, recorded time, entry id. */
 export async function orderedExternalEffects(tx: OwnerTx, ownerId: string): Promise<ExternalEffect[]> {
-  const rows = await tx.execute<{ account_id: string; holding_id: string; effect: string }>(sql`
+  const rows = await sqlRows<{ account_id: string; holding_id: string; effect: string }>(tx, sql`
     select l.account_id, l.holding_id, l.external_effect_minor::text as effect
     from fintrack.ledger_leg l
     join fintrack.ledger_entry e on e.id = l.entry_id
@@ -212,7 +214,7 @@ export async function accountBalances(
                or (e.effective_business_date = ${businessDateOf(asOf.instant)}::date
                    and e.recorded_at <= ${asOf.recordedAt.toISOString()}::timestamptz))`
     : sql``;
-  const rows = await tx.execute<{
+  const rows = await sqlRows<{
     id: string;
     display_name: string;
     provider_name: string;
@@ -225,7 +227,7 @@ export async function accountBalances(
     movement_count: number;
     has_daily_income: boolean;
     settlement_account_id: string | null;
-  }>(sql`
+  }>(tx, sql`
     with snapshot as (
       select id, cutover_at from fintrack.onboarding_snapshot
       where owner_id = ${ownerId} and status = 'CONFIRMED' and superseded_by_id is null
@@ -264,9 +266,30 @@ export async function accountBalances(
     where a.owner_id = ${ownerId} and a.is_active and a.is_cash_account
     order by a.sort_order, a.id`);
 
-  const { dailyRuleFor, lastSettledEnd, recognizedIncomeFor } = await import("./daily-income");
+  const { recognizedIncomeFor } = await import("./daily-income");
   const { weeklyAccountFreshness } = await import("./freshness");
+  const { manualFreshnessFor } = await import("./reconciliation");
   const today = businessDateOf(asOf?.instant ?? new Date());
+
+  // Loaded once for every account (set-based), then combined per account below.
+  const rules = new Map<string, typeof dailyIncomeRule.$inferSelect>();
+  for (const rule of await tx.select().from(dailyIncomeRule).where(eq(dailyIncomeRule.ownerId, ownerId)).orderBy(asc(dailyIncomeRule.createdAt))) {
+    if (!rules.has(rule.accountId)) rules.set(rule.accountId, rule);
+  }
+  const latestSettled = new Map(
+    (
+      await tx
+        .selectDistinctOn([settlement.accountId])
+        .from(settlement)
+        .where(and(eq(settlement.ownerId, ownerId), eq(settlement.status, "SETTLED")))
+        .orderBy(settlement.accountId, desc(settlement.endDate))
+    ).map((row) => [row.accountId, row]),
+  );
+  const manual = await manualFreshnessFor(
+    tx,
+    ownerId,
+    rows.filter((row) => !row.has_daily_income && !row.settlement_account_id).map((row) => row.id),
+  );
 
   let personalCash = 0n;
   const accounts: AccountBalanceView[] = [];
@@ -278,12 +301,12 @@ export async function accountBalances(
     let lastConfirmedAt = new Date(row.cutover_at).toISOString();
     let openWeekDisclosure = false;
 
-    const rule = row.has_daily_income ? await dailyRuleFor(tx, ownerId, row.id) : undefined;
+    const rule = row.has_daily_income ? rules.get(row.id) : undefined;
     // Tunai is confirmed only by the DANA settlement it belongs to (PRD v0.19).
-    const poolRule = row.settlement_account_id ? await dailyRuleFor(tx, ownerId, row.settlement_account_id) : undefined;
+    const poolRule = row.settlement_account_id ? rules.get(row.settlement_account_id) : undefined;
     if (poolRule) {
       const pool = poolRule.accountId;
-      const freshness = await weeklyAccountFreshness(tx, ownerId, pool, poolRule.effectiveStartDate, await lastSettledEnd(tx, ownerId, pool), today, {
+      const freshness = await weeklyAccountFreshness(tx, ownerId, pool, poolRule.effectiveStartDate, latestSettled.get(pool)?.endDate ?? null, today, {
         cashAccountId: row.id,
       });
       status = freshness.status ?? status;
@@ -293,18 +316,18 @@ export async function accountBalances(
         lastConfirmedAt = freshness.confirmed.at;
       }
     } else if (!rule) {
-      const { manualFreshness } = await import("./reconciliation");
-      const manual = await manualFreshness(tx, ownerId, row.id);
-      if (manual) {
-        status = manual.status;
-        confirmedPersonal = manual.confirmedPersonal;
-        lastConfirmedAt = manual.lastConfirmedAt;
+      const confirmed = manual.get(row.id);
+      if (confirmed) {
+        status = confirmed.status;
+        confirmedPersonal = confirmed.confirmedPersonal;
+        lastConfirmedAt = confirmed.lastConfirmedAt;
       }
     }
     if (rule) {
       // Daily income is evaluated lazily through the as-of date (PRD: no cron).
       physical += (await recognizedIncomeFor(tx, ownerId, row.id, rule.effectiveStartDate, today, rule)).recognized;
-      const freshness = await weeklyAccountFreshness(tx, ownerId, row.id, rule.effectiveStartDate, await lastSettledEnd(tx, ownerId, row.id), today);
+      const latest = latestSettled.get(row.id) ?? null;
+      const freshness = await weeklyAccountFreshness(tx, ownerId, row.id, rule.effectiveStartDate, latest?.endDate ?? null, today, { latest });
       status = freshness.status ?? status;
       openWeekDisclosure = freshness.openWeek;
       if (freshness.confirmed) {

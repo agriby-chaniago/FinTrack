@@ -11,12 +11,13 @@ import { PUT as putDraft } from "@/app/api/v1/onboarding/draft/route";
 import { GET as getOnboarding } from "@/app/api/v1/onboarding/route";
 import { bindOwner } from "@/server/bootstrap/bind-owner";
 import { defaultOnboardingDraft, type OnboardingDraft } from "@/server/domain/onboarding";
+import { databaseSsl } from "@/server/db/supabase-ca";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const authAdmin = createClient(url, process.env.SUPABASE_SECRET_KEY!, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const admin = postgres(process.env.ADMIN_DATABASE_URL!, { max: 1, onnotice: () => {} });
+const admin = postgres(process.env.ADMIN_DATABASE_URL!, { ssl: databaseSsl(process.env.ADMIN_DATABASE_URL!), max: 1, onnotice: () => {} });
 
 const password = `pw-${randomUUID()}`;
 const email = `onboarding-${randomUUID()}@fintrack.test`;

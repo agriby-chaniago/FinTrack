@@ -17,6 +17,7 @@ import { negativeHoldingPositions } from "@/server/domain/ledger";
 import { cleanDisplayName, normalizeName } from "@/server/domain/names";
 
 import { lockLedger, orderedExternalEffects } from "./ledger";
+import { sqlRows } from "@/server/db/rows";
 
 const amount = z.string().refine((value) => {
   try {
@@ -172,7 +173,7 @@ export async function supersedeOpeningSnapshot(
   // A different opening changes every settled DANA period after it; keep their
   // living contributions anchored to the confirmed closings (PRD: settled history).
   const { resyncSettlements } = await import("./settlement");
-  const weekly = await tx.execute<{ account_id: string }>(sql`
+  const weekly = await sqlRows<{ account_id: string }>(tx, sql`
     select distinct account_id from fintrack.daily_income_rule where owner_id = ${ownerId}`);
   for (const row of weekly) await resyncSettlements(tx, ownerId, row.account_id, "0001-01-01", now);
 

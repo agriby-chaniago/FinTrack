@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { RuntimeDb } from "./client";
+import { sqlRows } from "./rows";
 
 /** Claims whose signature and expiry were already verified by the auth adapter. */
 export type VerifiedClaims = {
@@ -68,7 +69,7 @@ export async function withOwnerDb<T>(
     const ownerTx = tx as OwnerTx;
     // One round trip: the claims are installed by the FROM subquery, which runs
     // before the select list reads them through the owner functions.
-    const rows = await tx.execute<OwnerRow>(sql`
+    const rows = await sqlRows<OwnerRow>(tx, sql`
       select fintrack.owner_access_status() as status,
              fintrack.current_owner_id() as owner_id,
              fintrack.request_auth_user_id() as auth_user_id
@@ -81,7 +82,7 @@ type OwnerRow = { status: string; owner_id: string | null; auth_user_id: string 
 
 /** Resolves the owner principal for the claims installed on `tx`, or fails closed. */
 export async function requireOwner(tx: OwnerTx): Promise<AuthPrincipal> {
-  const rows = await tx.execute<OwnerRow>(
+  const rows = await sqlRows<OwnerRow>(tx, 
     sql`select fintrack.owner_access_status() as status,
                fintrack.current_owner_id() as owner_id,
                fintrack.request_auth_user_id() as auth_user_id`,

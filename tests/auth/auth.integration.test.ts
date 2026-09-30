@@ -10,12 +10,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GET as getSession } from "@/app/api/v1/session/route";
 import { POST as logout } from "@/app/api/v1/session/logout/route";
 import { bindOwner } from "@/server/bootstrap/bind-owner";
+import { databaseSsl } from "@/server/db/supabase-ca";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 const secretKey = process.env.SUPABASE_SECRET_KEY!;
 
-const adminSql = postgres(process.env.ADMIN_DATABASE_URL!, { max: 1, onnotice: () => {} });
+const adminSql = postgres(process.env.ADMIN_DATABASE_URL!, { ssl: databaseSsl(process.env.ADMIN_DATABASE_URL!), max: 1, onnotice: () => {} });
 const authAdmin = createClient(url, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const password = `pw-${randomUUID()}`;

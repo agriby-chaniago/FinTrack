@@ -5,8 +5,9 @@ import postgres from "postgres";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { bindOwner } from "@/server/bootstrap/bind-owner";
+import { databaseSsl } from "@/server/db/supabase-ca";
 
-const admin = postgres(process.env.ADMIN_DATABASE_URL!, { max: 10, onnotice: () => {} });
+const admin = postgres(process.env.ADMIN_DATABASE_URL!, { ssl: databaseSsl(process.env.ADMIN_DATABASE_URL!), max: 10, onnotice: () => {} });
 const users = Array.from({ length: 5 }, () => randomUUID());
 const [first, second] = users;
 

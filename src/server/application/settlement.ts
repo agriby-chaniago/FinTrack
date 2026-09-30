@@ -26,6 +26,7 @@ import { cashMemberOf, settlementAccountFor, type AccountRow } from "./accounts"
 import { dailyRuleFor, lastSettledEnd, recognizedIncomeFor } from "./daily-income";
 import { lockLedger, postLedgerEntry } from "./ledger";
 import { createTargetVersion, currentVersion, ensureTarget, reserveAccountId, routeTargets, type Route } from "./transfers";
+import { sqlRows } from "@/server/db/rows";
 
 type Boundary = { date: string; recordedAt: Date };
 const FAR_FUTURE = new Date("9999-12-31T00:00:00.000Z");
@@ -38,7 +39,7 @@ function included(boundary: Boundary) {
 }
 
 async function openingPosition(tx: OwnerTx, ownerId: string, accountId: string): Promise<{ physical: MinorUnits; external: MinorUnits }> {
-  const [row] = await tx.execute<{ physical: string; external: string }>(sql`
+  const [row] = await sqlRows<{ physical: string; external: string }>(tx, sql`
     select coalesce(sum(p.physical_balance_minor), 0)::text as physical,
            coalesce((select sum(e.amount_minor) from fintrack.opening_external_position e
                      where e.snapshot_id = s.id and e.account_id = ${accountId}), 0)::text as external
@@ -46,7 +47,7 @@ async function openingPosition(tx: OwnerTx, ownerId: string, accountId: string):
     join fintrack.opening_account_position p on p.snapshot_id = s.id and p.account_id = ${accountId}
     where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null
     group by s.id`);
-  const [activation] = await tx.execute<{ physical: string }>(sql`
+  const [activation] = await sqlRows<{ physical: string }>(tx, sql`
     select physical_balance_minor::text as physical from fintrack.account_activation_position
     where owner_id = ${ownerId} and account_id = ${accountId}`);
   return { physical: BigInt(row?.physical ?? "0") + BigInt(activation?.physical ?? "0"), external: BigInt(row?.external ?? "0") };
@@ -57,7 +58,7 @@ async function legTotals(tx: OwnerTx, ownerId: string, accountId: string, bounda
   const exclude = excludeSettlementId
     ? sql`and (e.source_type is distinct from 'SETTLEMENT' or e.source_id is distinct from ${excludeSettlementId}::uuid)`
     : sql``;
-  const [row] = await tx.execute<{ physical: string; external: string }>(sql`
+  const [row] = await sqlRows<{ physical: string; external: string }>(tx, sql`
     select coalesce(sum(l.physical_effect_minor), 0)::text as physical, coalesce(sum(l.external_effect_minor), 0)::text as external
     from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
     where e.owner_id = ${ownerId} and l.owner_id = ${ownerId} and l.account_id = ${accountId} and ${included(boundary)} ${exclude}`);
@@ -71,7 +72,7 @@ async function legTotals(tx: OwnerTx, ownerId: string, accountId: string, bounda
  */
 async function flowRows(tx: OwnerTx, ownerId: string, accountIds: string[], from: Boundary, to: Boundary) {
   const pool = sql.join(accountIds.map((id) => sql`${id}::uuid`), sql`, `);
-  return tx.execute<{ kind: string; event_class: string; reporting_classification: string | null; correction_role: string | null; personal: string }>(sql`
+  return sqlRows<{ kind: string; event_class: string; reporting_classification: string | null; correction_role: string | null; personal: string }>(tx, sql`
     select e.kind, e.event_class, e.reporting_classification, e.correction_role,
            sum(l.physical_effect_minor - l.external_effect_minor)::text as personal
     from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
@@ -381,7 +382,7 @@ export async function settle(tx: OwnerTx, ownerId: string, id: string, version: 
   let cashAccountId: string | null = null;
   if (row.cashActivationMinor !== null) {
     if (await cashMemberOf(tx, ownerId, row.accountId)) throw new ApiError("VALIDATION_FAILED", { issues: ["CASH_ALREADY_TRACKED"] });
-    const [{ next }] = await tx.execute<{ next: number }>(sql`
+    const [{ next }] = await sqlRows<{ next: number }>(tx, sql`
       select coalesce(max(sort_order), 0) + 1 as next from fintrack.account where owner_id = ${ownerId}`);
     const [created] = await tx
       .insert(account)
@@ -435,7 +436,7 @@ export async function settle(tx: OwnerTx, ownerId: string, id: string, version: 
 }
 
 async function ownLivingEffect(tx: OwnerTx, ownerId: string, settlementId: string, accountId: string): Promise<MinorUnits> {
-  const [row] = await tx.execute<{ total: string }>(sql`
+  const [row] = await sqlRows<{ total: string }>(tx, sql`
     select coalesce(sum(l.physical_effect_minor), 0)::text as total
     from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
     where e.owner_id = ${ownerId} and e.source_type = 'SETTLEMENT' and e.source_id = ${settlementId}::uuid
@@ -449,7 +450,7 @@ async function ownLivingEffect(tx: OwnerTx, ownerId: string, settlementId: strin
  * resyncSettlements), so their sum always equals the corrected reconstruction.
  */
 export async function correctedLivingExpenses(tx: OwnerTx, ownerId: string): Promise<Map<string, MinorUnits>> {
-  const rows = await tx.execute<{ settlement_id: string; living: string }>(sql`
+  const rows = await sqlRows<{ settlement_id: string; living: string }>(tx, sql`
     select e.source_id as settlement_id, (-coalesce(sum(l.physical_effect_minor), 0))::text as living
     from fintrack.ledger_entry e join fintrack.ledger_leg l on l.entry_id = e.id
     where e.owner_id = ${ownerId} and e.source_type = 'SETTLEMENT' and e.event_class = 'LIVING'
@@ -512,7 +513,7 @@ export async function resyncSettlements(tx: OwnerTx, ownerId: string, poolAccoun
 }
 
 async function firstVersionTime(tx: OwnerTx, ownerId: string, targetId: string): Promise<Date | null> {
-  const [row] = await tx.execute<{ created_at: string | null }>(sql`
+  const [row] = await sqlRows<{ created_at: string | null }>(tx, sql`
     select to_char(min(created_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as created_at
     from fintrack.transfer_target_version where owner_id = ${ownerId} and target_id = ${targetId}::uuid`);
   return row?.created_at ? new Date(row.created_at) : null;

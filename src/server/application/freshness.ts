@@ -21,7 +21,8 @@ export async function weeklyAccountFreshness(
   ruleStart: string,
   settledEnd: string | null,
   today: string,
-  options: { cashAccountId?: string } = {},
+  /** `latest`: the account's latest SETTLED settlement when the caller already loaded it. */
+  options: { cashAccountId?: string; latest?: typeof settlement.$inferSelect | null } = {},
 ): Promise<{ status: BalanceStatus | null; openWeek: boolean; confirmed: { personal: MinorUnits; at: string } | null }> {
   const plan = settlementPlan(ruleStart, settledEnd, today);
   const openWeek = plan.periodStart <= today;
@@ -29,7 +30,7 @@ export async function weeklyAccountFreshness(
 
   // Tunai: the latest settlement that counted the wallet; before that, its activation opening.
   const cash = Boolean(options.cashAccountId);
-  const [latest] = await tx
+  const [latest] = !cash && options.latest !== undefined ? [options.latest ?? undefined] : await tx
     .select()
     .from(settlement)
     .where(

@@ -1,6 +1,7 @@
 // Enables LOGIN for the platform roles and sets their passwords from the
 // environment. Run once per environment after migrations, and again to rotate.
 import postgres from "postgres";
+import { databaseSsl } from "../src/server/db/supabase-ca.ts";
 
 const url = process.env.ADMIN_DATABASE_URL;
 if (!url) {
@@ -14,7 +15,7 @@ const roles = [
   { role: "fintrack_backup", passwordEnv: "FINTRACK_BACKUP_DB_PASSWORD" },
 ] as const;
 
-const sql = postgres(url, { max: 1, onnotice: () => {} });
+const sql = postgres(url, { ssl: databaseSsl(url), max: 1, onnotice: () => {} });
 
 try {
   for (const { role, passwordEnv } of roles) {

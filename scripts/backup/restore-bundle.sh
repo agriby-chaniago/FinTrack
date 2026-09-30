@@ -12,6 +12,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=pg-tools.sh
 source "$here/pg-tools.sh"
+use_database "$TARGET_DATABASE_URL"
 BUNDLE_DIR="$(cd "$BUNDLE_DIR" && pwd)"
 url="$TARGET_DATABASE_URL"
 q() { pgx psql "$url" -v ON_ERROR_STOP=1 -At -c "$1"; }

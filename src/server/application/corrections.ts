@@ -17,6 +17,7 @@ import { externalMovementDraft } from "./external-funds";
 import { assertExternalHoldingsNonNegative, postLedgerEntry } from "./ledger";
 import { postTransfer, resolveComponents, reverseAllocations, transferDraft, transferShape } from "./transfers";
 import { correctSettledEntry, settledSettlementFor } from "./settlement-corrections";
+import { sqlRows } from "@/server/db/rows";
 
 export const correctionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("VOID") }),
@@ -171,7 +172,7 @@ export async function correctEntry(
   const result = await correctEntryInner(tx, ownerId, entry, input, now);
   // Corrections on a monthly account can change frozen BCA target bases.
   const { recalculateBcaChain } = await import("./monthly");
-  const monthlyAccounts = await tx.execute<{ account_id: string }>(sql`
+  const monthlyAccounts = await sqlRows<{ account_id: string }>(tx, sql`
     select distinct account_id from fintrack.monthly_income_rule where owner_id = ${ownerId}`);
   for (const { account_id } of monthlyAccounts) {
     if (entry.legs.some((leg) => leg.accountId === account_id)) await recalculateBcaChain(tx, ownerId, account_id);

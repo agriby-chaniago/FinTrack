@@ -10,6 +10,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createRuntimeDb } from "@/server/db/client";
 import { OwnerAccessError, withOwnerDb } from "@/server/db/owner";
 import { queryKeepaliveProbe } from "@/server/ops/keepalive";
+import { databaseSsl } from "@/server/db/supabase-ca";
+import { sqlRows } from "@/server/db/rows";
 
 const env = (name: string): string => {
   const value = process.env[name];
@@ -28,9 +30,9 @@ const directProbeUrl = process.env.TEST_DIRECT_PROBE_URL ?? localDirect("fintrac
 const directBackupUrl =
   process.env.TEST_DIRECT_BACKUP_URL ?? localDirect("fintrack_backup", "FINTRACK_BACKUP_DB_PASSWORD");
 
-const admin = postgres(adminUrl, { max: 1, onnotice: () => {} });
-const probe = postgres(directProbeUrl, { max: 1, onnotice: () => {} });
-const backup = postgres(directBackupUrl, { max: 1, onnotice: () => {} });
+const admin = postgres(adminUrl, { ssl: databaseSsl(adminUrl), max: 1, onnotice: () => {} });
+const probe = postgres(directProbeUrl, { ssl: databaseSsl(directProbeUrl), max: 1, onnotice: () => {} });
+const backup = postgres(directBackupUrl, { ssl: databaseSsl(directBackupUrl), max: 1, onnotice: () => {} });
 
 // max: 1 forces every transaction onto the same client connection so leaks would surface.
 const pooledRuntime = createRuntimeDb(pooledAppUrl, { max: 1 });
@@ -108,7 +110,7 @@ describe.each([
 ])("withOwnerDb through the %s", (_label, runtime) => {
   it("resolves the bound owner and reads the owner row under RLS", async () => {
     const result = await withOwnerDb(runtime(), { sub: ownerAuthId }, async (tx, principal) => {
-      const rows = await tx.execute<{ id: string }>(sql`select id from fintrack.app_owner`);
+      const rows = await sqlRows<{ id: string }>(tx, sql`select id from fintrack.app_owner`);
       return { principal, ids: rows.map((row) => row.id) };
     });
 
@@ -123,8 +125,8 @@ describe.each([
     });
 
     const visible = await runtime().transaction(async (tx) => {
-      await tx.execute(sql`select set_config('request.jwt.claims', ${JSON.stringify({ sub: strangerAuthId })}, true)`);
-      return tx.execute(sql`select id from fintrack.app_owner`);
+      await sqlRows(tx, sql`select set_config('request.jwt.claims', ${JSON.stringify({ sub: strangerAuthId })}, true)`);
+      return sqlRows(tx, sql`select id from fintrack.app_owner`);
     });
     expect(visible).toHaveLength(0);
   });
@@ -146,7 +148,7 @@ describe.each([
 
   it("does not leak claims to the next transaction after commit or rollback", async () => {
     const claimsAfter = async () => {
-      const [row] = await runtime().execute<{ sub: string | null; owner: string | null; role: string }>(
+      const [row] = await sqlRows<{ sub: string | null; owner: string | null; role: string }>(runtime(), 
         sql`select fintrack.request_auth_user_id() as sub, fintrack.current_owner_id() as owner, current_user as role`,
       );
       return row;
@@ -165,7 +167,7 @@ describe.each([
 
   it("cannot modify the owner binding", async () => {
     const error = await withOwnerDb(runtime(), { sub: ownerAuthId }, (tx) =>
-      tx.execute(sql`update fintrack.app_owner set auth_user_id = ${strangerAuthId}`),
+      sqlRows(tx, sql`update fintrack.app_owner set auth_user_id = ${strangerAuthId}`),
     ).catch((caught: unknown) => caught);
 
     // Drizzle wraps the driver error; the PostgreSQL message is on `cause`.

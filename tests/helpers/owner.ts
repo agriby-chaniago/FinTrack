@@ -10,12 +10,13 @@ import { bindOwner } from "@/server/bootstrap/bind-owner";
 import { createRuntimeDb, type RuntimeDb } from "@/server/db/client";
 import { withOwnerDb, type AuthPrincipal, type OwnerTx } from "@/server/db/owner";
 import { defaultOnboardingDraft, type OnboardingDraft } from "@/server/domain/onboarding";
+import { databaseSsl } from "@/server/db/supabase-ca";
 
 export type TestClients = { admin: postgres.Sql; authAdmin: SupabaseClient; runtime: RuntimeDb };
 
 export function testClients(): TestClients {
   return {
-    admin: postgres(process.env.ADMIN_DATABASE_URL!, { max: 1, onnotice: () => {} }),
+    admin: postgres(process.env.ADMIN_DATABASE_URL!, { ssl: databaseSsl(process.env.ADMIN_DATABASE_URL!), max: 1, onnotice: () => {} }),
     authAdmin: createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
       auth: { persistSession: false, autoRefreshToken: false },
     }),

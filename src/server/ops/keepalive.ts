@@ -1,6 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
-import postgres from "postgres";
+import { Pool } from "pg";
+
+import { databaseSsl } from "@/server/db/supabase-ca";
 
 export type KeepaliveDeps = {
   /** Deployment environment, e.g. Vercel's VERCEL_ENV. */
@@ -48,14 +50,14 @@ export async function handleKeepalive(request: Request, deps: KeepaliveDeps): Pr
   return new Response(null, { status: 204, headers: noStore });
 }
 
-let probeClient: postgres.Sql | undefined;
+let probePool: Pool | undefined;
 
 /** Reads the probe row as fintrack_probe; this role cannot see financial tables. */
 export async function queryKeepaliveProbe(url: string | undefined): Promise<boolean> {
   if (!url) {
     throw new Error("KEEPALIVE_DATABASE_URL is not configured");
   }
-  probeClient ??= postgres(url, { prepare: false, max: 1, onnotice: () => {} });
-  const rows = await probeClient`select id from ops.keepalive_probe where id = 1`;
-  return rows.length === 1;
+  probePool ??= new Pool({ connectionString: url, ssl: databaseSsl(url), max: 1 });
+  const result = await probePool.query("select id from ops.keepalive_probe where id = 1");
+  return result.rows.length === 1;
 }

@@ -1,19 +1,22 @@
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { attachDatabasePool } from "@vercel/functions";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
-export type RuntimeDb = PostgresJsDatabase & { $client: postgres.Sql };
+import { databaseSsl } from "./supabase-ca";
+
+export type RuntimeDb = NodePgDatabase & { $client: Pool };
 
 /**
  * Creates the runtime database handle that connects as `fintrack_app`.
  *
- * `prepare: false` is required because the Supabase transaction pooler does not
- * keep prepared statements across transactions.
+ * node-postgres sends each parameterized query in one round trip (the
+ * postgres-js unnamed-statement path needed two), and uses no named prepared
+ * statements, which the Supabase transaction pooler cannot keep across
+ * transactions. Remote connections use verified TLS.
  */
 export function createRuntimeDb(url: string, options: { max?: number } = {}): RuntimeDb {
-  // `fetch_types: false` skips a type-catalog query on every new connection;
-  // FinTrack sends no array parameters and reads no array columns.
-  const client = postgres(url, { prepare: false, fetch_types: false, max: options.max ?? 5, onnotice: () => {} });
-  return drizzle(client);
+  const pool = new Pool({ connectionString: url, ssl: databaseSsl(url), max: options.max ?? 5, idleTimeoutMillis: 30_000 });
+  return drizzle({ client: pool });
 }
 
 let runtimeDb: RuntimeDb | undefined;
@@ -26,6 +29,8 @@ export function getRuntimeDb(): RuntimeDb {
       throw new Error("DATABASE_URL is not configured");
     }
     runtimeDb = createRuntimeDb(url);
+    // Lets Vercel Fluid compute close idle connections before an instance is suspended.
+    attachDatabasePool(runtimeDb.$client);
   }
   return runtimeDb;
 }

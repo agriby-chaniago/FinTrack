@@ -17,6 +17,7 @@ import {
   type ConfirmedOwner,
   type TestUser,
 } from "../helpers/owner";
+import { sqlRows } from "@/server/db/rows";
 
 const clients = testClients();
 const CUTOVER = "2026-09-01T10:00:00+07:00";
@@ -169,7 +170,7 @@ describe("posting guards", () => {
   it("keeps the ledger append-only for the runtime role", async () => {
     await post(step("2026-09-02", "EXPENSE", [leg("monthly", "-10000")]));
     for (const statement of ["update fintrack.ledger_entry set note = 'x'", "delete from fintrack.ledger_leg"]) {
-      const error = await asOwner(clients.runtime, user.id, (tx) => tx.execute(statement as never)).catch((e: Error) => e);
+      const error = await asOwner(clients.runtime, user.id, (tx) => sqlRows(tx, statement as never)).catch((e: Error) => e);
       expect(String((error as Error).cause ?? error)).toMatch(/permission denied/);
     }
   });

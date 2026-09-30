@@ -1,7 +1,7 @@
 // Balance confirmation and reconciliation for accounts outside weekly settlement
 // (PRD: Correction dan reconciliation, Cadence reconciliation). Physical-first:
 // the confirmation stores only the provider balance; ownership comes from the ledger.
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { addDays, businessDateOf, cycleKeyOf } from "@/lib/business-time";
@@ -15,38 +15,69 @@ import { lastDayOfCycle } from "@/server/domain/monthly";
 import { requireActiveCashAccounts, weeklySettlementAccountIds } from "./accounts";
 import { lockLedger, postLedgerEntry } from "./ledger";
 import type { CycleView } from "./monthly";
+import { sqlRows } from "@/server/db/rows";
 
 export type Position = { physical: MinorUnits; external: MinorUnits };
 
+type ConfirmationRow = typeof balanceConfirmation.$inferSelect;
+type PositionAt = Position & { movedAfter: number };
+
 /**
- * Calculated position as of a confirmation (PRD v0.18 inclusion rule); a
- * BALANCE_ADJUSTMENT made for that confirmation always counts toward it.
+ * Calculated position as of each confirmation, in one query (PRD v0.18
+ * inclusion rule): entries dated before the confirmation's business date, or
+ * on it and recorded before the confirmation. A BALANCE_ADJUSTMENT made for a
+ * confirmation always counts toward it. `movedAfter` counts later movements.
  */
-async function positionAtConfirmation(tx: OwnerTx, ownerId: string, confirmation: typeof balanceConfirmation.$inferSelect): Promise<Position> {
-  const date = businessDateOf(confirmation.asOf);
-  const [row] = await tx.execute<{ physical: string; external: string; opening_physical: string; opening_external: string }>(sql`
-    select
+async function positionsAtConfirmations(tx: OwnerTx, ownerId: string, confirmations: ConfirmationRow[]): Promise<Map<string, PositionAt>> {
+  if (confirmations.length === 0) return new Map();
+  const values = sql.join(
+    confirmations.map(
+      (c) => sql`(${c.id}::uuid, ${c.accountId}::uuid, ${businessDateOf(c.asOf)}::date, ${c.recordedAt.toISOString()}::timestamptz)`,
+    ),
+    sql`, `,
+  );
+  const rows = await sqlRows<{ id: string; physical: string; external: string; opening_physical: string; opening_external: string; moved_after: number }>(tx, sql`
+    with c(id, account_id, day, recorded_at) as (values ${values}),
+    snapshot as (
+      select id from fintrack.onboarding_snapshot
+      where owner_id = ${ownerId} and status = 'CONFIRMED' and superseded_by_id is null
+    )
+    select c.id,
       coalesce((select sum(l.physical_effect_minor) from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
-        where e.owner_id = ${ownerId} and l.account_id = ${confirmation.accountId}
-          and (e.effective_business_date < ${date}::date
-               or (e.effective_business_date = ${date}::date and e.recorded_at <= ${confirmation.recordedAt.toISOString()}::timestamptz)
-               or (e.source_type = 'BALANCE_CONFIRMATION' and e.source_id = ${confirmation.id}::uuid))), 0)::text as physical,
+        where e.owner_id = ${ownerId} and l.account_id = c.account_id
+          and (e.effective_business_date < c.day
+               or (e.effective_business_date = c.day and e.recorded_at <= c.recorded_at)
+               or (e.source_type = 'BALANCE_CONFIRMATION' and e.source_id = c.id))), 0)::text as physical,
       coalesce((select sum(l.external_effect_minor) from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
-        where e.owner_id = ${ownerId} and l.account_id = ${confirmation.accountId}
-          and (e.effective_business_date < ${date}::date
-               or (e.effective_business_date = ${date}::date and e.recorded_at <= ${confirmation.recordedAt.toISOString()}::timestamptz))), 0)::text as external,
+        where e.owner_id = ${ownerId} and l.account_id = c.account_id
+          and (e.effective_business_date < c.day
+               or (e.effective_business_date = c.day and e.recorded_at <= c.recorded_at))), 0)::text as external,
       (coalesce((select sum(p.physical_balance_minor) from fintrack.opening_account_position p
-        join fintrack.onboarding_snapshot s on s.id = p.snapshot_id
-        where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null and p.account_id = ${confirmation.accountId}), 0)
+          where p.snapshot_id = (select id from snapshot) and p.account_id = c.account_id), 0)
         + coalesce((select a.physical_balance_minor from fintrack.account_activation_position a
-            where a.owner_id = ${ownerId} and a.account_id = ${confirmation.accountId}), 0))::text as opening_physical,
+          where a.owner_id = ${ownerId} and a.account_id = c.account_id), 0))::text as opening_physical,
       coalesce((select sum(x.amount_minor) from fintrack.opening_external_position x
-        join fintrack.onboarding_snapshot s on s.id = x.snapshot_id
-        where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null and x.account_id = ${confirmation.accountId}), 0)::text as opening_external`);
-  return {
-    physical: BigInt(row.opening_physical) + BigInt(row.physical),
-    external: BigInt(row.opening_external) + BigInt(row.external),
-  };
+        where x.snapshot_id = (select id from snapshot) and x.account_id = c.account_id), 0)::text as opening_external,
+      (select count(*)::int from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
+        where e.owner_id = ${ownerId} and l.account_id = c.account_id
+          and (e.source_type is distinct from 'BALANCE_CONFIRMATION' or e.source_id is distinct from c.id)
+          and (e.effective_business_date > c.day
+               or (e.effective_business_date = c.day and e.recorded_at > c.recorded_at))) as moved_after
+    from c`);
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        physical: BigInt(row.opening_physical) + BigInt(row.physical),
+        external: BigInt(row.opening_external) + BigInt(row.external),
+        movedAfter: row.moved_after,
+      },
+    ]),
+  );
+}
+
+async function positionAtConfirmation(tx: OwnerTx, ownerId: string, confirmation: ConfirmationRow): Promise<Position> {
+  return (await positionsAtConfirmations(tx, ownerId, [confirmation])).get(confirmation.id)!;
 }
 
 export type ReconciliationStatus = "MATCHED" | "DISCREPANCY" | "NEEDS_REVIEW";
@@ -65,14 +96,19 @@ export type ReconciliationView = {
   adjustments: { entryId: string; amount: string; confirmationId: string; reason: string | null; fromSupersededConfirmation: boolean }[];
 };
 
-export async function latestConfirmation(tx: OwnerTx, ownerId: string, accountId: string) {
-  const [row] = await tx
-    .select()
+/** Latest authoritative (not superseded) confirmation per account, in one query. */
+export async function latestConfirmations(tx: OwnerTx, ownerId: string, accountIds: string[]): Promise<Map<string, ConfirmationRow>> {
+  if (accountIds.length === 0) return new Map();
+  const rows = await tx
+    .selectDistinctOn([balanceConfirmation.accountId])
     .from(balanceConfirmation)
-    .where(and(eq(balanceConfirmation.ownerId, ownerId), eq(balanceConfirmation.accountId, accountId), isNull(balanceConfirmation.supersededById)))
-    .orderBy(desc(balanceConfirmation.asOf), desc(balanceConfirmation.recordedAt))
-    .limit(1);
-  return row;
+    .where(and(eq(balanceConfirmation.ownerId, ownerId), inArray(balanceConfirmation.accountId, accountIds), isNull(balanceConfirmation.supersededById)))
+    .orderBy(balanceConfirmation.accountId, desc(balanceConfirmation.asOf), desc(balanceConfirmation.recordedAt));
+  return new Map(rows.map((row) => [row.accountId, row]));
+}
+
+export async function latestConfirmation(tx: OwnerTx, ownerId: string, accountId: string) {
+  return (await latestConfirmations(tx, ownerId, [accountId])).get(accountId);
 }
 
 /** Reconciliation of the latest authoritative confirmation of an account. */
@@ -82,7 +118,7 @@ export async function reconciliationView(tx: OwnerTx, ownerId: string, accountId
   const position = await positionAtConfirmation(tx, ownerId, confirmation);
   const discrepancy = confirmation.physicalBalanceMinor - position.physical;
 
-  const adjustments = await tx.execute<{ id: string; amount: string; confirmation_id: string; note: string | null; superseded: boolean }>(sql`
+  const adjustments = await sqlRows<{ id: string; amount: string; confirmation_id: string; note: string | null; superseded: boolean }>(tx, sql`
     select e.id, sum(l.physical_effect_minor)::text as amount, e.source_id as confirmation_id, e.note,
            c.superseded_by_id is not null as superseded
     from fintrack.ledger_entry e join fintrack.ledger_leg l on l.entry_id = e.id
@@ -267,22 +303,24 @@ export type ManualFreshness = {
   lastConfirmedAt: string;
 };
 
+/** Freshness from the latest manual confirmation of each non-weekly account, in two queries. */
+export async function manualFreshnessFor(tx: OwnerTx, ownerId: string, accountIds: string[]): Promise<Map<string, ManualFreshness>> {
+  const manual = [...(await latestConfirmations(tx, ownerId, accountIds)).values()].filter((c) => c.source === "MANUAL");
+  const positions = await positionsAtConfirmations(tx, ownerId, manual);
+  const result = new Map<string, ManualFreshness>();
+  for (const confirmation of manual) {
+    const position = positions.get(confirmation.id)!;
+    const discrepancy = confirmation.physicalBalanceMinor - position.physical;
+    result.set(confirmation.accountId, {
+      status: discrepancy !== 0n ? "DISCREPANCY" : position.movedAfter > 0 ? "CALCULATED_AFTER_CONFIRMATION" : "CONFIRMED",
+      confirmedPersonal: confirmation.physicalBalanceMinor - position.external,
+      lastConfirmedAt: confirmation.asOf.toISOString(),
+    });
+  }
+  return result;
+}
+
 /** Freshness from the latest manual confirmation of a non-weekly account, if any. */
 export async function manualFreshness(tx: OwnerTx, ownerId: string, accountId: string): Promise<ManualFreshness | null> {
-  const confirmation = await latestConfirmation(tx, ownerId, accountId);
-  if (!confirmation || confirmation.source !== "MANUAL") return null;
-  const position = await positionAtConfirmation(tx, ownerId, confirmation);
-  const discrepancy = confirmation.physicalBalanceMinor - position.physical;
-  const date = businessDateOf(confirmation.asOf);
-  const [after] = await tx.execute<{ count: number }>(sql`
-    select count(*)::int as count from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
-    where e.owner_id = ${ownerId} and l.account_id = ${accountId}
-      and (e.source_type is distinct from 'BALANCE_CONFIRMATION' or e.source_id is distinct from ${confirmation.id}::uuid)
-      and (e.effective_business_date > ${date}::date
-           or (e.effective_business_date = ${date}::date and e.recorded_at > ${confirmation.recordedAt.toISOString()}::timestamptz))`);
-  return {
-    status: discrepancy !== 0n ? "DISCREPANCY" : after.count > 0 ? "CALCULATED_AFTER_CONFIRMATION" : "CONFIRMED",
-    confirmedPersonal: confirmation.physicalBalanceMinor - position.external,
-    lastConfirmedAt: confirmation.asOf.toISOString(),
-  };
+  return (await manualFreshnessFor(tx, ownerId, [accountId])).get(accountId) ?? null;
 }

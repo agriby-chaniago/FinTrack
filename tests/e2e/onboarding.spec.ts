@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
+import { databaseSsl } from "@/server/db/supabase-ca";
 
 const env = Object.fromEntries(
   readFileSync(".env.local", "utf8")
@@ -14,7 +15,7 @@ const env = Object.fromEntries(
     .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]),
 );
 
-const admin = postgres(env.ADMIN_DATABASE_URL, { max: 1, onnotice: () => {} });
+const admin = postgres(env.ADMIN_DATABASE_URL, { ssl: databaseSsl(env.ADMIN_DATABASE_URL), max: 1, onnotice: () => {} });
 const authAdmin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
