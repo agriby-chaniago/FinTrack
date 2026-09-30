@@ -15,6 +15,13 @@
       "when": 1790744542819,
       "tag": "0001_platform_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790749562832,
+      "tag": "0002_onboarding_schema",
+      "breakpoints": true
     }
   ]
 }

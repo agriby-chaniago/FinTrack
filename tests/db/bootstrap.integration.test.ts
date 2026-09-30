@@ -15,7 +15,7 @@ async function ownerRows() {
 }
 
 beforeEach(async () => {
-  await admin`delete from fintrack.app_owner`;
+  await admin`truncate fintrack.app_owner cascade`;
   for (const id of users) {
     await admin`
       insert into auth.users (id, aud, role, email)
@@ -25,7 +25,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await admin`delete from fintrack.app_owner`;
+  await admin`truncate fintrack.app_owner cascade`;
   await admin`delete from auth.users where id = any(${users})`;
   await admin.end();
 });

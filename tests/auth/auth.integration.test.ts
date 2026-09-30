@@ -72,12 +72,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await adminSql`delete from fintrack.app_owner`;
+  await adminSql`truncate fintrack.app_owner cascade`;
   await bindOwner(adminSql, ownerId);
 });
 
 afterAll(async () => {
-  await adminSql`delete from fintrack.app_owner`;
+  await adminSql`truncate fintrack.app_owner cascade`;
   await authAdmin.auth.admin.deleteUser(ownerId);
   await authAdmin.auth.admin.deleteUser(strangerId);
   await adminSql.end();
@@ -147,7 +147,7 @@ describe("GET /api/v1/session", () => {
   });
 
   it("fails closed with 503 when the owner is not bootstrapped", async () => {
-    await adminSql`delete from fintrack.app_owner`;
+    await adminSql`truncate fintrack.app_owner cascade`;
     const { accessToken } = await signIn(ownerEmail);
     const response = await getSession(sessionRequest({ authorization: `Bearer ${accessToken}` }));
 

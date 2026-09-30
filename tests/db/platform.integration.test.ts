@@ -54,14 +54,14 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await ensureAuthUser(ownerAuthId);
-  await admin`delete from fintrack.app_owner`;
+  await admin`truncate fintrack.app_owner cascade`;
   const [row] = await admin<{ id: string }[]>`
     insert into fintrack.app_owner (auth_user_id, bound_at) values (${ownerAuthId}, now()) returning id`;
   ownerId = row.id;
 });
 
 afterAll(async () => {
-  await admin`delete from fintrack.app_owner`;
+  await admin`truncate fintrack.app_owner cascade`;
   await admin`delete from auth.users where id in (${ownerAuthId}, ${strangerAuthId})`;
   await Promise.all([admin.end(), probe.end(), backup.end()]);
   await Promise.all([
@@ -206,6 +206,6 @@ describe("operational roles", () => {
   it("backup role reads every row regardless of RLS but cannot write", async () => {
     const rows = await backup`select id from fintrack.app_owner`;
     expect(rows).toHaveLength(1);
-    await expect(backup`delete from fintrack.app_owner`).rejects.toThrow(/permission denied/);
+    await expect(backup`truncate fintrack.app_owner cascade`).rejects.toThrow(/permission denied/);
   });
 });
