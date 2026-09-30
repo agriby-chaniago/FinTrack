@@ -1,12 +1,12 @@
 # FinTrack Implementation Plan
 
-_Rencana teknis turunan dari `PRD.md` v0.17 dan `docs/audit/2026-09-30-readiness.md`. PRD tetap menjadi source of truth untuk perilaku produk; dokumen ini mengatur urutan kerja, bentuk data, dan cara verifikasi._
+_Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness.md`. PRD tetap menjadi source of truth untuk perilaku produk; dokumen ini mengatur urutan kerja, bentuk data, dan cara verifikasi._
 
 | Metadata | Nilai |
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
-| **Basis** | PRD v0.17, audit readiness 30 September 2026 |
-| **Slice aktif** | S0 dan S1 selesai (lokal + staging hosted); S2 menunggu review PROPOSED |
+| **Basis** | PRD v0.18, audit readiness 30 September 2026 |
+| **Slice aktif** | S0 dan S1 selesai (lokal + staging hosted); S2 siap dimulai |
 
 ## 1. Status ringkas
 
@@ -80,10 +80,10 @@ Aturan: domain function menerima dan mengembalikan nilai murni; repository hanya
 | Topik | Keputusan teknis | Asal |
 | --- | --- | --- |
 | Uang | `bigint` minor unit (sen) di database; string desimal di API; tidak ada `number` untuk uang | PRD Representasi uang |
-| Urutan ledger | `(effective_business_date, recorded_at, id)` | PRD Time rules (PROPOSED), audit MC-1 |
+| Urutan ledger | `(effective_business_date, recorded_at, id)` | PRD Time rules, audit MC-1 |
 | Supersession | Setiap tabel dengan `supersedes_id` juga menyimpan `superseded_by_id` dan partial unique index `WHERE superseded_by_id IS NULL` pada kunci logisnya; keduanya ditulis dalam transaction yang sama | Audit MC-7 |
 | Transfer target | `transfer_target(owner_id, context_type, context_key, source_account_id, destination_account_id)` unik; `context_key` = settlement id atau `YYYY-MM` | Audit MC-6 |
-| Cycle | `cycle_key` `YYYY-MM` pada kedua jenis occurrence; monthly cycle adalah grouping turunan | PRD Time rules (PROPOSED), audit MC-10 |
+| Cycle | `cycle_key` `YYYY-MM` pada kedua jenis occurrence; monthly cycle adalah grouping turunan | PRD Time rules, audit MC-10 |
 | Non-overlap | `EXCLUDE USING gist (owner_id WITH =, daterange(start_date, end_date, '[]') WITH &&)` untuk settlement dan daily-income state period; contiguity dicek di application layer + property test | Audit IR-2 |
 | Invariant agregat | Tabel posisi external termaterialisasi per `(holding_id, account_id)` dengan `CHECK (position >= 0)` dan `SELECT … FOR UPDATE`; total komponen transfer dan total allocation dicek dalam transaction yang sama | Audit IR-1 |
 | Idempotency | Header `Idempotency-Key` wajib pada POST/PATCH; tabel `idempotency_record(owner_id, key, method, path, request_hash, response_status, response_body, created_at)`; replay 24 jam; key sama dengan body berbeda → `409 IDEMPOTENCY_KEY_REUSED` | Audit IR-3 |
@@ -114,17 +114,17 @@ Rekomendasi arsitektur (belum dikunci PRD): satu inti append-only `ledger_entry`
 
 | # | Slice | Bergantung | Exit criteria | Diblokir oleh |
 | --- | --- | --- | --- | --- |
-| S0 | Platform + security spike | — | Lint/typecheck/test/build hijau di CI; DB dibangun dari nol; spike lokal lulus; spike hosted lulus | Project Supabase staging |
+| S0 | Platform + security spike | — | Lint/typecheck/test/build hijau di CI; DB dibangun dari nol; spike lokal lulus; spike hosted lulus | — (spike hosted lulus) |
 | S1 | Identity + authorization | S0 | Bootstrap idempoten; adapter cookie dan Bearer → `VerifiedClaims`; login/logout lokal dan global; recovery generik; 13 skenario auth + jalur pengecualian auth hijau; runbook rebind | — |
-| S2 | Accounts, onboarding, konfigurasi awal | S1 | Draft → confirmed atomik; opening + external; rule dan setting awal; seed `Vape`; fixture onboarding PRD direproduksi | PROPOSED konfigurasi awal onboarding |
-| S3 | Ledger core | S2 | Konvensi tanda PRD; saldo calculated as-of; urutan kanonik; aturan inklusi date-only terhadap timestamp | PROPOSED Time rules |
-| S4 | External funds | S3 | Lima quick action; posisi ≥ 0; syarat arsip; fixture 7 langkah direproduksi | PROPOSED syarat arsip account |
-| S5 | Financial events + koreksi periode terbuka | S3 | Special expense + kategori; reversal/replacement; reversal-only void; `Catat income/expense lain` | PROPOSED entry point income/expense lain |
-| S6 | Transfer + target + allocation | S4, S5 | Ownership composition; allocation oldest-first; surplus; `Tutup target`; recalculation chain | PROPOSED recalculation chain, `Tutup target` BCA |
-| S7 | Daily income + weekly settlement | S6 | Pause/resume, override, lazy evaluation; snapshot lengkap; catch-up; living expense negatif + warning; fixture Februari 2027 | PROPOSED snapshot dan klasifikasi komponen |
-| S8 | Koreksi settled history | S7 | `CORRECTION_POSTING`; corrected view DANA; koreksi override setelah settlement | PROPOSED target koreksi override |
-| S9 | BCA monthly cycle | S6, S7 | Occurrence + resolution; revision; gating kronologis; obligation-only cycle; tolak first cycle masa lalu; tolak source DANA; fixture BCA | PROPOSED obligation-only cycle |
-| S10 | Balance confirmation + reconciliation | S7, S9 | Physical-first; `BALANCE_ADJUSTMENT`; replacement; prompt bulanan + fallback akhir bulan | PROPOSED fallback prompt |
+| S2 | Accounts, onboarding, konfigurasi awal | S1 | Draft → confirmed atomik; opening + external; rule dan setting awal; seed `Vape`; fixture onboarding PRD direproduksi | — |
+| S3 | Ledger core | S2 | Konvensi tanda PRD; saldo calculated as-of; urutan kanonik; aturan inklusi date-only terhadap timestamp | — |
+| S4 | External funds | S3 | Lima quick action; posisi ≥ 0; syarat arsip; fixture 7 langkah direproduksi | — |
+| S5 | Financial events + koreksi periode terbuka | S3 | Special expense + kategori; reversal/replacement; reversal-only void; `Catat income/expense lain` | — |
+| S6 | Transfer + target + allocation | S4, S5 | Ownership composition; allocation oldest-first; surplus; `Tutup target`; recalculation chain | — |
+| S7 | Daily income + weekly settlement | S6 | Pause/resume, override, lazy evaluation; snapshot lengkap; catch-up; living expense negatif + warning; fixture Februari 2027 | — |
+| S8 | Koreksi settled history | S7 | `CORRECTION_POSTING`; corrected view DANA; koreksi override setelah settlement | — |
+| S9 | BCA monthly cycle | S6, S7 | Occurrence + resolution; revision; gating kronologis; obligation-only cycle; tolak first cycle masa lalu; tolak source DANA; fixture BCA | — |
+| S10 | Balance confirmation + reconciliation | S7, S9 | Physical-first; `BALANCE_ADJUSTMENT`; replacement; prompt bulanan + fallback akhir bulan | — |
 | S11 | Reporting + metrics | S8–S10 | Seluruh metric; `CALENDAR_DAY_PRORATA_V1`; completeness; as-settled vs corrected | — |
 | S12 | UI | S11 | App shell; dashboard; theme; aksesibilitas; mutation menunggu server | — |
 | S13 | Portability + operations | S11 | Export ZIP; manifest PWA; backup R2 + restore drill; keepalive aktif | Akun Cloudflare R2, SMTP, project production |
@@ -172,8 +172,8 @@ Mengikuti audit §9 dengan perubahan berikut:
 
 ## 10. Hal yang membutuhkan pemilik
 
-1. Review seluruh item **PROPOSED** pada PRD v0.17
-2. Membuat project Supabase staging dan production (region `ap-southeast-1`), project Vercel (region `sin1`), serta mengaktifkan MFA pada seluruh akun
+1. Membuat project Supabase production (region `ap-southeast-1`) dan mengisi environment variables Vercel per environment (Preview → staging, Production → production), serta mengaktifkan MFA pada seluruh akun
+2. Merotasi password database dan secret key staging yang pernah dibagikan lewat chat
 3. Menyediakan custom SMTP untuk invite dan password recovery
 4. Menyediakan bucket Cloudflare R2 privat dan kunci enkripsi backup
 5. Pending onboarding data pada PRD

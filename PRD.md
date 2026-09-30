@@ -8,7 +8,7 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | --- | --- |
 | **Pemilik produk** | Agriby Chaniago |
 | **Status** | Draft / discovery |
-| **Versi dokumen** | 0.17 |
+| **Versi dokumen** | 0.18 |
 | **Terakhir diperbarui** | 30 September 2026 |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
@@ -63,7 +63,7 @@ One-time owner invitation melalui Supabase Dashboard adalah langkah bootstrap op
 - **LOCKED:** Tidak ada migrasi kode maupun data dari FinTrack lama
 - **LOCKED:** Laravel, Keycloak, FinLyzer, FinGoals, dan arsitektur microservice lama bukan requirement
 - **LOCKED:** Repository lama tidak menjadi sumber implementasi baru
-- **OPEN:** Penghapusan atau pengarsipan repository lama merupakan tindakan terpisah dan belum dilakukan
+- **LOCKED:** Repository lama dibiarkan apa adanya; penghapusan atau pengarsipannya bukan bagian proyek ini
 
 ## 🎯 Tujuan dan prinsip produk
 
@@ -284,18 +284,18 @@ Boundary automation setelah onboarding:
 
 Konfigurasi awal yang dibuat onboarding:
 
-- **PROPOSED:** Bootstrap identity tetap tidak membuat account, rule, category, atau setting; seluruh konfigurasi finansial awal dibuat oleh financial onboarding
-- **PROPOSED:** Onboarding draft menyimpan definisi account awal `Jago — Reserve`, `BCA — Monthly`, dan `DANA — Daily` beserta provider, purpose, dan currency `IDR`; display name dapat diubah selama draft
-- **PROPOSED:** Onboarding draft juga menyimpan konfigurasi rutinitas awal:
+- **LOCKED:** Bootstrap identity tetap tidak membuat account, rule, category, atau setting; seluruh konfigurasi finansial awal dibuat oleh financial onboarding
+- **LOCKED:** Onboarding draft menyimpan definisi account awal `Jago — Reserve`, `BCA — Monthly`, dan `DANA — Daily` beserta provider, purpose, dan currency `IDR`; display name dapat diubah selama draft
+- **LOCKED:** Onboarding draft juga menyimpan konfigurasi rutinitas awal:
   - Daily income rule untuk account Daily: amount default Rp50.000, effective start default hari setelah `cutover_at`, dengan opt-in `Income hari ini belum termasuk — mulai hari ini`
   - Monthly income rule untuk account Monthly: expected amount wajib diisi (saran awal Rp750.000 yang dapat diubah), `first_expected_cycle` default bulan berikutnya, dengan opt-in cycle berjalan bila income bulan ini belum diterima atau belum tercakup opening position
   - Nol atau lebih subscription: nama, expected day (saran tanggal 5), dan expected amount wajib; first cycle default bulan berikutnya dengan opt-in cycle berjalan per item
   - Satu bank-fee rule untuk account Monthly dengan expected day dan amount opsional; first cycle mengikuti aturan yang sama
   - `Saldo minimum ditahan` untuk account Monthly (wajib, lihat Monthly flow BCA)
-- **PROPOSED:** Aksi `Mulai FinTrack` membuat secara atomik: account awal, opening snapshot dan positions, external subjects/holdings, seluruh rule beserta initial state/revision, workflow settings (retained floor dan default special-expense source = account Reserve), serta seed category `Vape`. Seed `Vape` dibuat tepat sekali per owner
-- **PROPOSED:** Review sebelum konfirmasi menampilkan seluruh boundary dan opt-in yang dipilih, termasuk tanggal mulai daily income dan cycle BCA pertama untuk setiap rule
-- **PROPOSED:** Setelah onboarding, rule dan setting dikelola dari `Pengaturan` mengikuti aturan effective-dated masing-masing dan tidak membuka ulang onboarding
-- **PROPOSED:** Jika opt-in cycle berjalan hanya dipilih untuk obligation, tetapi tidak untuk monthly income karena income bulan ini sudah tercakup opening, cycle berjalan menjadi obligation-only cycle. Cycle ini tetap wajib resolved sebelum cycle berikutnya dapat ready, tetapi tidak pernah membuat automatic transfer target; setelah seluruh obligation resolved, state-nya `COMPLETE` dengan label `Tidak ada saran transfer otomatis`
+- **LOCKED:** Aksi `Mulai FinTrack` membuat secara atomik: account awal, opening snapshot dan positions, external subjects/holdings, seluruh rule beserta initial state/revision, workflow settings (retained floor dan default special-expense source = account Reserve), serta seed category `Vape`. Seed `Vape` dibuat tepat sekali per owner
+- **LOCKED:** Review sebelum konfirmasi menampilkan seluruh boundary dan opt-in yang dipilih, termasuk tanggal mulai daily income dan cycle BCA pertama untuk setiap rule
+- **LOCKED:** Setelah onboarding, rule dan setting dikelola dari `Pengaturan` mengikuti aturan effective-dated masing-masing dan tidak membuka ulang onboarding
+- **LOCKED:** Jika opt-in cycle berjalan hanya dipilih untuk obligation, tetapi tidak untuk monthly income karena income bulan ini sudah tercakup opening, cycle berjalan menjadi obligation-only cycle. Cycle ini tetap wajib resolved sebelum cycle berikutnya dapat ready, tetapi tidak pernah membuat automatic transfer target; setelah seluruh obligation resolved, state-nya `COMPLETE` dengan label `Tidak ada saran transfer otomatis`
 
 ## 🔄 Workflow inti
 
@@ -355,8 +355,8 @@ Recognized daily income
 - Sistem menghitung scheduled income, recognized income, living expense, average per day, dan available remainder
 - Income-eligible days dan settlement calendar days adalah dua nilai berbeda ketika rule pernah di-pause
 - Settlement yang diselesaikan menyimpan snapshot tanggal `ACTIVE`, overrides, dan recognized income agar perubahan rule berikutnya tidak mengubah hasil historis
-- **PROPOSED:** Snapshot settlement membekukan seluruh input formula agar as-settled view dapat direproduksi tanpa membaca ledger yang berubah: range dan settlement days, opening personal balance, recognized income per tanggal, other personal inflows, personal transfer components in/out, recorded non-living deductions, referensi closing balance confirmation, closing physical, external outstanding pada closing, closing personal, living expense, average per day, available remainder, prior outstanding, dan initial target amount
-- **PROPOSED:** Karena daily income tidak dimaterialisasi sebagai row harian, target koreksi resmi untuk override yang salah setelah settlement adalah komponen recognized income pada snapshot settlement untuk tanggal tersebut; `CORRECTION_POSTING` mereferensikan settlement dan business date itu
+- **LOCKED:** Snapshot settlement membekukan seluruh input formula agar as-settled view dapat direproduksi tanpa membaca ledger yang berubah: range dan settlement days, opening personal balance, recognized income per tanggal, other personal inflows, personal transfer components in/out, recorded non-living deductions, referensi closing balance confirmation, closing physical, external outstanding pada closing, closing personal, living expense, average per day, available remainder, prior outstanding, dan initial target amount
+- **LOCKED:** Karena daily income tidak dimaterialisasi sebagai row harian, target koreksi resmi untuk override yang salah setelah settlement adalah komponen recognized income pada snapshot settlement untuk tanggal tersebut; `CORRECTION_POSTING` mereferensikan settlement dan business date itu
 - Settlement yang selesai bersifat immutable dan tidak dapat dibuka kembali
 - Koreksi financial event/transfer yang sudah masuk settlement dibuat sebagai `CORRECTION_POSTING`; koreksi closing balance memakai replacement balance confirmation. Keduanya tidak menulis ulang snapshot settlement
 - **LOCKED:** Settlement menjadi `SETTLED` setelah closing physical balance, derived personal balance, dan hasil rekonstruksi dikonfirmasi; penyelesaian transfer tidak menjadi syarat settlement
@@ -386,7 +386,7 @@ Total operational suggestion tetap dibatasi oleh current personal DANA balance. 
 
 **LOCKED:** Jika remainder DANA lama sudah terpakai dan target tersebut tidak lagi realistis dipenuhi, pengguna dapat memilih aksi eksplisit `Tutup target` pada target DANA → Jago yang masih actionable:
 
-- Aksi hanya tersedia untuk target DANA actionable dengan remaining transferable amount > Rp0 dan memerlukan konfirmasi pengguna
+- Aksi tersedia untuk target DANA maupun BCA yang masih actionable dengan remaining transferable amount > Rp0 dan memerlukan konfirmasi pengguna; perilaku BCA dijelaskan pada Monthly flow BCA
 - FinTrack membuat superseding target version non-actionable dengan reason `LIQUIDITY_WRITE_OFF`; frozen amount dan basis versi sebelumnya tetap tersimpan untuk audit
 - Allocation dan actual transfer yang sudah terjadi tidak berubah; linked confirmed amount tetap tercatat pada logical target
 - Target yang ditutup tidak lagi masuk `Prior DANA outstanding at settlement` maupun operational transfer-now suggestion, sehingga target settlement berikutnya kembali dihitung dari closing personal balance
@@ -443,7 +443,7 @@ Ordinary living expense
 - closing personal balance
 ```
 
-**PROPOSED:** Himpunan komponen formula ditentukan berdasarkan klasifikasi, bukan daftar event kind:
+**LOCKED:** Himpunan komponen formula ditentukan berdasarkan klasifikasi, bukan daftar event kind:
 
 - `Other personal inflows` = seluruh confirmed personal inflow pada DANA dalam range selain recognized daily income, termasuk actual income lain dan external → personal ownership conversion (`Other/Gift income`)
 - `Recorded non-living deductions` = seluruh confirmed personal outflow pada DANA dalam range yang bukan ordinary living expense, yaitu special expense dan personal → external ownership outflow; recurring expense tidak dapat bersumber dari DANA
@@ -628,9 +628,9 @@ Tabel dievaluasi dari atas ke bawah; baris 5–8 hanya dicapai setelah tidak ada
 
 Jika total allocation melampaui target, cycle tetap `COMPLETE` dan UI menambahkan warning `EXCEEDS_SUGGESTION`. Target Rp0 disajikan sebagai “tidak ada transfer yang diperlukan”, bukan sebagai transfer Rp0.
 
-**PROPOSED:** Obligation-only cycle dari onboarding atau activation tidak pernah memasuki ready branch; setelah prior-cycle blocker tidak ada dan seluruh obligation resolved, cycle langsung `COMPLETE` dengan label `Tidak ada saran transfer otomatis`.
+**LOCKED:** Obligation-only cycle dari onboarding atau activation tidak pernah memasuki ready branch; setelah prior-cycle blocker tidak ada dan seluruh obligation resolved, cycle langsung `COMPLETE` dengan label `Tidak ada saran transfer otomatis`.
 
-**PROPOSED:** `Tutup target` juga tersedia untuk target BCA → Jago dengan aturan yang sama seperti DANA (reason `LIQUIDITY_WRITE_OFF`, final, tidak mengubah allocation). Jika effective target version cycle adalah non-actionable dengan reason tersebut, cycle bernilai `COMPLETE` dengan label `Target ditutup`; aturan ini dievaluasi sebelum baris 5–8 sehingga tidak menjadi invariant error.
+**LOCKED:** `Tutup target` juga tersedia untuk target BCA → Jago dengan aturan yang sama seperti DANA (reason `LIQUIDITY_WRITE_OFF`, final, tidak mengubah allocation). Jika effective target version cycle adalah non-actionable dengan reason tersebut, cycle bernilai `COMPLETE` dengan label `Target ditutup`; aturan ini dievaluasi sebelum baris 5–8 sehingga tidak menjadi invariant error.
 
 ```mermaid
 flowchart TB
@@ -964,7 +964,7 @@ Operational transfer-now suggestion
 
 Operational floor DANA adalah Rp0; BCA memakai current `retained_balance_floor`. Non-actionable target tidak masuk outstanding atau operational suggestion. Nilai “transfer sekarang” boleh berubah mengikuti current liquidity tanpa menulis ulang historical target. Jika correction mengubah target lama yang menjadi basis target setelahnya, FinTrack membuat superseding target versions secara kronologis untuk seluruh affected chain dalam correction flow yang atomik; jika chain gagal direkalkulasi, seluruh correction dibatalkan. Tidak ada partial atau silent update.
 
-**PROPOSED:** Recalculation chain didefinisikan sebagai berikut:
+**LOCKED:** Recalculation chain didefinisikan sebagai berikut:
 
 - **Lingkup:** seluruh logical target pada route yang sama (source dan destination account) yang context-nya sama dengan atau lebih akhir dari target yang basis-nya berubah. Urutan context DANA memakai `end_date` settlement; BCA memakai `cycle_key`
 - **Pemicu:** replacement closing balance confirmation DANA, correction yang mengubah input basis target yang sudah dibekukan, dan explicit recalculation BCA. `Tutup target` tidak memicu chain; penutupan hanya memengaruhi target yang dibuat setelahnya
@@ -1039,7 +1039,7 @@ Cadence reconciliation:
 - DANA dikonfirmasi melalui weekly settlement
 - Jago dan BCA mendapat satu soft reconciliation prompt bulanan setelah seluruh occurrence BCA cycle resolved dan transfer context selesai (`target = Rp0`, income `NOT_RECEIVED`, atau target fulfilled)
 - Jika target masih incomplete ketika cycle bulan berikutnya dibuka, prompt bulan sebelumnya tetap menjadi due tanpa menutup atau mengubah transfer target
-- **PROPOSED:** Jika tidak ada BCA cycle aktif pada suatu calendar month, misalnya setelah `last_expected_cycle`, Jago dan BCA tetap mendapat soft reconciliation prompt pada hari terakhir calendar month tersebut
+- **LOCKED:** Jika tidak ada BCA cycle aktif pada suatu calendar month, misalnya setelah `last_expected_cycle`, Jago dan BCA tetap mendapat soft reconciliation prompt pada hari terakhir calendar month tersebut
 - Prompt tidak memblokir penggunaan aplikasi dan pengguna tetap dapat mengonfirmasi account kapan saja
 
 Istilah `personal cash` digunakan pada MVP. Istilah `net worth` dapat digunakan kemudian ketika investment, asset, dan liability sudah dimodelkan dengan benar.
@@ -1224,8 +1224,8 @@ Financial onboarding hanya tersedia setelah private auth bootstrap selesai dan `
 1. Pilih shared `cutover_at`, default sekarang
 2. Masukkan physical balance Jago, BCA, dan DANA yang terlihat pada provider
 3. Aktifkan external toggle hanya pada account yang memerlukannya, lalu isi subject dan amount
-4. Pilih `Saldo minimum ditahan` BCA secara eksplisit; Rp0 valid, tetapi field tidak boleh kosong. **PROPOSED:** Langkah ini menjadi bagian `Rutinitas awal` yang juga memuat daily income, monthly income, subscription, dan biaya bank beserta opt-in boundary masing-masing
-5. Review physical, external, signed personal balance, total personal cash, shortfall, retained floor, dan (**PROPOSED**) seluruh rule serta tanggal mulainya
+4. Pilih `Saldo minimum ditahan` BCA secara eksplisit; Rp0 valid, tetapi field tidak boleh kosong. Langkah ini menjadi bagian `Rutinitas awal` yang juga memuat daily income, monthly income, subscription, dan biaya bank beserta opt-in boundary masing-masing
+5. Review physical, external, signed personal balance, total personal cash, shortfall, retained floor, serta seluruh rule beserta tanggal mulainya
 6. Konfirmasi seluruh opening snapshot dengan satu aksi `Mulai FinTrack`
 
 Input amount memakai numeric keyboard dan formatting rupiah saat mengetik, tetapi tidak membulatkan nilai provider. External section collapsed secara default dan mendukung tambah subject tanpa menjadikan form utama panjang. Confirmation button dapat sticky pada layar kecil.
@@ -1266,9 +1266,9 @@ Pembagian action:
 | Surface | Action |
 | --- | --- |
 | **Global `+ Catat`** | Pengeluaran khusus; actual transfer; update/konfirmasi saldo; dana external |
-| **`Perlu dilakukan` / Rutinitas** | Weekly/catch-up settlement, konfirmasi income atau kewajiban BCA, `NOT_RECEIVED`, `NOT_CHARGED`, daily-income exception, dan `Tutup target` untuk target DANA yang tidak lagi dapat dipenuhi |
+| **`Perlu dilakukan` / Rutinitas** | Weekly/catch-up settlement, konfirmasi income atau kewajiban BCA, `NOT_RECEIVED`, `NOT_CHARGED`, daily-income exception, dan `Tutup target` untuk target DANA/BCA yang tidak lagi dapat dipenuhi |
 | **Detail Aktivitas** | Correction terhadap record yang dipilih |
-| **Detail Akun** | Reconciliation, ownership-aware balance review, dan **PROPOSED** `Catat income/expense lain` untuk actual income atau ordinary expense di luar occurrence dan special expense; flow reconciliation memakai form yang sama untuk missing event |
+| **Detail Akun** | Reconciliation, ownership-aware balance review, dan `Catat income/expense lain` untuk actual income atau ordinary expense di luar occurrence dan special expense; flow reconciliation memakai form yang sama untuk missing event |
 | **Pengaturan rule** | Pause/resume daily income dan konfigurasi recurring rules |
 | **Detail external subject** | Return, move, owner-use, dan ownership conversion |
 
@@ -1607,7 +1607,7 @@ verified claims
       ↓
 withOwnerDb()
       ↓
-transaction-local claims + role authenticated
+transaction-local claims sebagai role fintrack_app
       ↓
 requireOwner(tx) → AuthPrincipal
       ↓
@@ -1625,7 +1625,7 @@ PostgreSQL RLS
 - Application query tetap memakai explicit `owner_id` predicate; RLS menjadi lapisan tambahan, bukan pengganti authorization
 - Admin connection hanya digunakan oleh migration, one-time bootstrap, dan explicit recovery
 
-**PROPOSED:** Database roles dan schema:
+**LOCKED:** Database roles dan schema:
 
 | Role | Dipakai oleh | Hak |
 | --- | --- | --- |
@@ -1635,7 +1635,7 @@ PostgreSQL RLS
 | `fintrack_backup` | Workflow backup harian | LOGIN, read-only, dan dapat membaca seluruh data untuk logical dump; kebutuhan `BYPASSRLS` serta kemampuan membuat role tersebut di Supabase harus dibuktikan saat spike |
 
 - Financial tables berada pada schema `fintrack` yang tidak diekspos Supabase Data API dan tidak memberi grant apa pun kepada `anon` maupun `authenticated`. Dengan demikian browser yang memegang session JWT tetap tidak dapat membaca financial tables melalui Data API
-- Runtime tidak melakukan `SET ROLE authenticated`; `withOwnerDb()` terhubung sebagai `fintrack_app` lalu memasang verified claims secara transaction-local. Usulan ini menggantikan frasa `role authenticated` pada diagram di atas setelah disetujui
+- Runtime tidak melakukan `SET ROLE authenticated`; `withOwnerDb()` terhubung sebagai `fintrack_app` lalu memasang verified claims secara transaction-local
 - Relasi `ops.keepalive_probe` berisi satu row nonfinansial statis dan menjadi satu-satunya target query keepalive
 - Migration membuat role tanpa password (`NOLOGIN`); pengaktifan LOGIN beserta password per environment dilakukan oleh provisioning step terpisah dari secret environment, sehingga credential tidak pernah masuk Git
 - Connection string runtime, probe, dan backup berbeda serta tersimpan hanya pada environment yang membutuhkannya
@@ -1821,8 +1821,8 @@ Ketentuan:
 - Initial active accounts berbagi onboarding `cutover_at`
 - Account yang ditambahkan kemudian memiliki `activation_cutover_at` sendiri
 - History dengan waktu `<= activation_cutover_at` dianggap telah terkandung dalam opening position account tersebut
-- **PROPOSED:** Account menyimpan klasifikasi eksplisit `is_cash_account`; hanya active cash account yang masuk personal cash, dashboard cash cards, dan pilihan source special expense. Seluruh account MVP adalah cash account
-- **PROPOSED:** Account hanya dapat diarsipkan ketika calculated physical balance dan external outstanding-nya Rp0, tidak menjadi source/destination rule yang masih aktif, dan tidak memiliki settlement, occurrence, atau transfer target yang belum selesai. Jika syarat belum terpenuhi, FinTrack menolak arsip dan menjelaskan langkah yang diperlukan
+- **LOCKED:** Account menyimpan klasifikasi eksplisit `is_cash_account`; hanya active cash account yang masuk personal cash, dashboard cash cards, dan pilihan source special expense. Seluruh account MVP adalah cash account
+- **LOCKED:** Account hanya dapat diarsipkan ketika calculated physical balance dan external outstanding-nya Rp0, tidak menjadi source/destination rule yang masih aktif, dan tidak memiliki settlement, occurrence, atau transfer target yang belum selesai. Jika syarat belum terpenuhi, FinTrack menolak arsip dan menjelaskan langkah yang diperlukan
 
 ### Financial event rules
 
@@ -1945,10 +1945,11 @@ Baseline teknis:
 - Expected day-of-month 29–31 menggunakan last-day fallback pada bulan yang lebih pendek, lalu kembali ke configured day pada bulan berikutnya
 - Actual charged date boleh berada pada calendar month berbeda tanpa mengubah occurrence `cycle_key` yang dipilih
 - Settlement range wajib contiguous tanpa overlap/gap; default Senin–Minggu, dengan partial/nonstandard range hanya untuk onboarding atau catch-up
-- **PROPOSED:** Urutan kanonik ledger adalah `(effective_business_date, recorded_at, id)`; seluruh perhitungan saldo, timeline, dan audit memakai urutan yang sama
-- **PROPOSED:** Balance confirmation dan `cutover_at` adalah timestamp, sedangkan financial event memakai business date. Event dengan business date D termasuk dalam posisi as-of timestamp T jika D lebih awal dari tanggal lokal T, atau D sama dengan tanggal lokal T dan event tercatat (`recorded_at`) tidak lebih lambat dari record yang memuat T
-- **PROPOSED:** Event baru dengan business date sebelum tanggal lokal cutover account ditolak. Event bertanggal sama dengan hari cutover yang dicatat setelah onboarding dikonfirmasi dianggap terjadi setelah cutover
-- **PROPOSED:** `cycle_key` berformat `YYYY-MM` dan dipakai bersama oleh monthly income occurrence dan recurring expense occurrence. Monthly cycle adalah grouping turunan per owner, account monthly, dan `cycle_key`, bukan entity yang dipersist
+- **LOCKED:** Urutan kanonik ledger adalah `(effective_business_date, recorded_at, id)`; seluruh perhitungan saldo, timeline, dan audit memakai urutan yang sama
+- **LOCKED:** Balance confirmation dan `cutover_at` adalah timestamp, sedangkan financial event memakai business date. Event dengan business date D termasuk dalam posisi as-of timestamp T jika D lebih awal dari tanggal lokal T, atau D sama dengan tanggal lokal T dan event tercatat (`recorded_at`) tidak lebih lambat dari record yang memuat T
+- **LOCKED:** Event baru dengan business date sebelum tanggal lokal cutover account ditolak
+- **LOCKED:** Untuk special expense, transfer, external movement, dan `Catat income/expense lain` yang dicatat setelah onboarding dengan business date sama dengan tanggal lokal cutover (atau `activation_cutover_at` account), form menanyakan `Sudah termasuk saldo awal?`. Jawaban `Ya` membatalkan pencatatan karena kejadian tersebut sudah terkandung dalam opening position; jawaban `Tidak` membukukannya sebagai kejadian setelah cutover. Daily income dan occurrence tidak memakai pertanyaan ini karena boundary-nya sudah dipilih saat onboarding
+- **LOCKED:** `cycle_key` berformat `YYYY-MM` dan dipakai bersama oleh monthly income occurrence dan recurring expense occurrence. Monthly cycle adalah grouping turunan per owner, account monthly, dan `cycle_key`, bukan entity yang dipersist
 
 ## 📦 Scope MVP dan acceptance
 
@@ -1988,7 +1989,7 @@ Baseline teknis:
 - Automatic oldest-first transfer allocation across outstanding targets
 - Confirmed personal transfer components BCA/DANA → Jago
 - Multiple linked transfers dan derived fulfillment progress
-- Explicit `Tutup target` untuk target DANA yang tidak lagi dapat dipenuhi
+- Explicit `Tutup target` untuk target DANA dan BCA yang tidak lagi dapat dipenuhi
 - Special expense dari actual active cash account dengan Jago sebagai default
 - Reusable special-expense categories dengan seeded `Vape` dan inline `Lainnya…`
 - Calendar-month `CALENDAR_DAY_PRORATA_V1` allocation untuk cross-month living expense
@@ -2303,7 +2304,7 @@ Jalur pengecualian juga wajib diuji:
 - Reconciliation BCA membandingkan confirmed physical dengan calculated physical, lalu menurunkan personal menggunakan external outstanding pada timestamp yang sama
 - Closing balance DANA merekonstruksi ordinary living expense dan tidak otomatis membuat adjustment
 - Target DANA yang tidak dipenuhi dan remainder-nya sudah terpakai membuat target berikutnya berkurang serta memunculkan liquidity warning; setelah `Tutup target`, target tersebut keluar dari prior outstanding dan settlement berikutnya kembali memakai closing personal balance penuh tanpa mengubah allocation atau actual transfer lama
-- `Tutup target` ditolak untuk target yang sudah non-actionable, target BCA, atau target dengan remaining transferable amount Rp0
+- `Tutup target` ditolak untuk target yang sudah non-actionable atau target dengan remaining transferable amount Rp0; target BCA yang ditutup membuat cycle `COMPLETE` berlabel `Target ditutup`
 - Onboarding tanpa `Saldo minimum ditahan` BCA dapat disimpan sebagai draft tetapi tidak dapat dikonfirmasi; Rp0 diterima sebagai nilai eksplisit
 - Recurring expense rule dengan source DANA ditolak; pembayaran kewajiban yang benar-benar terjadi dari DANA dicatat sebagai special expense DANA dan occurrence terkait diselesaikan `NOT_CHARGED`
 - Recurring expense atau monthly income rule baru dengan first cycle di masa lalu ditolak; rule tanpa opt-in dimulai cycle bulan berikutnya dan tidak pernah membuat backfill occurrence
@@ -2432,7 +2433,7 @@ Jalur pengecualian juga wajib diuji:
 - Akun tambahan dapat dibuat tanpa mengubah source code
 - Subscription atau recurring expense instance baru dapat ditambahkan tanpa mengubah schema
 - Semua aksi utama dapat digunakan pada layar ponsel
-- Target DANA hanya dapat ditutup melalui aksi eksplisit `Tutup target` yang membuat superseding non-actionable version dengan reason `LIQUIDITY_WRITE_OFF`; FinTrack tidak pernah menutup target otomatis
+- Target DANA dan BCA hanya dapat ditutup melalui aksi eksplisit `Tutup target` yang membuat superseding non-actionable version dengan reason `LIQUIDITY_WRITE_OFF`; FinTrack tidak pernah menutup target otomatis
 - Onboarding tidak dapat dikonfirmasi tanpa `Saldo minimum ditahan` BCA yang dipilih eksplisit
 - Subscription dan biaya bank tidak dapat memakai DANA sebagai source account
 - Recurring expense dan monthly income rule baru tidak dapat dimulai pada cycle yang sudah lewat dan tidak membuat backfill occurrence
@@ -2450,10 +2451,9 @@ Jalur pengecualian juga wajib diuji:
 
 | Prioritas | Topik | Keputusan yang dibutuhkan |
 | ---: | --- | --- |
-| **1** | Review PROPOSED v0.17 | Setujui, ubah, atau tolak setiap item berlabel **PROPOSED**: konfigurasi awal onboarding, obligation-only cycle, `Tutup target` untuk BCA, recalculation chain, database roles/schema, entry point income/expense lain, klasifikasi cash account, syarat arsip account, fallback reconciliation prompt, dan aturan waktu/snapshot |
-| **2** | Spike platform | Buktikan `fintrack_app` melalui Supabase pooler, transaction-local claims, dan kebutuhan role backup pada environment Supabase yang sebenarnya (audit HB-1) |
+| **1** | Production environment | Project Supabase production, environment variables Vercel per environment, custom SMTP, bucket R2, dan MFA pada seluruh akun |
 
-Rincian temuan berada di `docs/audit/2026-09-30-readiness.md`. Keputusan pemilik OD-1 sampai OD-6 telah diterapkan pada v0.16. Versi 0.17 menambahkan usulan resolusi untuk HB-2, HB-4, HB-5, serta MC-1 sampai MC-5, MC-8 sampai MC-11, dan MC-14 dengan label **PROPOSED**. Detail teknis MC-6, MC-7, MC-12, dan MC-13 berada di `docs/implementation-plan.md`.
+Seluruh temuan audit readiness (`docs/audit/2026-09-30-readiness.md`) telah diputuskan: OD-1 sampai OD-6 pada v0.16 dan resolusi HB/MC pada v0.18. Hasil spike platform tercatat di `docs/implementation-plan.md`.
 
 ### Pending onboarding data
 
@@ -2467,10 +2467,7 @@ Hal berikut adalah data aktual yang nanti perlu diberikan pengguna, bukan keputu
 
 ### Open questions
 
-- **OPEN:** Target BCA → Jago memiliki carry-over yang sama dengan DANA melalui `prior_outstanding_at_readiness`. Usulan resolusi: **PROPOSED** `Tutup target` untuk BCA pada Monthly flow BCA
-- **OPEN:** Entry point untuk actual income/expense biasa di luar occurrence dan di luar special expense belum ada. Usulan resolusi: **PROPOSED** `Catat income/expense lain` pada Detail Akun tanpa mengubah isi `+ Catat` yang LOCKED
-
-Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti URL production, project ID, secret, dan saldo opening diisi saat setup/onboarding.
+Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, project ID, secret, dan saldo opening diisi saat setup/onboarding.
 
 ### Keputusan yang telah diganti
 
@@ -2498,13 +2495,15 @@ Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti 
 | Target DANA yang tidak terpenuhi hanya mendapat liquidity warning | Liquidity warning tetap ada, ditambah aksi eksplisit `Tutup target` dengan reason `LIQUIDITY_WRITE_OFF` |
 | Retained floor dipilih ketika BCA remainder suggestion diaktifkan | Retained floor wajib dipilih saat financial onboarding |
 | Keepalive satu kali setiap tiga hari UTC | Keepalive harian pukul 02:17 UTC |
+| Runtime memasang `role authenticated` pada transaction | Runtime terhubung sebagai `fintrack_app`; financial tables berada pada schema `fintrack` yang tidak diekspos Data API |
+| `Tutup target` hanya untuk DANA | `Tutup target` berlaku untuk DANA dan BCA |
 
 ### Decision log
 
 | Status | Keputusan |
 | --- | --- |
 | **LOCKED** | FinTrack adalah low-input personal cashflow tracker |
-| **LOCKED** | Greenfield repository tanpa migrasi kode/data lama |
+| **LOCKED** | Greenfield repository tanpa migrasi kode/data lama; repository lama dibiarkan apa adanya |
 | **LOCKED** | Website dahulu, mobile kemudian |
 | **LOCKED** | Single user dengan private authentication |
 | **LOCKED** | Login MVP memakai verified email + password dengan persistent multi-device session |
@@ -2629,16 +2628,17 @@ Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti 
 | **LOCKED** | Recurring expense rule dan actual occurrence source tidak boleh memakai account yang direkonsiliasi melalui weekly settlement (DANA); pembayaran aktual dari DANA dicatat sebagai special expense DANA dengan occurrence `NOT_CHARGED` |
 | **LOCKED** | Recurring expense dan monthly income rule baru tidak boleh memiliki first cycle di masa lalu dan tidak membuat backfill occurrence |
 | **LOCKED** | Living expense negatif tidak memblokir settlement, tidak di-clamp, dan menampilkan warning `Ada pemasukan yang belum tercatat` |
-| **PROPOSED** | Financial onboarding membuat account awal, rule rutinitas awal, workflow settings, dan seed `Vape` secara atomik; bootstrap identity tidak membuat konfigurasi finansial |
-| **PROPOSED** | Obligation-only cycle pada bulan onboarding/activation wajib resolved tetapi tidak pernah membuat automatic transfer target |
-| **PROPOSED** | `Tutup target` juga berlaku untuk target BCA dan menghasilkan cycle `COMPLETE` berlabel `Target ditutup` |
-| **PROPOSED** | Recalculation chain transfer target berjalan kronologis per route, tidak pernah mengubah allocation, dan tidak dipicu oleh `Tutup target` |
-| **PROPOSED** | Financial tables berada pada schema `fintrack` yang tidak diekspos Data API; runtime memakai role `fintrack_app`, keepalive memakai `fintrack_probe`, dan backup memakai `fintrack_backup` |
-| **PROPOSED** | Actual income/ordinary expense di luar occurrence dicatat melalui `Catat income/expense lain` pada Detail Akun |
-| **PROPOSED** | Account memiliki klasifikasi `is_cash_account` dan hanya dapat diarsipkan ketika saldo, external outstanding, serta workflow terkait sudah selesai |
-| **PROPOSED** | Jago/BCA tetap mendapat reconciliation prompt akhir bulan ketika tidak ada BCA cycle aktif |
-| **PROPOSED** | Urutan ledger `(effective_business_date, recorded_at, id)`, aturan inklusi date-only event terhadap timestamp, penolakan event sebelum cutover, dan `cycle_key` `YYYY-MM` bersama |
-| **PROPOSED** | Snapshot settlement membekukan seluruh input formula, dan komponen formula DANA ditentukan berdasarkan klasifikasi |
+| **LOCKED** | Financial onboarding membuat account awal, rule rutinitas awal, workflow settings, dan seed `Vape` secara atomik; bootstrap identity tidak membuat konfigurasi finansial |
+| **LOCKED** | Obligation-only cycle pada bulan onboarding/activation wajib resolved tetapi tidak pernah membuat automatic transfer target |
+| **LOCKED** | `Tutup target` juga berlaku untuk target BCA dan menghasilkan cycle `COMPLETE` berlabel `Target ditutup` |
+| **LOCKED** | Recalculation chain transfer target berjalan kronologis per route, tidak pernah mengubah allocation, dan tidak dipicu oleh `Tutup target` |
+| **LOCKED** | Financial tables berada pada schema `fintrack` yang tidak diekspos Data API; runtime memakai role `fintrack_app`, keepalive memakai `fintrack_probe`, dan backup memakai `fintrack_backup` |
+| **LOCKED** | Actual income/ordinary expense di luar occurrence dicatat melalui `Catat income/expense lain` pada Detail Akun |
+| **LOCKED** | Account memiliki klasifikasi `is_cash_account` dan hanya dapat diarsipkan ketika saldo, external outstanding, serta workflow terkait sudah selesai |
+| **LOCKED** | Jago/BCA tetap mendapat reconciliation prompt akhir bulan ketika tidak ada BCA cycle aktif |
+| **LOCKED** | Urutan ledger `(effective_business_date, recorded_at, id)`, aturan inklusi date-only event terhadap timestamp, penolakan event sebelum cutover, dan `cycle_key` `YYYY-MM` bersama |
+| **LOCKED** | Event manual bertanggal sama dengan hari cutover yang dicatat setelah onboarding selalu menanyakan `Sudah termasuk saldo awal?`; `Ya` membatalkan pencatatan dan `Tidak` membukukannya setelah cutover |
+| **LOCKED** | Snapshot settlement membekukan seluruh input formula, dan komponen formula DANA ditentukan berdasarkan klasifikasi |
 | **LOCKED** | Daily encrypted logical backup disimpan pada private R2 di luar Supabase dengan 30 daily dan 12 monthly retention, failure notification, serta restore drill |
 | **LOCKED** | Full owner-initiated JSON+CSV ZIP export dengan manifest dan consistent snapshot termasuk MVP; automatic import ditunda |
 | **LOCKED** | Website MVP installable tetapi online-only tanpa service worker, offline financial cache, background sync, atau push notification |
@@ -2655,4 +2655,4 @@ Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti 
 
 ---
 
-_FinTrack PRD v0.17 · Draft discovery · Slice 0 implementation in progress_
+_FinTrack PRD v0.18 · Draft discovery · Slice 0–1 implemented; Slice 2 next_
