@@ -63,11 +63,18 @@ export function asOwner<T>(runtime: RuntimeDb, userId: string, work: (tx: OwnerT
 export type ConfirmedOwner = ConfirmationSummary & { ownerId: string; dosenHoldingId: string };
 
 /** Clears all owner data, binds `userId`, and confirms the fixture onboarding. */
-export async function resetWithConfirmedFixture(clients: TestClients, userId: string, cutoverAt: string): Promise<ConfirmedOwner> {
+export async function resetWithConfirmedFixture(
+  clients: TestClients,
+  userId: string,
+  cutoverAt: string,
+  adjust: (draft: OnboardingDraft) => void = () => {},
+): Promise<ConfirmedOwner> {
   await clients.admin`truncate fintrack.app_owner cascade`;
   await bindOwner(clients.admin, userId);
+  const draft = fixtureDraft(cutoverAt);
+  adjust(draft);
   const summary = await asOwner(clients.runtime, userId, async (tx, principal) => {
-    await saveOnboardingDraft(tx, principal.ownerId, fixtureDraft(cutoverAt), 0);
+    await saveOnboardingDraft(tx, principal.ownerId, draft, 0);
     return { ...(await confirmOnboarding(tx, principal.ownerId, 1, new Date())), ownerId: principal.ownerId };
   });
   const [holding] = await clients.admin<{ id: string }[]>`

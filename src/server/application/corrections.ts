@@ -1,7 +1,7 @@
 // Corrections of confirmed records (PRD: Correction dan reconciliation). Open
 // periods use a linked reversal and replacement (or a reversal-only void);
 // settled history uses CORRECTION_POSTING through the settlement flow.
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { parseIdrDecimal } from "@/lib/money";
@@ -35,7 +35,16 @@ export const correctionSchema = z.discriminatedUnion("action", [
 ]);
 export type CorrectionInput = z.infer<typeof correctionSchema>;
 
-const correctableClasses = new Set<EventClass>(["SPECIAL_EXPENSE", "OTHER_INCOME", "OTHER_EXPENSE", "EXTERNAL_MOVEMENT", "PERSONAL_TRANSFER"]);
+const correctableClasses = new Set<EventClass>([
+  "SPECIAL_EXPENSE",
+  "OTHER_INCOME",
+  "OTHER_EXPENSE",
+  "EXTERNAL_MOVEMENT",
+  "PERSONAL_TRANSFER",
+  "MONTHLY_INCOME",
+  "RECURRING_EXPENSE",
+]);
+const occurrenceClasses = new Set<EventClass>(["MONTHLY_INCOME", "RECURRING_EXPENSE"]);
 
 export type LoadedEntry = typeof ledgerEntry.$inferSelect & { legs: (typeof ledgerLeg.$inferSelect)[] };
 
@@ -112,6 +121,16 @@ async function replacementFor(
       }
       return { draft: otherEventDraft(entry.kind as "INCOME" | "EXPENSE", accountId, amount, input.businessDate), categoryId: null };
     }
+    case "MONTHLY_INCOME":
+    case "RECURRING_EXPENSE": {
+      // Value correction of a confirmed occurrence keeps its account and resolution link.
+      const direction = entry.kind as "INCOME" | "EXPENSE";
+      const draft = otherEventDraft(direction, originalAccount, amount, input.businessDate);
+      return {
+        draft: { ...draft, eventClass: entry.eventClass as EventClass, sourceType: entry.sourceType, sourceId: entry.sourceId },
+        categoryId: null,
+      };
+    }
     case "EXTERNAL_MOVEMENT": {
       // Subject, subtype, and accounts stay; amount, date, and note may change.
       const type = entry.movementType as MovementType;
@@ -138,12 +157,29 @@ export async function correctEntry(
   entryId: string,
   input: CorrectionInput,
   now: Date,
+  options: { allowOccurrenceVoid?: boolean } = {},
 ): Promise<CorrectionResult> {
   const entry = await loadEntry(tx, ownerId, entryId);
   await assertCurrentRecord(tx, ownerId, entry);
   if (!correctableClasses.has(entry.eventClass as EventClass)) {
     throw new ApiError("VALIDATION_FAILED", { issues: ["USE_DEDICATED_CORRECTION_FLOW"] });
   }
+  // Event → no-event for occurrences goes through a superseding resolution (PRD).
+  if (input.action === "VOID" && occurrenceClasses.has(entry.eventClass as EventClass) && !options.allowOccurrenceVoid) {
+    throw new ApiError("VALIDATION_FAILED", { issues: ["USE_OCCURRENCE_RESOLUTION"] });
+  }
+  const result = await correctEntryInner(tx, ownerId, entry, input, now);
+  // Corrections on a monthly account can change frozen BCA target bases.
+  const { recalculateBcaChain } = await import("./monthly");
+  const monthlyAccounts = await tx.execute<{ account_id: string }>(sql`
+    select distinct account_id from fintrack.monthly_income_rule where owner_id = ${ownerId}`);
+  for (const { account_id } of monthlyAccounts) {
+    if (entry.legs.some((leg) => leg.accountId === account_id)) await recalculateBcaChain(tx, ownerId, account_id);
+  }
+  return result;
+}
+
+async function correctEntryInner(tx: OwnerTx, ownerId: string, entry: LoadedEntry, input: CorrectionInput, now: Date): Promise<CorrectionResult> {
 
   if (entry.eventClass === "PERSONAL_TRANSFER") return correctTransfer(tx, ownerId, entry, input, now);
 

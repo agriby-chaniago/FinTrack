@@ -64,6 +64,20 @@
       "when": 1790755168095,
       "tag": "0008_daily_income_and_settlement",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790755832365,
+      "tag": "0009_monthly_cycles",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790756140209,
+      "tag": "0010_revision_supersession_deferrable",
+      "breakpoints": true
     }
   ]
 }
