@@ -1,6 +1,6 @@
 # Enable FINTRACK_KEEPALIVE_ENABLED only after the production probe route exists.
 # The route must perform a real read-only database query and return HTTP 204.
-# The workflow checks daily, but the database is queried only every third UTC day.
+# The workflow queries the database once per day at 02:17 UTC.
 name: Supabase production keepalive
 
 on:
@@ -23,16 +23,6 @@ jobs:
           FINTRACK_KEEPALIVE_TOKEN: ${{ secrets.FINTRACK_KEEPALIVE_TOKEN }}
         run: |
           set -euo pipefail
-
-          # A day-of-month */3 cron expression resets at month boundaries.
-          # A UTC-day gate preserves a three-day cadence; manual runs bypass it.
-          if [[ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ]]; then
-            utc_day=$(( $(date -u +%s) / 86400 ))
-            if (( utc_day % 3 != 0 )); then
-              echo "No keepalive due today; skipping the database request"
-              exit 0
-            fi
-          fi
 
           if [[ -z "${FINTRACK_KEEPALIVE_URL}" || -z "${FINTRACK_KEEPALIVE_TOKEN}" ]]; then
             echo "::error::Keepalive URL or token is missing"
