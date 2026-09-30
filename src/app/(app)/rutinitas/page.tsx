@@ -29,7 +29,7 @@ function targetContext(target: TargetView): string {
 export default async function RutinitasPage() {
   const now = new Date();
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
-    // Cycles may freeze a due target; the rest only reads and is pipelined.
+    // Cycles may create a new month's occurrences; the rest only reads.
     const cycles = await listMonthlyCycles(tx, ownerId, now);
     const [targets, router, history, daily] = await Promise.all([
       listTargets(tx, ownerId),

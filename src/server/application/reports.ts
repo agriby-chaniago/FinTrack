@@ -238,8 +238,9 @@ async function danaCard(tx: OwnerTx, ownerId: string, router: Awaited<ReturnType
 /** Everything Beranda shows, in the locked reading order (PRD: Dashboard hierarchy). */
 export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
   const today = businessDateOf(now);
-  // Cycles first: loading them may freeze a due BCA target. Everything else only reads,
-  // so it is issued together and pipelined on the transaction's connection.
+  // Cycles first (they may create the occurrences of a new month); the rest only reads.
+  // The Supabase transaction pooler runs a transaction's queries one at a time,
+  // so the round-trip count, not concurrency, is what the budget test guards.
   const cycles = await listMonthlyCycles(tx, ownerId, now);
   const [overview, { router, dana }, targets, month, externalSubjects] = await Promise.all([
     accountsOverview(tx, ownerId, now, { cycles }),

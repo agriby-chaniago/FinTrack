@@ -46,39 +46,42 @@ async function monthlyRoute(tx: OwnerTx, ownerId: string, accountId: string): Pr
   return { sourceAccountId: accountId, destinationAccountId: await reserveAccountId(tx, ownerId) };
 }
 
-/** Creates missing occurrences for every rule through the current cycle (idempotent, no cron). */
+/**
+ * Creates missing occurrences for every rule through the current cycle
+ * (idempotent, no cron). Occurrences are created contiguously, so one query
+ * shows which rules are behind; on most page loads none are and nothing is written.
+ */
 export async function syncMonthlyOccurrences(tx: OwnerTx, ownerId: string, now: Date): Promise<void> {
   const current = cycleKeyOf(businessDateOf(now));
-  // Occurrences are created contiguously, so a rule whose latest occurrence is
-  // already its last due cycle needs no work (the common case on every page load).
-  const latest = new Map(
-    (
-      await tx.execute<{ rule_id: string; last: string }>(sql`
-        select rule_id, max(cycle_key) as last from fintrack.monthly_income_occurrence where owner_id = ${ownerId} group by rule_id
-        union all
-        select rule_id, max(cycle_key) from fintrack.recurring_expense_occurrence where owner_id = ${ownerId} group by rule_id`)
-    ).map((row) => [row.rule_id, row.last]),
-  );
-  const upToDate = (ruleId: string, last: string) => (latest.get(ruleId) ?? "") >= last;
-  for (const rule of await tx.select().from(monthlyIncomeRule).where(eq(monthlyIncomeRule.ownerId, ownerId))) {
-    const last = rule.lastExpectedCycle && rule.lastExpectedCycle < current ? rule.lastExpectedCycle : current;
-    const cycles = rule.firstExpectedCycle <= last && !upToDate(rule.id, last) ? cyclesBetween(rule.firstExpectedCycle, last) : [];
-    if (cycles.length > 0) {
+  const rules = await tx.execute<{ kind: "INCOME" | "EXPENSE"; id: string; first: string; last: string | null; amount: string | null; latest: string | null }>(sql`
+    select 'INCOME' as kind, r.id, r.first_expected_cycle as first, r.last_expected_cycle as last,
+           r.expected_amount_minor::text as amount, max(o.cycle_key) as latest
+    from fintrack.monthly_income_rule r
+    left join fintrack.monthly_income_occurrence o on o.rule_id = r.id
+    where r.owner_id = ${ownerId} group by r.id
+    union all
+    select 'EXPENSE', r.id, r.first_cycle, r.last_cycle, null, max(o.cycle_key)
+    from fintrack.recurring_expense_rule r
+    left join fintrack.recurring_expense_occurrence o on o.rule_id = r.id
+    where r.owner_id = ${ownerId} group by r.id`);
+
+  for (const rule of rules) {
+    const last = rule.last && rule.last < current ? rule.last : current;
+    if (rule.first > last || (rule.latest ?? "") >= last) continue;
+    const cycles = cyclesBetween(rule.first, last);
+    if (rule.kind === "INCOME") {
       await tx
         .insert(monthlyIncomeOccurrence)
-        .values(cycles.map((cycleKey) => ({ ownerId, ruleId: rule.id, cycleKey, expectedAmountMinor: rule.expectedAmountMinor })))
+        .values(cycles.map((cycleKey) => ({ ownerId, ruleId: rule.id, cycleKey, expectedAmountMinor: BigInt(rule.amount!) })))
         .onConflictDoNothing();
+      continue;
     }
-  }
-  for (const rule of await tx.select().from(recurringExpenseRule).where(eq(recurringExpenseRule.ownerId, ownerId))) {
-    const last = rule.lastCycle && rule.lastCycle < current ? rule.lastCycle : current;
-    if (rule.firstCycle > last || upToDate(rule.id, last)) continue;
     const revisions = await tx
       .select()
       .from(recurringExpenseRuleRevision)
       .where(and(eq(recurringExpenseRuleRevision.ownerId, ownerId), eq(recurringExpenseRuleRevision.ruleId, rule.id), isNull(recurringExpenseRuleRevision.supersededById)))
       .orderBy(asc(recurringExpenseRuleRevision.effectiveFromCycle));
-    const values = cyclesBetween(rule.firstCycle, last).map((cycleKey) => {
+    const values = cycles.map((cycleKey) => {
       // The expected snapshot comes from the revision in force for that cycle.
       const revision = [...revisions].reverse().find((r) => r.effectiveFromCycle <= cycleKey);
       return { ownerId, ruleId: rule.id, cycleKey, expectedDay: revision?.expectedDay ?? null, expectedAmountMinor: revision?.expectedAmountMinor ?? null };
@@ -437,15 +440,22 @@ export type CycleView = {
   target: { id: string; amount: string; linked: string; remaining: string; progress: string; retirementReason: string | null } | null;
 };
 
-/** Cycles newest first with derived states and labels; freezes due targets first. */
+/**
+ * Cycles newest first with derived states and labels. Reading never freezes
+ * targets: a cycle becomes ready only through a write (a resolution or a new
+ * subscription), and those writes freeze its target in the same transaction.
+ * Only the occurrences of a newly started month are created lazily here.
+ */
 export async function listMonthlyCycles(tx: OwnerTx, ownerId: string, now: Date): Promise<CycleView[]> {
-  const { cycles, targets: targetsByAccount } = await syncCycleTargets(tx, ownerId, now);
+  await syncMonthlyOccurrences(tx, ownerId, now);
+  const cycles = await loadCycles(tx, ownerId);
   const today = businessDateOf(now);
   const names = new Map((await tx.select({ id: account.id, name: account.displayName }).from(account).where(eq(account.ownerId, ownerId))).map((a) => [a.id, a.name]));
-  const missing = [...new Set(cycles.map((cycle) => cycle.accountId))].filter((accountId) => !targetsByAccount.has(accountId));
-  if (missing.length > 0) {
+  const targetsByAccount: LoadedTargets = new Map();
+  const accountIds = [...new Set(cycles.map((cycle) => cycle.accountId))];
+  if (accountIds.length > 0) {
     const reserve = await reserveAccountId(tx, ownerId);
-    for (const accountId of missing) targetsByAccount.set(accountId, await routeTargets(tx, ownerId, { sourceAccountId: accountId, destinationAccountId: reserve }));
+    for (const accountId of accountIds) targetsByAccount.set(accountId, await routeTargets(tx, ownerId, { sourceAccountId: accountId, destinationAccountId: reserve }));
   }
   const actuals = await actualsOf(
     tx,

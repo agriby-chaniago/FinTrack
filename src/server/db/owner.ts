@@ -65,22 +65,31 @@ export async function withOwnerDb<T>(
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('request.jwt.claims', ${JSON.stringify(claims)}, true)`);
     const ownerTx = tx as OwnerTx;
-    const principal = await requireOwner(ownerTx);
-    return work(ownerTx, principal);
+    // One round trip: the claims are installed by the FROM subquery, which runs
+    // before the select list reads them through the owner functions.
+    const rows = await tx.execute<OwnerRow>(sql`
+      select fintrack.owner_access_status() as status,
+             fintrack.current_owner_id() as owner_id,
+             fintrack.request_auth_user_id() as auth_user_id
+      from (select set_config('request.jwt.claims', ${JSON.stringify(claims)}, true)) as installed`);
+    return work(ownerTx, principalFrom(rows[0]));
   }, config);
 }
 
+type OwnerRow = { status: string; owner_id: string | null; auth_user_id: string | null };
+
 /** Resolves the owner principal for the claims installed on `tx`, or fails closed. */
 export async function requireOwner(tx: OwnerTx): Promise<AuthPrincipal> {
-  const rows = await tx.execute<{ status: string; owner_id: string | null; auth_user_id: string | null }>(
+  const rows = await tx.execute<OwnerRow>(
     sql`select fintrack.owner_access_status() as status,
                fintrack.current_owner_id() as owner_id,
                fintrack.request_auth_user_id() as auth_user_id`,
   );
-  const row = rows[0];
+  return principalFrom(rows[0]);
+}
 
+function principalFrom(row: OwnerRow | undefined): AuthPrincipal {
   if (!row || row.status === "NOT_INITIALIZED") {
     throw new OwnerAccessError("APP_NOT_INITIALIZED");
   }

@@ -70,11 +70,11 @@ afterAll(async () => {
 describe("query budget per page (grows with neither weeks nor months)", () => {
   const now = new Date();
   const pages: [string, number, (tx: OwnerTx, ownerId: string) => Promise<unknown>][] = [
-    ["layout", 6, (tx, o) => getOnboardingState(tx, o, now)],
-    ["Beranda", 58, (tx, o) => dashboard(tx, o, now)],
+    ["layout", 5, (tx, o) => getOnboardingState(tx, o, now)],
+    ["Beranda", 52, (tx, o) => dashboard(tx, o, now)],
     [
       "Rutinitas",
-      46,
+      42,
       async (tx, o) => {
         await listMonthlyCycles(tx, o, now);
         const targets = await listTargets(tx, o);
@@ -84,8 +84,8 @@ describe("query budget per page (grows with neither weeks nor months)", () => {
         await dailyIncomeView(tx, o, now);
       },
     ],
-    ["Akun", 30, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
-    ["Aktivitas", 8, (tx, o) => listActivity(tx, o, { limit: 50 })],
+    ["Akun", 26, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
+    ["Aktivitas", 7, (tx, o) => listActivity(tx, o, { limit: 50 })],
   ];
   for (const [name, budget, load] of pages) {
     it(`${name} stays within ${budget} queries`, async () => {

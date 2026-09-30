@@ -10,7 +10,9 @@ export type RuntimeDb = PostgresJsDatabase & { $client: postgres.Sql };
  * keep prepared statements across transactions.
  */
 export function createRuntimeDb(url: string, options: { max?: number } = {}): RuntimeDb {
-  const client = postgres(url, { prepare: false, max: options.max ?? 5, onnotice: () => {} });
+  // `fetch_types: false` skips a type-catalog query on every new connection;
+  // FinTrack sends no array parameters and reads no array columns.
+  const client = postgres(url, { prepare: false, fetch_types: false, max: options.max ?? 5, onnotice: () => {} });
   return drizzle(client);
 }
 
