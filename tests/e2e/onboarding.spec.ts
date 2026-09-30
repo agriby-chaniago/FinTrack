@@ -81,11 +81,78 @@ test("owner signs in and completes onboarding with the locked fixture", async ({
   await page.getByRole("button", { name: "Mulai FinTrack" }).click();
 
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText("Onboarding selesai.")).toBeVisible();
+  await expect(page.getByText("Personal cash tercatat")).toBeVisible();
+  await expect(page.locator("p", { hasText: /^Rp400\.000$/ }).first()).toBeVisible();
 
   const [{ accounts, personal }] = await admin<{ accounts: string; personal: string }[]>`
     select (select count(*) from fintrack.account)::text as accounts,
            ((select sum(physical_balance_minor) from fintrack.opening_account_position)
             - (select sum(amount_minor) from fintrack.opening_external_position))::text as personal`;
   expect({ accounts, personal }).toEqual({ accounts: "3", personal: "40000000" });
+
+  await test.step("record a special expense on the cutover day", async () => {
+    await page.getByRole("button", { name: "Catat" }).click();
+    await page.getByRole("link", { name: /Pengeluaran khusus/ }).click();
+    await expect(page.getByRole("heading", { name: "Pengeluaran khusus" })).toBeVisible();
+    await page.getByLabel("Nominal").fill("25.000");
+    await page.getByLabel("Kategori").selectOption({ label: "Lainnya…" });
+    await page.getByLabel("Nama kategori baru").fill("Vape");
+    await page.getByLabel("Dibayar dari").selectOption({ label: "BCA" });
+    await page.getByRole("button", { name: "Simpan pengeluaran" }).click();
+    // Same business date as the cutover: FinTrack asks before recording (PRD v0.18).
+    await expect(page.getByText("Sudah termasuk saldo awal?")).toBeVisible();
+    await page.getByRole("button", { name: "Belum, catat sekarang" }).click();
+    await expect(page.getByText("Tersimpan", { exact: true })).toBeVisible();
+  });
+
+  await test.step("the expense shows in Aktivitas and the balances", async () => {
+    await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Aktivitas" }).click();
+    await expect(page.getByRole("heading", { name: "Aktivitas" })).toBeVisible();
+    await expect(page.getByText("Vape", { exact: true })).toBeVisible();
+    await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Beranda" }).click();
+    await expect(page.locator("p", { hasText: /^Rp375\.000$/ }).first()).toBeVisible();
+  });
+
+  await test.step("every destination renders", async () => {
+    const nav = page.getByRole("navigation", { name: "Navigasi utama" });
+    await nav.getByRole("link", { name: "Rutinitas" }).click();
+    await expect(page.getByRole("heading", { name: "Rutinitas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settlement DANA" })).toBeVisible();
+    await nav.getByRole("link", { name: "Akun" }).click();
+    await expect(page.getByRole("heading", { name: "Akun", exact: true })).toBeVisible();
+    await expect(page.getByText("Dosen", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Pengaturan" }).click();
+    await expect(page.getByRole("heading", { name: "Pengaturan" })).toBeVisible();
+    await expect(page.getByText("Langganan", { exact: true })).toBeVisible();
+  });
+
+  await test.step("Koreksi replaces the amount and keeps the original", async () => {
+    await page.goto("/aktivitas");
+    await page.getByRole("link", { name: /Vape/ }).click();
+    await expect(page.getByRole("heading", { name: "Koreksi" })).toBeVisible();
+    await page.getByLabel("Nominal yang benar").fill("30.000");
+    await page.getByRole("button", { name: "Simpan koreksi" }).click();
+    await expect(page.getByRole("heading", { name: "Pengganti · Vape" })).toBeVisible();
+    await page.goto("/");
+    await expect(page.locator("p", { hasText: /^Rp370\.000$/ }).first()).toBeVisible();
+  });
+
+  await test.step("secondary pages render", async () => {
+    const pages: [string, string][] = [
+      ["/rutinitas/settlement", "Settlement DANA"],
+      ["/catat/transfer", "Transfer"],
+      ["/catat/saldo", "Update saldo"],
+      ["/catat/dana-titipan", "Dana titipan"],
+      ["/akun/saldo-awal", "Saldo awal"],
+    ];
+    for (const [path, heading] of pages) {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    }
+    await page.goto("/akun");
+    await page.getByRole("link", { name: /^BCA/ }).click();
+    await expect(page.getByRole("heading", { name: "Rekonsiliasi" })).toBeVisible();
+    await page.getByRole("link", { name: /Dosen/ }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Dosen" })).toBeVisible();
+  });
 });

@@ -1,8 +1,84 @@
 @import "tailwindcss";
 
-/* Quiet Ledger core tokens (PRD: Theme dan palette). The explicit theme toggle
-   and daisyUI themes arrive with the UI slice; until then the system preference applies. */
-:root {
+/* daisyUI is the component baseline with two custom Quiet Ledger themes
+   (PRD: Theme dan palette). No stock theme is used. */
+@plugin "daisyui" {
+  themes: false;
+  logs: false;
+}
+
+@plugin "daisyui/theme" {
+  name: "fintrack-light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #f7f8fa;
+  --color-base-300: #f1f3f5;
+  --color-base-content: #161b22;
+  --color-primary: #4f46e5;
+  --color-primary-content: #ffffff;
+  --color-secondary: #eef2ff;
+  --color-secondary-content: #3730a3;
+  --color-accent: #4f46e5;
+  --color-accent-content: #ffffff;
+  --color-neutral: #344054;
+  --color-neutral-content: #ffffff;
+  --color-info: #175cd3;
+  --color-info-content: #ffffff;
+  --color-success: #027a48;
+  --color-success-content: #ffffff;
+  --color-warning: #854a0e;
+  --color-warning-content: #ffffff;
+  --color-error: #b42318;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "fintrack-dark";
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #111720;
+  --color-base-200: #0b0f14;
+  --color-base-300: #171e28;
+  --color-base-content: #f4f7fb;
+  --color-primary: #818cf8;
+  --color-primary-content: #0b0f14;
+  --color-secondary: #1e1b4b;
+  --color-secondary-content: #c7d2fe;
+  --color-accent: #818cf8;
+  --color-accent-content: #0b0f14;
+  --color-neutral: #d0d5dd;
+  --color-neutral-content: #0b0f14;
+  --color-info: #84caff;
+  --color-info-content: #0b0f14;
+  --color-success: #6ce9a6;
+  --color-success-content: #0b0f14;
+  --color-warning: #fec84b;
+  --color-warning-content: #0b0f14;
+  --color-error: #fda29b;
+  --color-error-content: #0b0f14;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Quiet Ledger tokens used by FinTrack components. `system` follows the OS;
+   an explicit choice sets data-theme on <html> before first paint. */
+:root,
+[data-theme="fintrack-light"] {
   --canvas: #f7f8fa;
   --surface: #ffffff;
   --surface-subtle: #f1f3f5;
@@ -12,15 +88,25 @@
   --muted: #667085;
   --primary: #4f46e5;
   --primary-hover: #4338ca;
+  --primary-pressed: #3730a3;
   --primary-content: #ffffff;
+  --primary-soft: #eef2ff;
+  --confirmed-fg: #344054;
+  --confirmed-bg: #f2f4f7;
+  --calculated-fg: #175cd3;
+  --calculated-bg: #eff8ff;
+  --review-fg: #854a0e;
+  --review-bg: #fffaeb;
   --danger-fg: #b42318;
   --danger-bg: #fef3f2;
   --success-fg: #027a48;
   --success-bg: #ecfdf3;
+  --outflow-fg: #9c2a10;
+  --outflow-bg: #fff4ed;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --canvas: #0b0f14;
     --surface: #111720;
     --surface-subtle: #171e28;
@@ -30,12 +116,49 @@
     --muted: #9ba8b8;
     --primary: #818cf8;
     --primary-hover: #a5b4fc;
+    --primary-pressed: #c7d2fe;
     --primary-content: #0b0f14;
+    --primary-soft: #1e1b4b;
+    --confirmed-fg: #d0d5dd;
+    --confirmed-bg: #1d2939;
+    --calculated-fg: #84caff;
+    --calculated-bg: #102a43;
+    --review-fg: #fec84b;
+    --review-bg: #422006;
     --danger-fg: #fda29b;
     --danger-bg: #4a1512;
     --success-fg: #6ce9a6;
     --success-bg: #073d2a;
+    --outflow-fg: #fdb022;
+    --outflow-bg: #431407;
   }
+}
+
+[data-theme="fintrack-dark"] {
+  --canvas: #0b0f14;
+  --surface: #111720;
+  --surface-subtle: #171e28;
+  --border: #273140;
+  --control-boundary: #6b7a90;
+  --text: #f4f7fb;
+  --muted: #9ba8b8;
+  --primary: #818cf8;
+  --primary-hover: #a5b4fc;
+  --primary-pressed: #c7d2fe;
+  --primary-content: #0b0f14;
+  --primary-soft: #1e1b4b;
+  --confirmed-fg: #d0d5dd;
+  --confirmed-bg: #1d2939;
+  --calculated-fg: #84caff;
+  --calculated-bg: #102a43;
+  --review-fg: #fec84b;
+  --review-bg: #422006;
+  --danger-fg: #fda29b;
+  --danger-bg: #4a1512;
+  --success-fg: #6ce9a6;
+  --success-bg: #073d2a;
+  --outflow-fg: #fdb022;
+  --outflow-bg: #431407;
 }
 
 @theme inline {
@@ -46,13 +169,21 @@
   --color-control: var(--control-boundary);
   --color-text: var(--text);
   --color-muted: var(--muted);
-  --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
-  --color-primary-content: var(--primary-content);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-primary-soft: var(--primary-soft);
+  --color-confirmed-fg: var(--confirmed-fg);
+  --color-confirmed-bg: var(--confirmed-bg);
+  --color-calculated-fg: var(--calculated-fg);
+  --color-calculated-bg: var(--calculated-bg);
+  --color-review-fg: var(--review-fg);
+  --color-review-bg: var(--review-bg);
   --color-danger-fg: var(--danger-fg);
   --color-danger-bg: var(--danger-bg);
   --color-success-fg: var(--success-fg);
   --color-success-bg: var(--success-bg);
+  --color-outflow-fg: var(--outflow-fg);
+  --color-outflow-bg: var(--outflow-bg);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -60,6 +191,16 @@ body {
   background: var(--canvas);
   color: var(--text);
   font-family: var(--font-sans);
+}
+
+/* Financial numbers never shift width and are never animated. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

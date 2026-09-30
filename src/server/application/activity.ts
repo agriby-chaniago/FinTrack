@@ -33,12 +33,14 @@ export type ActivityItem =
 export async function listActivity(
   tx: OwnerTx,
   ownerId: string,
-  options: { limit: number; before?: { recordedAt: string; id: string } },
+  options: { limit: number; before?: { recordedAt: string; id: string }; thread?: string },
 ): Promise<{ items: ActivityItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(options.limit, 1), 100);
   const before = options.before
     ? sql`and (e.recorded_at, e.id) < (${options.before.recordedAt}::timestamptz, ${options.before.id}::uuid)`
     : sql``;
+  // A thread is one record plus the corrections linked to it (detail view).
+  const thread = options.thread ? sql`and (e.id = ${options.thread}::uuid or e.corrects_entry_id = ${options.thread}::uuid)` : sql``;
 
   const entries = await tx.execute<{
     id: string;
@@ -87,7 +89,7 @@ export async function listActivity(
              where l.entry_id = e.id limit 1) as subject_name
     from fintrack.ledger_entry e
     left join fintrack.special_expense_category c on c.id = e.category_id
-    where e.owner_id = ${ownerId} ${before}
+    where e.owner_id = ${ownerId} ${before} ${thread}
     order by e.recorded_at desc, e.id desc
     limit ${limit + 1}`);
 
@@ -136,7 +138,7 @@ export async function listActivity(
   }));
 
   // Opening snapshots appear in the audit history on the first page only.
-  if (!options.before) {
+  if (!options.before && !options.thread) {
     const snapshots = await tx.execute<{ id: string; confirmed_at: string; cutover_at: string; supersedes_id: string | null; superseded: boolean }>(sql`
       select id, to_char(confirmed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as confirmed_at,
              to_char(cutover_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as cutover_at,
