@@ -1,0 +1,118 @@
+{
+  "id": "4bb55181-0d60-42be-8164-64ec709ce8ae",
+  "prevId": "4cdd8c43-1ae8-46fe-9a27-f5ae024cf94e",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "fintrack.app_owner": {
+      "name": "app_owner",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "singleton_key": {
+          "name": "singleton_key",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "auth_user_id": {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "bound_at": {
+          "name": "bound_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "app_owner_singleton_key_unique": {
+          "name": "app_owner_singleton_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "singleton_key"
+          ]
+        },
+        "app_owner_auth_user_id_unique": {
+          "name": "app_owner_auth_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "auth_user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "app_owner_singleton_key_check": {
+          "name": "app_owner_singleton_key_check",
+          "value": "\"fintrack\".\"app_owner\".\"singleton_key\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "ops.keepalive_probe": {
+      "name": "keepalive_probe",
+      "schema": "ops",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "smallint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "keepalive_probe_single_row_check": {
+          "name": "keepalive_probe_single_row_check",
+          "value": "\"ops\".\"keepalive_probe\".\"id\" = 1"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "fintrack": "fintrack",
+    "ops": "ops"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
