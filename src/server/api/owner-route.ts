@@ -13,7 +13,7 @@ import {
   type CookieToSet,
 } from "@/server/auth/supabase";
 import { getRuntimeDb, type RuntimeDb } from "@/server/db/client";
-import { withOwnerDb, type AuthPrincipal, type OwnerTx, type VerifiedClaims } from "@/server/db/owner";
+import { withOwnerDb, type AuthPrincipal, type OwnerTransactionConfig, type OwnerTx, type VerifiedClaims } from "@/server/db/owner";
 import { idempotencyRecord } from "@/server/db/schema/api";
 
 import { ApiError, toErrorResponse } from "./errors";
@@ -37,6 +37,8 @@ export type OwnerRouteOptions = {
    * and body replays the stored response; a different body is rejected.
    */
   readonly idempotent?: boolean;
+  /** Transaction settings, e.g. one consistent read-only snapshot for export. */
+  readonly transaction?: OwnerTransactionConfig;
 };
 
 async function runIdempotent(
@@ -126,7 +128,7 @@ export function ownerRoute(
       const response = await withOwnerDb(db, claims, (tx, principal) => {
         const context = { request, requestId, tx, principal, params };
         return options.idempotent ? runIdempotent(context, bodyText, handler) : handler(context);
-      });
+      }, options.transaction);
       response.headers.set("Cache-Control", "no-store");
       response.headers.set("X-Request-Id", requestId);
       return withCookies(response, pendingCookies);

@@ -2,12 +2,16 @@
 // (starts on a Monday and has exactly four Monday–Sunday weeks, like February 2027).
 import { randomUUID } from "node:crypto";
 
+import { createHash } from "node:crypto";
+
+import { strFromU8, unzipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { GET as getCategories } from "@/app/api/v1/categories/route";
 import { POST as postTransitions } from "@/app/api/v1/daily-income/[ruleId]/transitions/route";
 import { PUT as putOverride } from "@/app/api/v1/daily-income/[ruleId]/overrides/route";
 import { GET as getDailyIncome } from "@/app/api/v1/daily-income/route";
+import { GET as getExport } from "@/app/api/v1/export/route";
 import { GET as getCycles } from "@/app/api/v1/monthly-cycles/route";
 import { POST as resolve } from "@/app/api/v1/occurrences/[type]/[id]/resolutions/route";
 import { GET as getDashboard } from "@/app/api/v1/reports/dashboard/route";
@@ -17,6 +21,7 @@ import { POST as settleRoute } from "@/app/api/v1/settlements/[id]/settle/route"
 import { POST as createSettlement } from "@/app/api/v1/settlements/route";
 import { POST as postSpecial } from "@/app/api/v1/special-expenses/route";
 import { POST as postTransfer } from "@/app/api/v1/transfers/route";
+import { excludedTables, exportedTables } from "@/server/application/export";
 
 import { closeClients, createAuthUser, resetWithConfirmedFixture, testClients, type ConfirmedOwner, type TestUser } from "../helpers/owner";
 
@@ -92,8 +97,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await clients.admin`truncate fintrack.app_owner cascade`;
-  await clients.authAdmin.auth.admin.deleteUser(user.id);
+  // FINTRACK_KEEP_FIXTURE=1 leaves the full-month fixture in place for a local restore drill.
+  if (process.env.FINTRACK_KEEP_FIXTURE !== "1") {
+    await clients.admin`truncate fintrack.app_owner cascade`;
+    await clients.authAdmin.auth.admin.deleteUser(user.id);
+  }
   await closeClients(clients);
 });
 
@@ -129,5 +137,49 @@ describe("locked full-month validation fixture", () => {
     expect(body.data.bca.latestCompletedCycle).toMatchObject({ cycleKey: "2021-02", state: "COMPLETE" });
     expect(body.data.dana.latestCompleted).toBeTruthy();
     expect(body.data.external).toEqual([expect.objectContaining({ displayName: "Dosen", total: "431999.93" })]);
+  });
+});
+
+describe("owner export (PRD: Export data milik pengguna)", () => {
+  it("classifies every fintrack table as exported or excluded", async () => {
+    const tables = await clients.admin<{ table_name: string }[]>`
+      select table_name from information_schema.tables where table_schema = 'fintrack' and table_type = 'BASE TABLE'`;
+    const classified = [...exportedTables.map((t) => t.table), ...Object.keys(excludedTables)].sort();
+    expect(classified).toEqual(tables.map((t) => t.table_name).sort());
+  });
+
+  it("downloads one ZIP with versioned JSON, CSV per dataset, and a checksummed manifest", async () => {
+    const response = await getExport(new Request("http://127.0.0.1:3000/api/v1/export", { headers: { authorization: `Bearer ${user.accessToken}` } }), {
+      params: Promise.resolve({}),
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/zip");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="fintrack-export-\d{8}-\d{4}\.zip"$/);
+
+    const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+    const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+    expect(manifest.formatVersion).toBe(1);
+    for (const file of manifest.files as { path: string; sha256: string }[]) {
+      expect(createHash("sha256").update(files[file.path]).digest("hex")).toBe(file.sha256);
+    }
+    expect(Object.keys(files).sort()).toEqual(["fintrack.json", "manifest.json", ...exportedTables.map((t) => `csv/${t.table}.csv`)].sort());
+
+    const json = JSON.parse(strFromU8(files["fintrack.json"]));
+    const [{ entries }] = await clients.admin<{ entries: number }[]>`select count(*)::int as entries from fintrack.ledger_entry`;
+    expect(json.datasets.ledger_entry).toHaveLength(entries);
+    // Minor units stay exact strings; ownership stays explicit on legs.
+    const opening = json.datasets.opening_external_position[0];
+    expect(opening.amount_minor).toBe("43199993");
+    expect(json.datasets.ledger_leg.every((leg: { physical_effect_minor: unknown }) => typeof leg.physical_effect_minor === "string")).toBe(true);
+    expect(json.datasets.settlement.map((s: { end_date: string }) => s.end_date)).toEqual(["2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28"]);
+
+    const everything = Object.values(files).map((content) => strFromU8(content)).join("\n");
+    expect(everything).not.toContain(user.id);
+    expect(everything).not.toContain(user.email);
+    expect(everything).not.toContain("auth_user_id");
+    expect(strFromU8(files["csv/account.csv"]).split("\r\n")[0]).toBe(
+      "id,owner_id,display_name,provider_name,account_type,purpose_label,currency,is_cash_account,is_active,sort_order,activation_cutover_at,created_at",
+    );
   });
 });

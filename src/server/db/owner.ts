@@ -43,6 +43,9 @@ export class OwnerAccessError extends Error {
   }
 }
 
+/** Read-only snapshot reads (export) use `repeatable read` + `read only`. */
+export type OwnerTransactionConfig = Parameters<RuntimeDb["transaction"]>[1];
+
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -55,6 +58,7 @@ export async function withOwnerDb<T>(
   db: RuntimeDb,
   claims: VerifiedClaims,
   work: (tx: OwnerTx, principal: AuthPrincipal) => Promise<T>,
+  config?: OwnerTransactionConfig,
 ): Promise<T> {
   if (typeof claims.sub !== "string" || !uuidPattern.test(claims.sub)) {
     throw new OwnerAccessError("INVALID_IDENTITY");
@@ -65,7 +69,7 @@ export async function withOwnerDb<T>(
     const ownerTx = tx as OwnerTx;
     const principal = await requireOwner(ownerTx);
     return work(ownerTx, principal);
-  });
+  }, config);
 }
 
 /** Resolves the owner principal for the claims installed on `tx`, or fails closed. */
