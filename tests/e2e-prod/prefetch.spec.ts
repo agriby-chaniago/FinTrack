@@ -43,6 +43,19 @@ test("prefetched tabs open without a request, and saving purges them", async ({ 
   await page.getByRole("button", { name: "Masuk" }).click();
   await expect(page.getByText("Personal cash tercatat")).toBeVisible();
   await expect.poll(() => dataRequests.filter((path) => ["/rutinitas", "/aktivitas", "/akun"].includes(path)).length).toBeGreaterThanOrEqual(3);
+  // Prefetching waits for the first page to finish loading, so it never slows opening the app.
+  const timing = await page.evaluate(() => ({
+    loaded: (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming).loadEventEnd,
+    firstPrefetch: Math.min(
+      ...performance
+        .getEntriesByType("resource")
+        .filter((entry) => /\/(rutinitas|aktivitas|akun)\?_rsc=/.test(entry.name))
+        .map((entry) => entry.startTime),
+    ),
+  }));
+  expect(timing.loaded).toBeGreaterThan(0);
+  expect(Number.isFinite(timing.firstPrefetch)).toBe(true);
+  expect(timing.firstPrefetch).toBeGreaterThanOrEqual(timing.loaded);
 
   const nav = page.getByRole("navigation", { name: "Navigasi utama" });
   dataRequests.length = 0;

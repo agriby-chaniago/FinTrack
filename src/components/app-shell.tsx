@@ -26,6 +26,30 @@ const catatActions: { href: string; label: string; description: string; icon: Ic
 
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
+/**
+ * True once the first page has fully loaded and the browser is idle. The tabs
+ * are prefetched only then, so opening the app never competes with loading
+ * the page the owner is looking at.
+ */
+function useWarmedUp(): boolean {
+  const [warm, setWarm] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    // Safari has no requestIdleCallback; a short timeout stands in for it.
+    const idle = (callback: () => void) =>
+      typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(callback, { timeout: 2000 }) : setTimeout(callback, 300);
+    const start = () => idle(() => !cancelled && setWarm(true));
+    // A streamed page fires `load` only after its data has arrived.
+    if (document.readyState === "complete") start();
+    else window.addEventListener("load", start, { once: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", start);
+    };
+  }, []);
+  return warm;
+}
+
 const themeCycle: Record<ThemePreference, { next: ThemePreference; label: string }> = {
   system: { next: "light", label: "Tema: ikuti sistem" },
   light: { next: "dark", label: "Tema: terang" },
@@ -100,13 +124,15 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
  * (bottom navigation). `+ Catat` is an action, never a fifth tab; Pengaturan
  * is secondary (PRD: Information architecture).
  *
- * The destinations are fully prefetched (data included) so switching tabs is
- * instant. Prefetched pages stay fresh for `staleTimes.static` (next.config),
- * and every saved change purges them (useMutation → revalidateAppData).
+ * Once the first page has loaded (useWarmedUp), the destinations are fully
+ * prefetched (data included) so switching tabs is instant. Prefetched pages
+ * stay fresh for `staleTimes.static` (next.config), and every saved change
+ * purges them (useMutation → revalidateAppData).
  */
 export function AppShell({ children, theme }: { children: ReactNode; theme: ThemePreference }) {
   const pathname = usePathname();
   const [catatOpen, setCatatOpen] = useState(false);
+  const warm = useWarmedUp();
 
   return (
     <div className="flex min-h-full flex-1">
@@ -121,7 +147,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  prefetch
+                  prefetch={warm}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
                   className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
                 >
@@ -169,7 +195,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
             <li key={item.href}>
               <Link
                 href={item.href}
-                prefetch
+                prefetch={warm}
                 aria-current={isActive(pathname, item.href) ? "page" : undefined}
                 className="flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-primary"
               >
