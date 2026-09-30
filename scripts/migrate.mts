@@ -13,7 +13,8 @@ if (!url) {
 const client = postgres(url, { max: 1, onnotice: () => {} });
 
 try {
-  await migrate(drizzle(client), { migrationsFolder: "./drizzle", migrationsSchema: "drizzle" });
+  // MIGRATIONS_FOLDER lets a restore drill stop at the migration level recorded in a backup.
+  await migrate(drizzle(client), { migrationsFolder: process.env.MIGRATIONS_FOLDER ?? "./drizzle", migrationsSchema: "drizzle" });
   console.log("Migrations applied");
 } finally {
   await client.end();

@@ -53,6 +53,14 @@ jobs:
       - name: Prove migrations are idempotent
         run: pnpm db:migrate
       - run: pnpm test:db
+      - name: Backup bundle and restore drill against the full-month fixture
+        run: |
+          set -euo pipefail
+          FINTRACK_KEEP_FIXTURE=1 pnpm exec vitest run --project db tests/reports
+          set -a; . ./.env.local; set +a
+          BACKUP_DATABASE_URL="postgresql://fintrack_backup:${FINTRACK_BACKUP_DB_PASSWORD}@127.0.0.1:54322/postgres" \
+            BUNDLE_DIR="$RUNNER_TEMP/bundle" scripts/backup/create-bundle.sh
+          BUNDLE_DIR="$RUNNER_TEMP/bundle" scripts/backup/drill.sh
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: End-to-end tests against next dev and local Supabase

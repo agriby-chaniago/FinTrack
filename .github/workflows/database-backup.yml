@@ -1,0 +1,119 @@
+# Daily encrypted logical backup to a private Cloudflare R2 bucket (PRD: Backup dan restore).
+# Every run restores the plaintext bundle into a throwaway PostgreSQL container
+# before encrypting it, so a bundle that cannot be restored is never uploaded.
+# Enable FINTRACK_BACKUP_ENABLED only after the secrets and variables in
+# docs/runbooks/backup-and-restore.md exist. Runs at 19:40 UTC (02:40 WIB).
+name: Database backup
+
+on:
+  schedule:
+    - cron: "40 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: vars.FINTRACK_BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.FINTRACK_R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.FINTRACK_R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      R2_ENDPOINT: https://${{ vars.FINTRACK_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      R2_BUCKET: ${{ vars.FINTRACK_R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install age
+        run: sudo apt-get update -q && sudo apt-get install -y -q age
+
+      - name: Check configuration
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.FINTRACK_BACKUP_DATABASE_URL }}
+          AGE_RECIPIENT: ${{ vars.FINTRACK_BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          for name in BACKUP_DATABASE_URL AGE_RECIPIENT AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_BUCKET; do
+            if [[ -z "${!name}" ]]; then echo "::error::${name} is not configured"; exit 1; fi
+          done
+          if [[ "${AGE_RECIPIENT}" != age1* ]]; then echo "::error::FINTRACK_BACKUP_AGE_RECIPIENT must be an age public key"; exit 1; fi
+
+      - name: Create the recovery bundle
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.FINTRACK_BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          name="fintrack-$(date -u +%Y-%m-%dT%H%M%SZ)"
+          echo "BUNDLE_NAME=${name}" >> "$GITHUB_ENV"
+          BUNDLE_DIR="$RUNNER_TEMP/$name" scripts/backup/create-bundle.sh
+
+      - name: Restore drill on the plaintext bundle
+        run: BUNDLE_DIR="$RUNNER_TEMP/$BUNDLE_NAME" scripts/backup/drill.sh
+
+      - name: Encrypt and upload
+        env:
+          AGE_RECIPIENT: ${{ vars.FINTRACK_BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/$BUNDLE_NAME.tar.gz.age"
+          tar -C "$RUNNER_TEMP" -czf - "$BUNDLE_NAME" | age --encrypt --recipient "$AGE_RECIPIENT" --output "$archive"
+          rm -rf "${RUNNER_TEMP:?}/$BUNDLE_NAME"
+          sha="$(sha256sum "$archive" | cut -d' ' -f1)"
+          s3() { aws s3 --endpoint-url "$R2_ENDPOINT" --only-show-errors "$@"; }
+          s3 cp "$archive" "s3://$R2_BUCKET/daily/$BUNDLE_NAME.tar.gz.age"
+          # The first backup of each month is also kept under monthly/ (retention: R2 lifecycle rules).
+          month="$(date -u +%Y-%m)"
+          if ! s3 ls "s3://$R2_BUCKET/monthly/$month/" | grep -q .; then
+            s3 cp "$archive" "s3://$R2_BUCKET/monthly/$month/$BUNDLE_NAME.tar.gz.age"
+          fi
+          printf '{"lastSuccessAt":"%s","object":"daily/%s.tar.gz.age","sha256":"%s","run":"%s"}\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$BUNDLE_NAME" "$sha" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/last-success.json"
+          s3 cp "$RUNNER_TEMP/last-success.json" "s3://$R2_BUCKET/status/last-success.json"
+          {
+            echo "### Backup uploaded"
+            echo "- Object: \`daily/$BUNDLE_NAME.tar.gz.age\`"
+            echo "- SHA-256: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove plaintext files
+        if: always()
+        run: rm -rf "${RUNNER_TEMP:?}/fintrack-"*
+
+      - name: Close the failure issue after a successful run
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for issue in $(gh issue list --repo "$GITHUB_REPOSITORY" --label backup-failure --state open --json number --jq '.[].number'); do
+            gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "Backup succeeded again in run $GITHUB_RUN_ID."
+          done
+
+      - name: Report the failure as an issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh label create backup-failure --repo "$GITHUB_REPOSITORY" --color B60205 --description "Daily database backup failed" --force
+          open="$(gh issue list --repo "$GITHUB_REPOSITORY" --label backup-failure --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$open" ]]; then
+            gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "Backup failed again: $url"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --label backup-failure --title "Daily database backup failed" \
+              --body "The daily encrypted backup failed: $url. Follow docs/runbooks/backup-and-restore.md."
+          fi

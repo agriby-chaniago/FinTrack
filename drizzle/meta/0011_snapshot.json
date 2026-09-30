@@ -1,0 +1,3560 @@
+{
+  "id": "935f63ea-7009-4adf-b3a2-c1cea29aec5e",
+  "prevId": "56761aec-e91f-4c1c-9cf4-4606d7492962",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "fintrack.idempotency_record": {
+      "name": "idempotency_record",
+      "schema": "fintrack",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_body": {
+          "name": "response_body",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "idempotency_record_owner_id_app_owner_id_fk": {
+          "name": "idempotency_record_owner_id_app_owner_id_fk",
+          "tableFrom": "idempotency_record",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "idempotency_record_owner_id_key_pk": {
+          "name": "idempotency_record_owner_id_key_pk",
+          "columns": [
+            "owner_id",
+            "key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "idempotency_record_key_check": {
+          "name": "idempotency_record_key_check",
+          "value": "char_length(\"fintrack\".\"idempotency_record\".\"key\") between 8 and 128"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.ledger_entry": {
+      "name": "ledger_entry",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_business_date": {
+          "name": "effective_business_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "reporting_classification": {
+          "name": "reporting_classification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_class": {
+          "name": "event_class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "movement_type": {
+          "name": "movement_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "correction_role": {
+          "name": "correction_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "corrects_entry_id": {
+          "name": "corrects_entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "corrected_kind": {
+          "name": "corrected_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "ledger_entry_corrects_idx": {
+          "name": "ledger_entry_corrects_idx",
+          "columns": [
+            {
+              "expression": "corrects_entry_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "ledger_entry_source_idx": {
+          "name": "ledger_entry_source_idx",
+          "columns": [
+            {
+              "expression": "source_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "ledger_entry_canonical_idx": {
+          "name": "ledger_entry_canonical_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "effective_business_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "recorded_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "ledger_entry_owner_id_app_owner_id_fk": {
+          "name": "ledger_entry_owner_id_app_owner_id_fk",
+          "tableFrom": "ledger_entry",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "ledger_entry_category_id_special_expense_category_id_fk": {
+          "name": "ledger_entry_category_id_special_expense_category_id_fk",
+          "tableFrom": "ledger_entry",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "special_expense_category",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "ledger_entry_corrects_entry_id_ledger_entry_id_fk": {
+          "name": "ledger_entry_corrects_entry_id_ledger_entry_id_fk",
+          "tableFrom": "ledger_entry",
+          "columnsFrom": [
+            "corrects_entry_id"
+          ],
+          "tableTo": "ledger_entry",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ledger_entry_kind_check": {
+          "name": "ledger_entry_kind_check",
+          "value": "\"fintrack\".\"ledger_entry\".\"kind\" in ('INCOME', 'EXPENSE', 'TRANSFER', 'EXTERNAL_MOVEMENT', 'CORRECTION_POSTING', 'BALANCE_ADJUSTMENT', 'SETTLEMENT_LIVING_CONTRIBUTION')"
+        },
+        "ledger_entry_classification_check": {
+          "name": "ledger_entry_classification_check",
+          "value": "\"fintrack\".\"ledger_entry\".\"reporting_classification\" is null or \"fintrack\".\"ledger_entry\".\"reporting_classification\" in ('OTHER_GIFT_INCOME', 'OWNERSHIP_OUTFLOW')"
+        },
+        "ledger_entry_note_length_check": {
+          "name": "ledger_entry_note_length_check",
+          "value": "\"fintrack\".\"ledger_entry\".\"note\" is null or char_length(\"fintrack\".\"ledger_entry\".\"note\") <= 500"
+        },
+        "ledger_entry_event_class_check": {
+          "name": "ledger_entry_event_class_check",
+          "value": "\"fintrack\".\"ledger_entry\".\"event_class\" in ('MONTHLY_INCOME', 'OTHER_INCOME', 'SPECIAL_EXPENSE', 'RECURRING_EXPENSE', 'OTHER_EXPENSE', 'PERSONAL_TRANSFER', 'EXTERNAL_MOVEMENT', 'LIVING', 'ADJUSTMENT')"
+        },
+        "ledger_entry_movement_type_check": {
+          "name": "ledger_entry_movement_type_check",
+          "value": "(\"fintrack\".\"ledger_entry\".\"kind\" = 'EXTERNAL_MOVEMENT') = (\"fintrack\".\"ledger_entry\".\"movement_type\" is not null) or \"fintrack\".\"ledger_entry\".\"kind\" = 'CORRECTION_POSTING'"
+        },
+        "ledger_entry_correction_role_check": {
+          "name": "ledger_entry_correction_role_check",
+          "value": "\"fintrack\".\"ledger_entry\".\"correction_role\" is null or (\"fintrack\".\"ledger_entry\".\"correction_role\" in ('REVERSAL', 'REPLACEMENT') and \"fintrack\".\"ledger_entry\".\"corrects_entry_id\" is not null)"
+        },
+        "ledger_entry_correction_posting_check": {
+          "name": "ledger_entry_correction_posting_check",
+          "value": "(\"fintrack\".\"ledger_entry\".\"kind\" = 'CORRECTION_POSTING') = (\"fintrack\".\"ledger_entry\".\"corrected_kind\" is not null)"
+        },
+        "ledger_entry_special_category_check": {
+          "name": "ledger_entry_special_category_check",
+          "value": "(\"fintrack\".\"ledger_entry\".\"event_class\" = 'SPECIAL_EXPENSE') = (\"fintrack\".\"ledger_entry\".\"category_id\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.ledger_leg": {
+      "name": "ledger_leg",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "physical_effect_minor": {
+          "name": "physical_effect_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_effect_minor": {
+          "name": "external_effect_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "holding_id": {
+          "name": "holding_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "ledger_leg_entry_idx": {
+          "name": "ledger_leg_entry_idx",
+          "columns": [
+            {
+              "expression": "entry_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "ledger_leg_account_idx": {
+          "name": "ledger_leg_account_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "ledger_leg_owner_id_app_owner_id_fk": {
+          "name": "ledger_leg_owner_id_app_owner_id_fk",
+          "tableFrom": "ledger_leg",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "ledger_leg_entry_id_ledger_entry_id_fk": {
+          "name": "ledger_leg_entry_id_ledger_entry_id_fk",
+          "tableFrom": "ledger_leg",
+          "columnsFrom": [
+            "entry_id"
+          ],
+          "tableTo": "ledger_entry",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "ledger_leg_account_id_account_id_fk": {
+          "name": "ledger_leg_account_id_account_id_fk",
+          "tableFrom": "ledger_leg",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "ledger_leg_holding_id_external_holding_id_fk": {
+          "name": "ledger_leg_holding_id_external_holding_id_fk",
+          "tableFrom": "ledger_leg",
+          "columnsFrom": [
+            "holding_id"
+          ],
+          "tableTo": "external_holding",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ledger_leg_not_empty_check": {
+          "name": "ledger_leg_not_empty_check",
+          "value": "\"fintrack\".\"ledger_leg\".\"physical_effect_minor\" <> 0 or \"fintrack\".\"ledger_leg\".\"external_effect_minor\" <> 0"
+        },
+        "ledger_leg_holding_check": {
+          "name": "ledger_leg_holding_check",
+          "value": "(\"fintrack\".\"ledger_leg\".\"external_effect_minor\" = 0) = (\"fintrack\".\"ledger_leg\".\"holding_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.monthly_income_occurrence": {
+      "name": "monthly_income_occurrence",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cycle_key": {
+          "name": "cycle_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_amount_minor": {
+          "name": "expected_amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "monthly_income_occurrence_uq": {
+          "name": "monthly_income_occurrence_uq",
+          "columns": [
+            {
+              "expression": "rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cycle_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "monthly_income_occurrence_owner_id_app_owner_id_fk": {
+          "name": "monthly_income_occurrence_owner_id_app_owner_id_fk",
+          "tableFrom": "monthly_income_occurrence",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "monthly_income_occurrence_rule_id_monthly_income_rule_id_fk": {
+          "name": "monthly_income_occurrence_rule_id_monthly_income_rule_id_fk",
+          "tableFrom": "monthly_income_occurrence",
+          "columnsFrom": [
+            "rule_id"
+          ],
+          "tableTo": "monthly_income_rule",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_income_occurrence_cycle_check": {
+          "name": "monthly_income_occurrence_cycle_check",
+          "value": "cycle_key ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.occurrence_resolution": {
+      "name": "occurrence_resolution",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurrence_type": {
+          "name": "occurrence_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurrence_id": {
+          "name": "occurrence_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supersedes_id": {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_by_id": {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "occurrence_resolution_current_uq": {
+          "name": "occurrence_resolution_current_uq",
+          "columns": [
+            {
+              "expression": "occurrence_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurrence_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"occurrence_resolution\".\"superseded_by_id\" is null",
+          "concurrently": false
+        },
+        "occurrence_resolution_occurrence_idx": {
+          "name": "occurrence_resolution_occurrence_idx",
+          "columns": [
+            {
+              "expression": "occurrence_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "occurrence_resolution_owner_id_app_owner_id_fk": {
+          "name": "occurrence_resolution_owner_id_app_owner_id_fk",
+          "tableFrom": "occurrence_resolution",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "occurrence_resolution_entry_id_ledger_entry_id_fk": {
+          "name": "occurrence_resolution_entry_id_ledger_entry_id_fk",
+          "tableFrom": "occurrence_resolution",
+          "columnsFrom": [
+            "entry_id"
+          ],
+          "tableTo": "ledger_entry",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "occurrence_resolution_supersedes_id_occurrence_resolution_id_fk": {
+          "name": "occurrence_resolution_supersedes_id_occurrence_resolution_id_fk",
+          "tableFrom": "occurrence_resolution",
+          "columnsFrom": [
+            "supersedes_id"
+          ],
+          "tableTo": "occurrence_resolution",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "occurrence_resolution_superseded_by_id_occurrence_resolution_id_fk": {
+          "name": "occurrence_resolution_superseded_by_id_occurrence_resolution_id_fk",
+          "tableFrom": "occurrence_resolution",
+          "columnsFrom": [
+            "superseded_by_id"
+          ],
+          "tableTo": "occurrence_resolution",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "occurrence_resolution_type_check": {
+          "name": "occurrence_resolution_type_check",
+          "value": "\"fintrack\".\"occurrence_resolution\".\"occurrence_type\" in ('MONTHLY_INCOME', 'RECURRING_EXPENSE')"
+        },
+        "occurrence_resolution_outcome_check": {
+          "name": "occurrence_resolution_outcome_check",
+          "value": "(\"fintrack\".\"occurrence_resolution\".\"occurrence_type\" = 'MONTHLY_INCOME' and \"fintrack\".\"occurrence_resolution\".\"outcome\" in ('CONFIRMED', 'NOT_RECEIVED'))\n        or (\"fintrack\".\"occurrence_resolution\".\"occurrence_type\" = 'RECURRING_EXPENSE' and \"fintrack\".\"occurrence_resolution\".\"outcome\" in ('CONFIRMED', 'NOT_CHARGED'))"
+        },
+        "occurrence_resolution_entry_check": {
+          "name": "occurrence_resolution_entry_check",
+          "value": "(\"fintrack\".\"occurrence_resolution\".\"outcome\" = 'CONFIRMED') = (\"fintrack\".\"occurrence_resolution\".\"entry_id\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.recurring_expense_occurrence": {
+      "name": "recurring_expense_occurrence",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cycle_key": {
+          "name": "cycle_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_day": {
+          "name": "expected_day",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expected_amount_minor": {
+          "name": "expected_amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "recurring_expense_occurrence_uq": {
+          "name": "recurring_expense_occurrence_uq",
+          "columns": [
+            {
+              "expression": "rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cycle_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "recurring_expense_occurrence_owner_id_app_owner_id_fk": {
+          "name": "recurring_expense_occurrence_owner_id_app_owner_id_fk",
+          "tableFrom": "recurring_expense_occurrence",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "recurring_expense_occurrence_rule_id_recurring_expense_rule_id_fk": {
+          "name": "recurring_expense_occurrence_rule_id_recurring_expense_rule_id_fk",
+          "tableFrom": "recurring_expense_occurrence",
+          "columnsFrom": [
+            "rule_id"
+          ],
+          "tableTo": "recurring_expense_rule",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "recurring_expense_occurrence_cycle_check": {
+          "name": "recurring_expense_occurrence_cycle_check",
+          "value": "cycle_key ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.account": {
+      "name": "account",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_name": {
+          "name": "provider_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_type": {
+          "name": "account_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose_label": {
+          "name": "purpose_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IDR'"
+        },
+        "is_cash_account": {
+          "name": "is_cash_account",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activation_cutover_at": {
+          "name": "activation_cutover_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "account_owner_idx": {
+          "name": "account_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "account_owner_id_app_owner_id_fk": {
+          "name": "account_owner_id_app_owner_id_fk",
+          "tableFrom": "account",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "account_currency_idr_check": {
+          "name": "account_currency_idr_check",
+          "value": "\"fintrack\".\"account\".\"currency\" = 'IDR'"
+        },
+        "account_type_check": {
+          "name": "account_type_check",
+          "value": "\"fintrack\".\"account\".\"account_type\" in ('BANK', 'E_WALLET')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.daily_income_rule": {
+      "name": "daily_income_rule",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_start_date": {
+          "name": "effective_start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "daily_income_rule_owner_id_app_owner_id_fk": {
+          "name": "daily_income_rule_owner_id_app_owner_id_fk",
+          "tableFrom": "daily_income_rule",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "daily_income_rule_account_id_account_id_fk": {
+          "name": "daily_income_rule_account_id_account_id_fk",
+          "tableFrom": "daily_income_rule",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "daily_income_rule_amount_check": {
+          "name": "daily_income_rule_amount_check",
+          "value": "\"fintrack\".\"daily_income_rule\".\"amount_minor\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.external_holding": {
+      "name": "external_holding",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "external_holding_default_uq": {
+          "name": "external_holding_default_uq",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"external_holding\".\"is_default\"",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "external_holding_owner_id_app_owner_id_fk": {
+          "name": "external_holding_owner_id_app_owner_id_fk",
+          "tableFrom": "external_holding",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "external_holding_subject_id_external_subject_id_fk": {
+          "name": "external_holding_subject_id_external_subject_id_fk",
+          "tableFrom": "external_holding",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "external_subject",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "fintrack.external_subject": {
+      "name": "external_subject",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalized_name": {
+          "name": "normalized_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_archived": {
+          "name": "is_archived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "external_subject_owner_name_uq": {
+          "name": "external_subject_owner_name_uq",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "normalized_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "external_subject_owner_id_app_owner_id_fk": {
+          "name": "external_subject_owner_id_app_owner_id_fk",
+          "tableFrom": "external_subject",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "fintrack.monthly_account_setting": {
+      "name": "monthly_account_setting",
+      "schema": "fintrack",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retained_balance_floor_minor": {
+          "name": "retained_balance_floor_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "monthly_account_setting_account_id_account_id_fk": {
+          "name": "monthly_account_setting_account_id_account_id_fk",
+          "tableFrom": "monthly_account_setting",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "monthly_account_setting_owner_id_app_owner_id_fk": {
+          "name": "monthly_account_setting_owner_id_app_owner_id_fk",
+          "tableFrom": "monthly_account_setting",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_account_setting_floor_check": {
+          "name": "monthly_account_setting_floor_check",
+          "value": "\"fintrack\".\"monthly_account_setting\".\"retained_balance_floor_minor\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.monthly_income_rule": {
+      "name": "monthly_income_rule",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_amount_minor": {
+          "name": "expected_amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_expected_cycle": {
+          "name": "first_expected_cycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_expected_cycle": {
+          "name": "last_expected_cycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "monthly_income_rule_owner_id_app_owner_id_fk": {
+          "name": "monthly_income_rule_owner_id_app_owner_id_fk",
+          "tableFrom": "monthly_income_rule",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "monthly_income_rule_account_id_account_id_fk": {
+          "name": "monthly_income_rule_account_id_account_id_fk",
+          "tableFrom": "monthly_income_rule",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_income_rule_amount_check": {
+          "name": "monthly_income_rule_amount_check",
+          "value": "\"fintrack\".\"monthly_income_rule\".\"expected_amount_minor\" > 0"
+        },
+        "monthly_income_rule_first_cycle_check": {
+          "name": "monthly_income_rule_first_cycle_check",
+          "value": "first_expected_cycle ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "monthly_income_rule_last_cycle_check": {
+          "name": "monthly_income_rule_last_cycle_check",
+          "value": "last_expected_cycle is null or (last_expected_cycle ~ '^[0-9]{4}-(0[1-9]|1[0-2])$' and last_expected_cycle >= first_expected_cycle)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.onboarding_snapshot": {
+      "name": "onboarding_snapshot",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cutover_at": {
+          "name": "cutover_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "draft": {
+          "name": "draft",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supersedes_id": {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_by_id": {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "onboarding_snapshot_one_draft_uq": {
+          "name": "onboarding_snapshot_one_draft_uq",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"onboarding_snapshot\".\"status\" = 'DRAFT'",
+          "concurrently": false
+        },
+        "onboarding_snapshot_one_effective_uq": {
+          "name": "onboarding_snapshot_one_effective_uq",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"onboarding_snapshot\".\"status\" = 'CONFIRMED' and \"fintrack\".\"onboarding_snapshot\".\"superseded_by_id\" is null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "onboarding_snapshot_owner_id_app_owner_id_fk": {
+          "name": "onboarding_snapshot_owner_id_app_owner_id_fk",
+          "tableFrom": "onboarding_snapshot",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "onboarding_snapshot_supersedes_id_onboarding_snapshot_id_fk": {
+          "name": "onboarding_snapshot_supersedes_id_onboarding_snapshot_id_fk",
+          "tableFrom": "onboarding_snapshot",
+          "columnsFrom": [
+            "supersedes_id"
+          ],
+          "tableTo": "onboarding_snapshot",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "onboarding_snapshot_superseded_by_id_onboarding_snapshot_id_fk": {
+          "name": "onboarding_snapshot_superseded_by_id_onboarding_snapshot_id_fk",
+          "tableFrom": "onboarding_snapshot",
+          "columnsFrom": [
+            "superseded_by_id"
+          ],
+          "tableTo": "onboarding_snapshot",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "onboarding_snapshot_status_check": {
+          "name": "onboarding_snapshot_status_check",
+          "value": "\"fintrack\".\"onboarding_snapshot\".\"status\" in ('DRAFT', 'CONFIRMED')"
+        },
+        "onboarding_snapshot_confirmed_fields_check": {
+          "name": "onboarding_snapshot_confirmed_fields_check",
+          "value": "\"fintrack\".\"onboarding_snapshot\".\"status\" = 'DRAFT' or (\"fintrack\".\"onboarding_snapshot\".\"cutover_at\" is not null and \"fintrack\".\"onboarding_snapshot\".\"confirmed_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.opening_account_position": {
+      "name": "opening_account_position",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "physical_balance_minor": {
+          "name": "physical_balance_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "opening_account_position_uq": {
+          "name": "opening_account_position_uq",
+          "columns": [
+            {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "opening_account_position_owner_id_app_owner_id_fk": {
+          "name": "opening_account_position_owner_id_app_owner_id_fk",
+          "tableFrom": "opening_account_position",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "opening_account_position_snapshot_id_onboarding_snapshot_id_fk": {
+          "name": "opening_account_position_snapshot_id_onboarding_snapshot_id_fk",
+          "tableFrom": "opening_account_position",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "tableTo": "onboarding_snapshot",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "opening_account_position_account_id_account_id_fk": {
+          "name": "opening_account_position_account_id_account_id_fk",
+          "tableFrom": "opening_account_position",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "fintrack.opening_external_position": {
+      "name": "opening_external_position",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "holding_id": {
+          "name": "holding_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "opening_external_position_uq": {
+          "name": "opening_external_position_uq",
+          "columns": [
+            {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "holding_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "opening_external_position_owner_id_app_owner_id_fk": {
+          "name": "opening_external_position_owner_id_app_owner_id_fk",
+          "tableFrom": "opening_external_position",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "opening_external_position_snapshot_id_onboarding_snapshot_id_fk": {
+          "name": "opening_external_position_snapshot_id_onboarding_snapshot_id_fk",
+          "tableFrom": "opening_external_position",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "tableTo": "onboarding_snapshot",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "opening_external_position_account_id_account_id_fk": {
+          "name": "opening_external_position_account_id_account_id_fk",
+          "tableFrom": "opening_external_position",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "opening_external_position_holding_id_external_holding_id_fk": {
+          "name": "opening_external_position_holding_id_external_holding_id_fk",
+          "tableFrom": "opening_external_position",
+          "columnsFrom": [
+            "holding_id"
+          ],
+          "tableTo": "external_holding",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "opening_external_position_amount_check": {
+          "name": "opening_external_position_amount_check",
+          "value": "\"fintrack\".\"opening_external_position\".\"amount_minor\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.owner_setting": {
+      "name": "owner_setting",
+      "schema": "fintrack",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "default_special_source_account_id": {
+          "name": "default_special_source_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reserve_account_id": {
+          "name": "reserve_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "owner_setting_owner_id_app_owner_id_fk": {
+          "name": "owner_setting_owner_id_app_owner_id_fk",
+          "tableFrom": "owner_setting",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "owner_setting_default_special_source_account_id_account_id_fk": {
+          "name": "owner_setting_default_special_source_account_id_account_id_fk",
+          "tableFrom": "owner_setting",
+          "columnsFrom": [
+            "default_special_source_account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "owner_setting_reserve_account_id_account_id_fk": {
+          "name": "owner_setting_reserve_account_id_account_id_fk",
+          "tableFrom": "owner_setting",
+          "columnsFrom": [
+            "reserve_account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "fintrack.recurring_expense_rule": {
+      "name": "recurring_expense_rule",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_cycle": {
+          "name": "first_cycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_cycle": {
+          "name": "last_cycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "recurring_expense_rule_owner_id_app_owner_id_fk": {
+          "name": "recurring_expense_rule_owner_id_app_owner_id_fk",
+          "tableFrom": "recurring_expense_rule",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "recurring_expense_rule_account_id_account_id_fk": {
+          "name": "recurring_expense_rule_account_id_account_id_fk",
+          "tableFrom": "recurring_expense_rule",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "recurring_expense_rule_kind_check": {
+          "name": "recurring_expense_rule_kind_check",
+          "value": "\"fintrack\".\"recurring_expense_rule\".\"kind\" in ('SUBSCRIPTION', 'BANK_FEE')"
+        },
+        "recurring_expense_rule_first_cycle_check": {
+          "name": "recurring_expense_rule_first_cycle_check",
+          "value": "first_cycle ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "recurring_expense_rule_last_cycle_check": {
+          "name": "recurring_expense_rule_last_cycle_check",
+          "value": "last_cycle is null or (last_cycle ~ '^[0-9]{4}-(0[1-9]|1[0-2])$' and last_cycle >= first_cycle)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.recurring_expense_rule_revision": {
+      "name": "recurring_expense_rule_revision",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_from_cycle": {
+          "name": "effective_from_cycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_day": {
+          "name": "expected_day",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expected_amount_minor": {
+          "name": "expected_amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supersedes_id": {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_by_id": {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "recurring_expense_rule_revision_current_uq": {
+          "name": "recurring_expense_rule_revision_current_uq",
+          "columns": [
+            {
+              "expression": "rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "effective_from_cycle",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"recurring_expense_rule_revision\".\"superseded_by_id\" is null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "recurring_expense_rule_revision_owner_id_app_owner_id_fk": {
+          "name": "recurring_expense_rule_revision_owner_id_app_owner_id_fk",
+          "tableFrom": "recurring_expense_rule_revision",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "recurring_expense_rule_revision_rule_id_recurring_expense_rule_id_fk": {
+          "name": "recurring_expense_rule_revision_rule_id_recurring_expense_rule_id_fk",
+          "tableFrom": "recurring_expense_rule_revision",
+          "columnsFrom": [
+            "rule_id"
+          ],
+          "tableTo": "recurring_expense_rule",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "recurring_expense_rule_revision_supersedes_id_recurring_expense_rule_revision_id_fk": {
+          "name": "recurring_expense_rule_revision_supersedes_id_recurring_expense_rule_revision_id_fk",
+          "tableFrom": "recurring_expense_rule_revision",
+          "columnsFrom": [
+            "supersedes_id"
+          ],
+          "tableTo": "recurring_expense_rule_revision",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "recurring_expense_rule_revision_superseded_by_id_recurring_expense_rule_revision_id_fk": {
+          "name": "recurring_expense_rule_revision_superseded_by_id_recurring_expense_rule_revision_id_fk",
+          "tableFrom": "recurring_expense_rule_revision",
+          "columnsFrom": [
+            "superseded_by_id"
+          ],
+          "tableTo": "recurring_expense_rule_revision",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "recurring_expense_rule_revision_cycle_check": {
+          "name": "recurring_expense_rule_revision_cycle_check",
+          "value": "effective_from_cycle ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "recurring_expense_rule_revision_day_check": {
+          "name": "recurring_expense_rule_revision_day_check",
+          "value": "\"fintrack\".\"recurring_expense_rule_revision\".\"expected_day\" is null or \"fintrack\".\"recurring_expense_rule_revision\".\"expected_day\" between 1 and 31"
+        },
+        "recurring_expense_rule_revision_amount_check": {
+          "name": "recurring_expense_rule_revision_amount_check",
+          "value": "\"fintrack\".\"recurring_expense_rule_revision\".\"expected_amount_minor\" is null or \"fintrack\".\"recurring_expense_rule_revision\".\"expected_amount_minor\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.special_expense_category": {
+      "name": "special_expense_category",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalized_name": {
+          "name": "normalized_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_archived": {
+          "name": "is_archived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "special_expense_category_owner_name_uq": {
+          "name": "special_expense_category_owner_name_uq",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "normalized_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "special_expense_category_owner_id_app_owner_id_fk": {
+          "name": "special_expense_category_owner_id_app_owner_id_fk",
+          "tableFrom": "special_expense_category",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "fintrack.app_owner": {
+      "name": "app_owner",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "singleton_key": {
+          "name": "singleton_key",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "auth_user_id": {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "bound_at": {
+          "name": "bound_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "app_owner_singleton_key_unique": {
+          "name": "app_owner_singleton_key_unique",
+          "columns": [
+            "singleton_key"
+          ],
+          "nullsNotDistinct": false
+        },
+        "app_owner_auth_user_id_unique": {
+          "name": "app_owner_auth_user_id_unique",
+          "columns": [
+            "auth_user_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "app_owner_singleton_key_check": {
+          "name": "app_owner_singleton_key_check",
+          "value": "\"fintrack\".\"app_owner\".\"singleton_key\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "ops.keepalive_probe": {
+      "name": "keepalive_probe",
+      "schema": "ops",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "smallint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "keepalive_probe_single_row_check": {
+          "name": "keepalive_probe_single_row_check",
+          "value": "\"ops\".\"keepalive_probe\".\"id\" = 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.balance_confirmation": {
+      "name": "balance_confirmation",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "physical_balance_minor": {
+          "name": "physical_balance_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of": {
+          "name": "as_of",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supersedes_id": {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_by_id": {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "balance_confirmation_account_idx": {
+          "name": "balance_confirmation_account_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "as_of",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "balance_confirmation_owner_id_app_owner_id_fk": {
+          "name": "balance_confirmation_owner_id_app_owner_id_fk",
+          "tableFrom": "balance_confirmation",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "balance_confirmation_account_id_account_id_fk": {
+          "name": "balance_confirmation_account_id_account_id_fk",
+          "tableFrom": "balance_confirmation",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "balance_confirmation_supersedes_id_balance_confirmation_id_fk": {
+          "name": "balance_confirmation_supersedes_id_balance_confirmation_id_fk",
+          "tableFrom": "balance_confirmation",
+          "columnsFrom": [
+            "supersedes_id"
+          ],
+          "tableTo": "balance_confirmation",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "balance_confirmation_superseded_by_id_balance_confirmation_id_fk": {
+          "name": "balance_confirmation_superseded_by_id_balance_confirmation_id_fk",
+          "tableFrom": "balance_confirmation",
+          "columnsFrom": [
+            "superseded_by_id"
+          ],
+          "tableTo": "balance_confirmation",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "balance_confirmation_source_check": {
+          "name": "balance_confirmation_source_check",
+          "value": "\"fintrack\".\"balance_confirmation\".\"source\" in ('SETTLEMENT', 'MANUAL')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.daily_income_override": {
+      "name": "daily_income_override",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "business_date": {
+          "name": "business_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "after_settlement": {
+          "name": "after_settlement",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "supersedes_id": {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_by_id": {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "daily_income_override_current_uq": {
+          "name": "daily_income_override_current_uq",
+          "columns": [
+            {
+              "expression": "rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "business_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"daily_income_override\".\"superseded_by_id\" is null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "daily_income_override_owner_id_app_owner_id_fk": {
+          "name": "daily_income_override_owner_id_app_owner_id_fk",
+          "tableFrom": "daily_income_override",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "daily_income_override_rule_id_daily_income_rule_id_fk": {
+          "name": "daily_income_override_rule_id_daily_income_rule_id_fk",
+          "tableFrom": "daily_income_override",
+          "columnsFrom": [
+            "rule_id"
+          ],
+          "tableTo": "daily_income_rule",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "daily_income_override_supersedes_id_daily_income_override_id_fk": {
+          "name": "daily_income_override_supersedes_id_daily_income_override_id_fk",
+          "tableFrom": "daily_income_override",
+          "columnsFrom": [
+            "supersedes_id"
+          ],
+          "tableTo": "daily_income_override",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "daily_income_override_superseded_by_id_daily_income_override_id_fk": {
+          "name": "daily_income_override_superseded_by_id_daily_income_override_id_fk",
+          "tableFrom": "daily_income_override",
+          "columnsFrom": [
+            "superseded_by_id"
+          ],
+          "tableTo": "daily_income_override",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "daily_income_override_amount_check": {
+          "name": "daily_income_override_amount_check",
+          "value": "\"fintrack\".\"daily_income_override\".\"amount_minor\" is null or \"fintrack\".\"daily_income_override\".\"amount_minor\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.daily_income_state_transition": {
+      "name": "daily_income_state_transition",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_state": {
+          "name": "to_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_date": {
+          "name": "effective_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVE'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "daily_income_state_transition_date_uq": {
+          "name": "daily_income_state_transition_date_uq",
+          "columns": [
+            {
+              "expression": "rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "effective_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"daily_income_state_transition\".\"status\" = 'ACTIVE'",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "daily_income_state_transition_owner_id_app_owner_id_fk": {
+          "name": "daily_income_state_transition_owner_id_app_owner_id_fk",
+          "tableFrom": "daily_income_state_transition",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "daily_income_state_transition_rule_id_daily_income_rule_id_fk": {
+          "name": "daily_income_state_transition_rule_id_daily_income_rule_id_fk",
+          "tableFrom": "daily_income_state_transition",
+          "columnsFrom": [
+            "rule_id"
+          ],
+          "tableTo": "daily_income_rule",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "daily_income_state_transition_state_check": {
+          "name": "daily_income_state_transition_state_check",
+          "value": "\"fintrack\".\"daily_income_state_transition\".\"to_state\" in ('ACTIVE', 'PAUSED')"
+        },
+        "daily_income_state_transition_status_check": {
+          "name": "daily_income_state_transition_status_check",
+          "value": "\"fintrack\".\"daily_income_state_transition\".\"status\" in ('ACTIVE', 'CANCELLED')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.settlement": {
+      "name": "settlement",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "closing_physical_minor": {
+          "name": "closing_physical_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closing_at": {
+          "name": "closing_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closing_confirmation_id": {
+          "name": "closing_confirmation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "living_expense_minor": {
+          "name": "living_expense_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "snapshot": {
+          "name": "snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "settled_at": {
+          "name": "settled_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "settlement_one_draft_uq": {
+          "name": "settlement_one_draft_uq",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"settlement\".\"status\" = 'DRAFT'",
+          "concurrently": false
+        },
+        "settlement_account_idx": {
+          "name": "settlement_account_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "settlement_owner_id_app_owner_id_fk": {
+          "name": "settlement_owner_id_app_owner_id_fk",
+          "tableFrom": "settlement",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "settlement_account_id_account_id_fk": {
+          "name": "settlement_account_id_account_id_fk",
+          "tableFrom": "settlement",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "settlement_closing_confirmation_id_balance_confirmation_id_fk": {
+          "name": "settlement_closing_confirmation_id_balance_confirmation_id_fk",
+          "tableFrom": "settlement",
+          "columnsFrom": [
+            "closing_confirmation_id"
+          ],
+          "tableTo": "balance_confirmation",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "settlement_status_check": {
+          "name": "settlement_status_check",
+          "value": "\"fintrack\".\"settlement\".\"status\" in ('DRAFT', 'SETTLED')"
+        },
+        "settlement_range_check": {
+          "name": "settlement_range_check",
+          "value": "\"fintrack\".\"settlement\".\"end_date\" >= \"fintrack\".\"settlement\".\"start_date\""
+        },
+        "settlement_settled_fields_check": {
+          "name": "settlement_settled_fields_check",
+          "value": "\"fintrack\".\"settlement\".\"status\" = 'DRAFT' or (\"fintrack\".\"settlement\".\"closing_confirmation_id\" is not null and \"fintrack\".\"settlement\".\"living_expense_minor\" is not null and \"fintrack\".\"settlement\".\"snapshot\" is not null and \"fintrack\".\"settlement\".\"settled_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.transfer_allocation": {
+      "name": "transfer_allocation",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "magnitude_minor": {
+          "name": "magnitude_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sign": {
+          "name": "sign",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "transfer_allocation_target_idx": {
+          "name": "transfer_allocation_target_idx",
+          "columns": [
+            {
+              "expression": "target_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "transfer_allocation_entry_idx": {
+          "name": "transfer_allocation_entry_idx",
+          "columns": [
+            {
+              "expression": "entry_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "transfer_allocation_owner_id_app_owner_id_fk": {
+          "name": "transfer_allocation_owner_id_app_owner_id_fk",
+          "tableFrom": "transfer_allocation",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_allocation_entry_id_ledger_entry_id_fk": {
+          "name": "transfer_allocation_entry_id_ledger_entry_id_fk",
+          "tableFrom": "transfer_allocation",
+          "columnsFrom": [
+            "entry_id"
+          ],
+          "tableTo": "ledger_entry",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_allocation_target_id_transfer_target_id_fk": {
+          "name": "transfer_allocation_target_id_transfer_target_id_fk",
+          "tableFrom": "transfer_allocation",
+          "columnsFrom": [
+            "target_id"
+          ],
+          "tableTo": "transfer_target",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transfer_allocation_magnitude_check": {
+          "name": "transfer_allocation_magnitude_check",
+          "value": "\"fintrack\".\"transfer_allocation\".\"magnitude_minor\" > 0"
+        },
+        "transfer_allocation_sign_check": {
+          "name": "transfer_allocation_sign_check",
+          "value": "\"fintrack\".\"transfer_allocation\".\"sign\" in (1, -1)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.transfer_target": {
+      "name": "transfer_target",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context_type": {
+          "name": "context_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context_key": {
+          "name": "context_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context_order": {
+          "name": "context_order",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_account_id": {
+          "name": "source_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "destination_account_id": {
+          "name": "destination_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "transfer_target_context_uq": {
+          "name": "transfer_target_context_uq",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "context_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "context_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "destination_account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "transfer_target_route_idx": {
+          "name": "transfer_target_route_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "destination_account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "context_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "transfer_target_owner_id_app_owner_id_fk": {
+          "name": "transfer_target_owner_id_app_owner_id_fk",
+          "tableFrom": "transfer_target",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_target_source_account_id_account_id_fk": {
+          "name": "transfer_target_source_account_id_account_id_fk",
+          "tableFrom": "transfer_target",
+          "columnsFrom": [
+            "source_account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_target_destination_account_id_account_id_fk": {
+          "name": "transfer_target_destination_account_id_account_id_fk",
+          "tableFrom": "transfer_target",
+          "columnsFrom": [
+            "destination_account_id"
+          ],
+          "tableTo": "account",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transfer_target_context_type_check": {
+          "name": "transfer_target_context_type_check",
+          "value": "\"fintrack\".\"transfer_target\".\"context_type\" in ('DANA_SETTLEMENT', 'BCA_CYCLE')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "fintrack.transfer_target_version": {
+      "name": "transfer_target_version",
+      "schema": "fintrack",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "basis": {
+          "name": "basis",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_actionable": {
+          "name": "is_actionable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retirement_reason": {
+          "name": "retirement_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supersedes_id": {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_by_id": {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "transfer_target_version_current_uq": {
+          "name": "transfer_target_version_current_uq",
+          "columns": [
+            {
+              "expression": "target_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"fintrack\".\"transfer_target_version\".\"superseded_by_id\" is null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "transfer_target_version_owner_id_app_owner_id_fk": {
+          "name": "transfer_target_version_owner_id_app_owner_id_fk",
+          "tableFrom": "transfer_target_version",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "tableTo": "app_owner",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_target_version_target_id_transfer_target_id_fk": {
+          "name": "transfer_target_version_target_id_transfer_target_id_fk",
+          "tableFrom": "transfer_target_version",
+          "columnsFrom": [
+            "target_id"
+          ],
+          "tableTo": "transfer_target",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_target_version_supersedes_id_transfer_target_version_id_fk": {
+          "name": "transfer_target_version_supersedes_id_transfer_target_version_id_fk",
+          "tableFrom": "transfer_target_version",
+          "columnsFrom": [
+            "supersedes_id"
+          ],
+          "tableTo": "transfer_target_version",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transfer_target_version_superseded_by_id_transfer_target_version_id_fk": {
+          "name": "transfer_target_version_superseded_by_id_transfer_target_version_id_fk",
+          "tableFrom": "transfer_target_version",
+          "columnsFrom": [
+            "superseded_by_id"
+          ],
+          "tableTo": "transfer_target_version",
+          "schemaTo": "fintrack",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transfer_target_version_amount_check": {
+          "name": "transfer_target_version_amount_check",
+          "value": "\"fintrack\".\"transfer_target_version\".\"amount_minor\" >= 0"
+        },
+        "transfer_target_version_retirement_check": {
+          "name": "transfer_target_version_retirement_check",
+          "value": "(\"fintrack\".\"transfer_target_version\".\"is_actionable\" and \"fintrack\".\"transfer_target_version\".\"retirement_reason\" is null) or (not \"fintrack\".\"transfer_target_version\".\"is_actionable\" and \"fintrack\".\"transfer_target_version\".\"retirement_reason\" in ('INCOME_NOT_RECEIVED', 'LIQUIDITY_WRITE_OFF'))"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "fintrack": "fintrack",
+    "ops": "ops"
+  },
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
