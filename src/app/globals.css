@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
+/* Quiet Ledger core tokens (PRD: Theme dan palette). The explicit theme toggle
+   and daisyUI themes arrive with the UI slice; until then the system preference applies. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --canvas: #f7f8fa;
+  --surface: #ffffff;
+  --surface-subtle: #f1f3f5;
+  --border: #e2e6eb;
+  --control-boundary: #7d8998;
+  --text: #161b22;
+  --muted: #667085;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-content: #ffffff;
+  --danger-fg: #b42318;
+  --danger-bg: #fef3f2;
+  --success-fg: #027a48;
+  --success-bg: #ecfdf3;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --canvas: #0b0f14;
+    --surface: #111720;
+    --surface-subtle: #171e28;
+    --border: #273140;
+    --control-boundary: #6b7a90;
+    --text: #f4f7fb;
+    --muted: #9ba8b8;
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-content: #0b0f14;
+    --danger-fg: #fda29b;
+    --danger-bg: #4a1512;
+    --success-fg: #6ce9a6;
+    --success-bg: #073d2a;
   }
 }
 
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-border: var(--border);
+  --color-control: var(--control-boundary);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-content: var(--primary-content);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-bg: var(--danger-bg);
+  --color-success-fg: var(--success-fg);
+  --color-success-bg: var(--success-bg);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
