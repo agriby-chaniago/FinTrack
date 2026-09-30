@@ -35,6 +35,12 @@ pnpm build
 
 ## Status
 
-Slice 0 (platform and security spike) and Slice 1 (private authentication) run locally. Financial features start with Slice 2 after the PROPOSED items in PRD v0.17 are reviewed.
+All slices S0–S13 are implemented: private authentication, onboarding, the append-only ledger, external funds, transfers and targets, daily income with weekly DANA settlement, BCA monthly cycles, reconciliation, reports, the full UI, owner export, the installable manifest, and the encrypted backup pipeline. Production activation is an owner task.
 
-Owner bootstrap and recovery: [docs/runbooks/owner-bootstrap-and-recovery.md](docs/runbooks/owner-bootstrap-and-recovery.md).
+Checks also include `pnpm test:e2e` (Playwright against `next dev` and local Supabase; set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to reuse a system Chromium).
+
+Runbooks:
+
+- Owner bootstrap and recovery: [docs/runbooks/owner-bootstrap-and-recovery.md](docs/runbooks/owner-bootstrap-and-recovery.md)
+- Production setup and release: [docs/runbooks/production-and-release.md](docs/runbooks/production-and-release.md)
+- Backup, restore, and export: [docs/runbooks/backup-and-restore.md](docs/runbooks/backup-and-restore.md)

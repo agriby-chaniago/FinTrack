@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.18, audit readiness 30 September 2026 |
-| **Slice aktif** | S0–S3 selesai; S4 (external funds) berikutnya |
+| **Slice aktif** | S0–S13 selesai di kode; aktivasi production (project, SMTP, R2, keepalive) menunggu pemilik |
 
 ## 1. Status ringkas
 
@@ -28,10 +28,23 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | S2: schema account, kategori, setting, dana titipan, onboarding, posisi awal, definisi rule | Selesai (migration `0002`, RLS di file yang sama) |
 | S2: `/api/v1/onboarding` (GET, PUT draft dengan `If-Match`, POST confirm atomik) | Selesai; fixture onboarding direproduksi, konfirmasi paralel dan rollback diuji |
 | S2: UI onboarding 5 layar (mobile-first) + test end-to-end Playwright | Selesai |
-| Koreksi saldo awal melalui superseding opening snapshot | Selesai di S3 (API; UI menyusul bersama halaman Akun di S12) |
+| Koreksi saldo awal melalui superseding opening snapshot | Selesai (API di S3, UI `/akun/saldo-awal` di S12) |
 | S3: ledger append-only `ledger_entry` + `ledger_leg` (physical/external effect terpisah) | Selesai (migration `0003`, `0004`) |
 | S3: `postLedgerEntry()` dengan invariant per jenis, batas cutover, pertanyaan hari cutover, dana titipan tidak negatif sepanjang riwayat | Selesai; fixture dana titipan 7 langkah direproduksi |
 | S3: `GET /api/v1/accounts` (saldo calculated, status freshness, `Personal cash tercatat`) | Selesai |
+| S4: dana titipan (terima, kembalikan, bayar kebutuhan pemilik, pindah, konversi dua arah, arsip) | Selesai; fixture 7 langkah direproduksi |
+| S5: pengeluaran khusus + kategori, income/expense lain, `Koreksi` (reversal + replacement, reversal-only void) | Selesai |
+| S6: transfer dengan komponen dana titipan, target + versi immutable, alokasi oldest-first, surplus, `Tutup target`, recalculation chain | Selesai (migration `0007`) |
+| S7: income harian (pause/resume, override, lazy evaluation) + settlement mingguan (draft, catch-up, snapshot, living expense negatif + warning) | Selesai (migration `0008`); fixture empat minggu Rp930.000 direproduksi |
+| S8: koreksi riwayat yang sudah disettle (`CORRECTION_POSTING`, resync per batas closing, as-settled vs corrected) | Selesai |
+| S9: siklus BCA bulanan (occurrence lazy, resolution append-only, revision prospektif, gating kronologis, target dibekukan saat siap) | Selesai (migration `0009`, `0010`); fixture BCA Rp335.000 direproduksi |
+| S10: konfirmasi saldo physical-first, `BALANCE_ADJUSTMENT`, replacement, prompt bulanan, badge precedence | Selesai |
+| S11: laporan bulanan kalender, `CALENDAR_DAY_PRORATA_V1`, completeness, dashboard, riwayat settlement | Selesai; fixture satu bulan penuh (Februari 2021) direproduksi |
+| S12: UI Beranda, Rutinitas, Aktivitas, Akun, Catat, Pengaturan; tema terang/gelap/sistem; mutation menunggu server | Selesai; test end-to-end mencatat, mengoreksi, dan merender setiap halaman |
+| S13: export ZIP (JSON + CSV + manifest, snapshot `REPEATABLE READ`), registry cakupan export | Selesai; test registry gagal bila tabel baru belum diklasifikasikan |
+| S13: manifest PWA + ikon (termasuk maskable), tanpa service worker | Selesai |
+| S13: backup harian terenkripsi (`age`) ke R2 + restore drill otomatis setiap run dan di CI | Selesai di kode (migration `0011`); aktif setelah pemilik mengisi secret |
+| Staging hosted | Migration `0000`–`0011` diterapkan; suite database 120/120 lulus terhadap staging; bundle backup lewat session pooler + restore drill lulus |
 
 ## 2. Hasil spike S0 (lokal, Supabase CLI 2.118.0, PostgreSQL 17.6, Supavisor 2.9.13)
 
@@ -104,21 +117,22 @@ Rekomendasi arsitektur (belum dikunci PRD): satu inti append-only `ledger_entry`
 
 ## 5. Peta migration
 
-| Migration | Isi | Status |
+| Migration | Isi | Slice |
 | --- | --- | --- |
-| `0000_platform_roles` | `btree_gist`, role `fintrack_app`/`fintrack_probe`/`fintrack_backup` (NOLOGIN) | Selesai |
-| `0001_platform_schema` | Schema `fintrack`/`ops`, `app_owner`, fungsi owner, RLS, `ops.keepalive_probe` | Selesai |
-| M2 | `account` (+ `is_cash_account`, `currency CHECK = 'IDR'`, `activation_cutover_at`), `special_expense_category`, `app_setting` | S2 |
-| M3 | `onboarding_snapshot`, `opening_account_position`, konfigurasi rule awal | S2 |
-| M4 | `ledger_entry`, `ledger_leg`, index urutan kanonik | S3 |
-| M5 | `external_subject`, `external_holding`, `external_position` | S4 |
-| M6 | `transfer`, `transfer_ownership_component`, `transfer_target`, `transfer_target_version`, `transfer_allocation` | S6 |
-| M7 | `daily_income_rule`, `daily_income_state_transition`, `daily_income_state_period`, `daily_income_override` | S7 |
-| M8 | `settlement`, `balance_confirmation` | S7 |
-| M9 | `monthly_income_rule`, occurrence, `recurring_expense_rule`, revision, occurrence, `occurrence_resolution` | S9 |
-| M10 | `balance_adjustment` | S10 |
-| M11 | `idempotency_record`, view saldo/coverage, index berbasis query | S1–S11 |
-| M12 | Registry cakupan export | S13 |
+| `0000_platform_roles` | `btree_gist`, role `fintrack_app`/`fintrack_probe`/`fintrack_backup` (NOLOGIN) | S0 |
+| `0001_platform_schema` | Schema `fintrack`/`ops`, `app_owner`, fungsi owner, RLS, `ops.keepalive_probe` | S0 |
+| `0002_onboarding_schema` | Account, kategori, setting, dana titipan, onboarding snapshot, posisi awal, definisi rule | S2 |
+| `0003_ledger_core` | `ledger_entry`, `ledger_leg`, index urutan kanonik, FK supersede deferrable | S3 |
+| `0004_ledger_recorded_at_precision` | `recorded_at` presisi milidetik | S3 |
+| `0005_ledger_classification` | Klasifikasi ledger (event class, correction role, source) | S3–S5 |
+| `0006_idempotency` | `idempotency_record` | S5 |
+| `0007_transfers` | `transfer_target`, `transfer_target_version`, `transfer_allocation`, reserve account | S6 |
+| `0008_daily_income_and_settlement` | Transition, override, `balance_confirmation`, `settlement` (EXCLUDE gist, trigger immutable) | S7 |
+| `0009_monthly_cycles` | Occurrence income/kewajiban, `occurrence_resolution` | S9 |
+| `0010_revision_supersession_deferrable` | FK supersede revision deferrable | S9 |
+| `0011_backup_journal_grant` | `fintrack_backup` dapat membaca journal migration untuk bundle backup | S13 |
+
+Registry cakupan export (M12) berada di `src/server/application/export.ts`, bukan migration.
 
 ## 6. Slice
 
@@ -182,8 +196,12 @@ Mengikuti audit §9 dengan perubahan berikut:
 
 ## 10. Hal yang membutuhkan pemilik
 
-1. Membuat project Supabase production (region `ap-southeast-1`) dan mengisi environment variables Vercel per environment (Preview → staging, Production → production), serta mengaktifkan MFA pada seluruh akun
-2. Merotasi password database dan secret key staging yang pernah dibagikan lewat chat
-3. Menyediakan custom SMTP untuk invite dan password recovery
-4. Menyediakan bucket Cloudflare R2 privat dan kunci enkripsi backup
-5. Pending onboarding data pada PRD
+Seluruh langkah ada di `docs/runbooks/production-and-release.md` dan `docs/runbooks/backup-and-restore.md`:
+
+1. Membuat project Supabase production (`ap-southeast-1`), mengisi environment Vercel Production, dan mengaktifkan MFA pada seluruh akun
+2. Menyediakan custom SMTP untuk invite dan password recovery
+3. Menyediakan bucket Cloudflare R2 privat, token R2, dan kunci `age`; lalu mengaktifkan `FINTRACK_BACKUP_ENABLED` dan menjalankan restore drill dengan kunci asli sebelum production pertama
+4. Mengaktifkan keepalive (`FINTRACK_KEEPALIVE_*`) setelah production di-deploy
+5. Bootstrap owner production dan onboarding dengan data nyata
+
+Catatan: password database dan secret key staging yang pernah dibagikan lewat chat tidak dirotasi atas keputusan pemilik (30 September 2026); staging tidak pernah dipakai untuk data production.
