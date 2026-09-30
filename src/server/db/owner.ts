@@ -32,11 +32,13 @@ const statusByCode: Record<OwnerAccessErrorCode, 401 | 403 | 503> = {
 };
 
 export class OwnerAccessError extends Error {
+  readonly code: OwnerAccessErrorCode;
   readonly status: 401 | 403 | 503;
 
-  constructor(readonly code: OwnerAccessErrorCode) {
+  constructor(code: OwnerAccessErrorCode) {
     super(code);
     this.name = "OwnerAccessError";
+    this.code = code;
     this.status = statusByCode[code];
   }
 }
