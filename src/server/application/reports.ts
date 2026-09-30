@@ -48,7 +48,8 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
     view === "as_settled"
       ? sql`and e.kind <> 'CORRECTION_POSTING' and not exists (
           select 1 from fintrack.settlement s
-          where s.owner_id = ${ownerId} and s.status = 'SETTLED' and s.account_id = l.account_id
+          where s.owner_id = ${ownerId} and s.status = 'SETTLED'
+            and s.account_id = coalesce((select a.settlement_account_id from fintrack.account a where a.id = l.account_id), l.account_id)
             and e.effective_business_date between s.start_date and s.end_date and e.recorded_at > s.settled_at)`
       : sql``;
 

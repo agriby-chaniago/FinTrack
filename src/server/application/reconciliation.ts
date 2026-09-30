@@ -34,9 +34,11 @@ async function positionAtConfirmation(tx: OwnerTx, ownerId: string, confirmation
         where e.owner_id = ${ownerId} and l.account_id = ${confirmation.accountId}
           and (e.effective_business_date < ${date}::date
                or (e.effective_business_date = ${date}::date and e.recorded_at <= ${confirmation.recordedAt.toISOString()}::timestamptz))), 0)::text as external,
-      coalesce((select sum(p.physical_balance_minor) from fintrack.opening_account_position p
+      (coalesce((select sum(p.physical_balance_minor) from fintrack.opening_account_position p
         join fintrack.onboarding_snapshot s on s.id = p.snapshot_id
-        where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null and p.account_id = ${confirmation.accountId}), 0)::text as opening_physical,
+        where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null and p.account_id = ${confirmation.accountId}), 0)
+        + coalesce((select a.physical_balance_minor from fintrack.account_activation_position a
+            where a.owner_id = ${ownerId} and a.account_id = ${confirmation.accountId}), 0))::text as opening_physical,
       coalesce((select sum(x.amount_minor) from fintrack.opening_external_position x
         join fintrack.onboarding_snapshot s on s.id = x.snapshot_id
         where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null and x.account_id = ${confirmation.accountId}), 0)::text as opening_external`);

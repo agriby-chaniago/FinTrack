@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
 import { ApiError } from "@/server/api/errors";
 import type { OwnerTx } from "@/server/db/owner";
@@ -21,12 +21,41 @@ export async function requireActiveCashAccounts(tx: OwnerTx, ownerId: string, id
 
 /**
  * Accounts reconciled through weekly settlement: the ones that receive daily
- * income (initially DANA). Rules never depend on provider names.
+ * income (initially DANA) and the accounts settled together with them (Tunai,
+ * PRD v0.19). Rules never depend on provider names.
  */
 export async function weeklySettlementAccountIds(tx: OwnerTx, ownerId: string): Promise<Set<string>> {
   const rows = await tx
     .selectDistinct({ accountId: dailyIncomeRule.accountId })
     .from(dailyIncomeRule)
     .where(eq(dailyIncomeRule.ownerId, ownerId));
-  return new Set(rows.map((row) => row.accountId));
+  const members = await tx
+    .select({ accountId: account.id })
+    .from(account)
+    .where(and(eq(account.ownerId, ownerId), isNotNull(account.settlementAccountId)));
+  return new Set([...rows, ...members].map((row) => row.accountId));
+}
+
+/** The weekly account whose settlement covers `accountId` (itself for DANA, DANA for Tunai), or null. */
+export async function settlementAccountFor(tx: OwnerTx, ownerId: string, accountId: string): Promise<string | null> {
+  const [rule] = await tx
+    .select({ accountId: dailyIncomeRule.accountId })
+    .from(dailyIncomeRule)
+    .where(and(eq(dailyIncomeRule.ownerId, ownerId), eq(dailyIncomeRule.accountId, accountId)))
+    .limit(1);
+  if (rule) return rule.accountId;
+  const [member] = await tx
+    .select({ settlementAccountId: account.settlementAccountId })
+    .from(account)
+    .where(and(eq(account.ownerId, ownerId), eq(account.id, accountId)));
+  return member?.settlementAccountId ?? null;
+}
+
+/** The cash account settled together with a weekly account (Tunai), if it was activated. */
+export async function cashMemberOf(tx: OwnerTx, ownerId: string, settlementAccountId: string): Promise<AccountRow | null> {
+  const [row] = await tx
+    .select()
+    .from(account)
+    .where(and(eq(account.ownerId, ownerId), eq(account.settlementAccountId, settlementAccountId), eq(account.isActive, true)));
+  return row ?? null;
 }

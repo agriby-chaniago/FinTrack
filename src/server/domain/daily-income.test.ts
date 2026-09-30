@@ -123,6 +123,32 @@ describe("reconstruction", () => {
     expect(reversal).toEqual({ bucket: "TRANSFER_OUT", amount: rp("-100") });
   });
 
+  it("counts the wallet in the pool so cash left over is not living cost (PRD v0.19)", () => {
+    // Opening: DANA Rp50.000 + wallet Rp20.000. Rp200.000 withdrawn to the wallet (unrecorded).
+    // Closing: DANA Rp100.000 + wallet Rp30.000 → living = 70.000 + 350.000 − 130.000 = 290.000.
+    const result = reconstruct({
+      openingPersonal: rp("50000"),
+      income: income("350000"),
+      flows: [],
+      settlementDays: 7,
+      closingPhysical: rp("100000"),
+      closingExternal: 0n,
+      cash: { openingPersonal: rp("20000"), closingPhysical: rp("30000"), closingExternal: 0n },
+    });
+    expect(result).toMatchObject({
+      cashTracked: true,
+      cashClosingPersonal: rp("30000"),
+      closingPersonal: rp("100000"),
+      livingExpense: rp("290000"),
+      availableRemainder: rp("100000"),
+    });
+  });
+
+  it("leaves the DANA-only formula unchanged before Tunai is activated", () => {
+    const result = reconstruct({ openingPersonal: 0n, income: income("350000"), flows: [], settlementDays: 7, closingPhysical: rp("110000"), closingExternal: 0n });
+    expect(result).toMatchObject({ cashTracked: false, cashOpeningPersonal: 0n, cashClosingPersonal: 0n, livingExpense: rp("240000") });
+  });
+
   it("rounds averages half away from zero to whole rupiah", () => {
     expect(roundedAverage(rp("930000"), 28)).toBe(rp("33214"));
     expect(roundedAverage(rp("190000"), 7)).toBe(rp("27143"));

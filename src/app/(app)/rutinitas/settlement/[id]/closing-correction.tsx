@@ -8,27 +8,26 @@ import { FormErrors } from "@/components/form";
 import { buttonClass } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 
-export function ClosingCorrectionForm({ settlementId }: { settlementId: string }) {
+export function ClosingCorrectionForm({ settlementId, cashTracked }: { settlementId: string; cashTracked: boolean }) {
   const router = useRouter();
   const [amount, setAmount] = useState<string | null>(null);
-  const save = useMutation<{ closingPhysicalBalance: string }>(`/api/v1/settlements/${settlementId}/closing-corrections`);
+  const [cash, setCash] = useState<string | null>(null);
+  const save = useMutation<{ closingPhysicalBalance?: string; closingCashBalance?: string }>(`/api/v1/settlements/${settlementId}/closing-corrections`);
   return (
     <form
       className="space-y-3"
       onSubmit={async (event) => {
         event.preventDefault();
-        if (!amount) {
-          save.setError(["Isi saldo penutupan yang benar."]);
+        if (!amount && !cash) {
+          save.setError(["Isi saldo yang benar."]);
           return;
         }
-        const result = await save.submit({ closingPhysicalBalance: amount });
-        if (result.ok) {
-          setAmount(null);
-          router.refresh();
-        }
+        const result = await save.submit({ ...(amount ? { closingPhysicalBalance: amount } : {}), ...(cash ? { closingCashBalance: cash } : {}) });
+        if (result.ok) router.refresh();
       }}
     >
-      <AmountInput label="Saldo penutupan yang benar" value={amount} onChange={setAmount} />
+      <AmountInput label="Saldo DANA yang benar" hint="Kosongkan jika tidak berubah." value={amount} onChange={setAmount} />
+      {cashTracked ? <AmountInput label="Uang tunai di dompet yang benar" hint="Kosongkan jika tidak berubah." value={cash} onChange={setCash} /> : null}
       <FormErrors errors={save.error} />
       <button type="submit" className={buttonClass.primary} disabled={save.pending}>
         {save.pending ? "Menyimpan…" : "Simpan koreksi saldo"}

@@ -179,7 +179,7 @@ describe("owner export (PRD: Export data milik pengguna)", () => {
     expect(everything).not.toContain(user.email);
     expect(everything).not.toContain("auth_user_id");
     expect(strFromU8(files["csv/account.csv"]).split("\r\n")[0]).toBe(
-      "id,owner_id,display_name,provider_name,account_type,purpose_label,currency,is_cash_account,is_active,sort_order,activation_cutover_at,created_at",
+      "id,owner_id,display_name,provider_name,account_type,purpose_label,currency,is_cash_account,is_active,sort_order,activation_cutover_at,created_at,settlement_account_id",
     );
   });
 });

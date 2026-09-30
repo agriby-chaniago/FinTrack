@@ -106,6 +106,11 @@ export const settlement = fintrack.table(
     closingPhysicalMinor: minor("closing_physical_minor"),
     closingAt: ms("closing_at"),
     closingConfirmationId: uuid("closing_confirmation_id").references(() => balanceConfirmation.id),
+    /** Cash in the wallet at the same closing, once Tunai is in the pool (PRD v0.19). */
+    cashClosingPhysicalMinor: minor("cash_closing_physical_minor"),
+    cashClosingConfirmationId: uuid("cash_closing_confirmation_id").references(() => balanceConfirmation.id),
+    /** Draft choice `Mulai lacak uang tunai`: the Tunai opening created when this settlement is settled. */
+    cashActivationMinor: minor("cash_activation_minor"),
     livingExpenseMinor: minor("living_expense_minor"),
     snapshot: jsonb("snapshot"),
     version: integer("version").notNull().default(1),
@@ -116,6 +121,10 @@ export const settlement = fintrack.table(
   (t) => [
     check("settlement_status_check", sql`${t.status} in ('DRAFT', 'SETTLED')`),
     check("settlement_range_check", sql`${t.endDate} >= ${t.startDate}`),
+    check(
+      "settlement_cash_nonnegative_check",
+      sql`(${t.cashClosingPhysicalMinor} is null or ${t.cashClosingPhysicalMinor} >= 0) and (${t.cashActivationMinor} is null or ${t.cashActivationMinor} >= 0)`,
+    ),
     check(
       "settlement_settled_fields_check",
       sql`${t.status} = 'DRAFT' or (${t.closingConfirmationId} is not null and ${t.livingExpenseMinor} is not null and ${t.snapshot} is not null and ${t.settledAt} is not null)`,

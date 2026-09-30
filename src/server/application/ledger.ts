@@ -155,13 +155,19 @@ export async function postLedgerEntry(
   if (!options.skipSettlementResync) {
     // A record dated inside settled DANA history reclassifies that period's
     // corrected living expense instead of changing cash twice (PRD S8).
-    const { dailyRuleFor, lastSettledEnd } = await import("./daily-income");
+    const { lastSettledEnd } = await import("./daily-income");
     const { resyncSettlements } = await import("./settlement");
+    const { settlementAccountFor } = await import("./accounts");
+    // Tunai records belong to the DANA settlement pool (PRD v0.19).
+    const pools = new Set<string>();
     for (const accountId of accountIds) {
-      if (!(await dailyRuleFor(tx, ownerId, accountId))) continue;
-      const settledEnd = await lastSettledEnd(tx, ownerId, accountId);
+      const pool = await settlementAccountFor(tx, ownerId, accountId);
+      if (pool) pools.add(pool);
+    }
+    for (const pool of pools) {
+      const settledEnd = await lastSettledEnd(tx, ownerId, pool);
       if (settledEnd && draft.effectiveBusinessDate <= settledEnd) {
-        await resyncSettlements(tx, ownerId, accountId, draft.effectiveBusinessDate, options.now);
+        await resyncSettlements(tx, ownerId, pool, draft.effectiveBusinessDate, options.now);
       }
     }
   }
@@ -218,6 +224,7 @@ export async function accountBalances(
     moved_external: string;
     movement_count: number;
     has_daily_income: boolean;
+    settlement_account_id: string | null;
   }>(sql`
     with snapshot as (
       select id, cutover_at from fintrack.onboarding_snapshot
@@ -229,6 +236,11 @@ export async function accountBalances(
                        where e.snapshot_id = p.snapshot_id and e.account_id = p.account_id), 0) as external
       from fintrack.opening_account_position p join snapshot s on s.id = p.snapshot_id
       where p.owner_id = ${ownerId}
+      union all
+      -- Accounts activated after onboarding (Tunai) open with their activation position.
+      select a.account_id, a.physical_balance_minor, 0
+      from fintrack.account_activation_position a
+      where a.owner_id = ${ownerId}
     ),
     moved as (
       select l.account_id, sum(l.physical_effect_minor) as physical, sum(l.external_effect_minor) as external,
@@ -244,7 +256,8 @@ export async function accountBalances(
            coalesce(m.physical, 0)::text as moved_physical,
            coalesce(m.external, 0)::text as moved_external,
            coalesce(m.movement_count, 0) as movement_count,
-           exists (select 1 from fintrack.daily_income_rule r where r.account_id = a.id and r.owner_id = ${ownerId}) as has_daily_income
+           exists (select 1 from fintrack.daily_income_rule r where r.account_id = a.id and r.owner_id = ${ownerId}) as has_daily_income,
+           a.settlement_account_id
     from fintrack.account a
     left join opening o on o.account_id = a.id
     left join moved m on m.account_id = a.id
@@ -266,7 +279,20 @@ export async function accountBalances(
     let openWeekDisclosure = false;
 
     const rule = row.has_daily_income ? await dailyRuleFor(tx, ownerId, row.id) : undefined;
-    if (!rule) {
+    // Tunai is confirmed only by the DANA settlement it belongs to (PRD v0.19).
+    const poolRule = row.settlement_account_id ? await dailyRuleFor(tx, ownerId, row.settlement_account_id) : undefined;
+    if (poolRule) {
+      const pool = poolRule.accountId;
+      const freshness = await weeklyAccountFreshness(tx, ownerId, pool, poolRule.effectiveStartDate, await lastSettledEnd(tx, ownerId, pool), today, {
+        cashAccountId: row.id,
+      });
+      status = freshness.status ?? status;
+      openWeekDisclosure = freshness.openWeek;
+      if (freshness.confirmed) {
+        confirmedPersonal = freshness.confirmed.personal;
+        lastConfirmedAt = freshness.confirmed.at;
+      }
+    } else if (!rule) {
       const { manualFreshness } = await import("./reconciliation");
       const manual = await manualFreshness(tx, ownerId, row.id);
       if (manual) {

@@ -18,6 +18,7 @@ export const EXPORT_FORMAT_VERSION = 1;
 export const exportedTables = [
   { table: "owner_setting", orderBy: "owner_id" },
   { table: "account", orderBy: "sort_order, id" },
+  { table: "account_activation_position", orderBy: "created_at, id" },
   { table: "monthly_account_setting", orderBy: "account_id" },
   { table: "special_expense_category", orderBy: "created_at, id" },
   { table: "external_subject", orderBy: "created_at, id" },

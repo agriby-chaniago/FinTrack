@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
-import { DateField, FormErrors, SubmitBar, SubmitButton } from "@/components/form";
+import { Checkbox, DateField, FormErrors, SubmitBar, SubmitButton } from "@/components/form";
 import { Alert, buttonClass, Card, Money, SectionTitle } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 import { formatDate, formatDateTime, jakartaInputValue, jakartaIso } from "@/lib/format";
@@ -14,6 +14,52 @@ import { ReconstructionList, settlementWarning } from "./reconstruction";
 
 function defaultClosing(endDate: string, nowInput: string): string {
   return nowInput.startsWith(endDate) ? nowInput : `${endDate}T21:00`;
+}
+
+type CashState = { tracked: boolean; canStart: boolean };
+type CashValues = { closing: string | null; start: boolean; startAmount: string | null };
+
+/**
+ * Tunai (PRD v0.19): once tracked, the wallet count is required at every
+ * closing; until then the settlement offers `Mulai lacak uang tunai`.
+ */
+function CashFields({ state, values, onChange }: { state: CashState; values: CashValues; onChange: (next: CashValues) => void }) {
+  if (state.tracked) {
+    return (
+      <AmountInput
+        label="Uang tunai di dompet"
+        hint="Hitung uang fisik di dompet pada waktu yang sama. Sisa tunai tidak dihitung sebagai biaya hidup."
+        value={values.closing}
+        onChange={(closing) => onChange({ ...values, closing })}
+      />
+    );
+  }
+  if (!state.canStart) return null;
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <Checkbox
+        label="Mulai lacak uang tunai"
+        hint="Mulai periode berikutnya, tarik tunai dari DANA tidak perlu dicatat dan sisa uang di dompet tidak dihitung sebagai biaya hidup."
+        checked={values.start}
+        onChange={(start) => onChange({ ...values, start })}
+      />
+      {values.start ? (
+        <AmountInput label="Uang tunai di dompet sekarang" value={values.startAmount} onChange={(startAmount) => onChange({ ...values, startAmount })} />
+      ) : null}
+    </div>
+  );
+}
+
+/** Request fields and inline issues for the wallet part of a closing. */
+function cashBody(state: CashState, values: CashValues): { body: Record<string, unknown>; issues: string[] } {
+  if (state.tracked) {
+    return values.closing === null ? { body: {}, issues: ["Isi uang tunai di dompet."] } : { body: { cashClosingBalance: values.closing }, issues: [] };
+  }
+  if (!state.canStart) return { body: {}, issues: [] };
+  if (!values.start) return { body: { startCashTracking: null }, issues: [] };
+  return values.startAmount === null
+    ? { body: {}, issues: ["Isi uang tunai di dompet sekarang."] }
+    : { body: { startCashTracking: values.startAmount }, issues: [] };
 }
 
 function ClosingFields(props: {
@@ -33,9 +79,10 @@ function ClosingFields(props: {
   );
 }
 
-export function StartSettlement(props: { mode: "NORMAL" | "OVERDUE"; periodStart: string; normalEnd: string; today: string; nowInput: string }) {
+export function StartSettlement(props: { mode: "NORMAL" | "OVERDUE"; periodStart: string; normalEnd: string; today: string; nowInput: string; cash: CashState }) {
   const router = useRouter();
   const { nowInput } = props;
+  const [cash, setCash] = useState<CashValues>({ closing: null, start: false, startAmount: null });
   const [catchUp, setCatchUp] = useState(false);
   const [endDate, setEndDate] = useState(props.normalEnd);
   const [amount, setAmount] = useState<string | null>(null);
@@ -52,11 +99,13 @@ export function StartSettlement(props: { mode: "NORMAL" | "OVERDUE"; periodStart
       className="space-y-5"
       onSubmit={async (event) => {
         event.preventDefault();
-        if (!amount) {
-          create.setError(["Isi saldo DANA saat penutupan."]);
+        const wallet = cashBody(props.cash, cash);
+        const issues = [...(amount ? [] : ["Isi saldo DANA saat penutupan."]), ...wallet.issues];
+        if (issues.length) {
+          create.setError(issues);
           return;
         }
-        const result = await create.submit({ endDate, closingPhysicalBalance: amount, closingAt: jakartaIso(closing) });
+        const result = await create.submit({ endDate, closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body });
         if (result.ok) router.refresh();
       }}
     >
@@ -88,7 +137,10 @@ export function StartSettlement(props: { mode: "NORMAL" | "OVERDUE"; periodStart
 
       <Card>
         <SectionTitle>Saldo penutupan</SectionTitle>
-        <ClosingFields endDate={endDate} nowInput={nowInput} amount={amount} onAmount={setAmount} closing={closing} onClosing={setClosing} />
+        <div className="space-y-4">
+          <ClosingFields endDate={endDate} nowInput={nowInput} amount={amount} onAmount={setAmount} closing={closing} onClosing={setClosing} />
+          <CashFields state={props.cash} values={cash} onChange={setCash} />
+        </div>
       </Card>
 
       <FormErrors errors={create.error} />
@@ -104,6 +156,11 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
   const [editing, setEditing] = useState(draft.preview === null);
   const [amount, setAmount] = useState<string | null>(draft.closingPhysicalBalance);
   const [closing, setClosing] = useState(() => (draft.closingAt ? jakartaInputValue(draft.closingAt) : defaultClosing(draft.endDate, nowInput)));
+  const [cash, setCash] = useState<CashValues>({
+    closing: draft.cash.closingPhysicalBalance,
+    start: draft.cash.startTracking !== null,
+    startAmount: draft.cash.startTracking,
+  });
   const update = useMutation<Record<string, unknown>>(`/api/v1/settlements/${draft.id}`, "PATCH");
   const settle = useMutation<Record<string, never>>(`/api/v1/settlements/${draft.id}/settle`);
   const remove = useMutation<undefined>(`/api/v1/settlements/${draft.id}`, "DELETE");
@@ -136,11 +193,13 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
             className="space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
-              if (!amount) {
-                update.setError(["Isi saldo DANA saat penutupan."]);
+              const wallet = cashBody(draft.cash, cash);
+              const issues = [...(amount ? [] : ["Isi saldo DANA saat penutupan."]), ...wallet.issues];
+              if (issues.length) {
+                update.setError(issues);
                 return;
               }
-              const result = await update.submit({ closingPhysicalBalance: amount, closingAt: jakartaIso(closing) }, { ifMatch: draft.version });
+              const result = await update.submit({ closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body }, { ifMatch: draft.version });
               if (result.ok) {
                 setEditing(false);
                 router.refresh();
@@ -148,15 +207,28 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
             }}
           >
             <ClosingFields endDate={draft.endDate} nowInput={nowInput} amount={amount} onAmount={setAmount} closing={closing} onClosing={setClosing} />
+            <CashFields state={draft.cash} values={cash} onChange={setCash} />
             <FormErrors errors={update.error} />
             <button type="submit" className={buttonClass.primary} disabled={update.pending}>
               {update.pending ? "Menghitung…" : "Hitung ulang"}
             </button>
           </form>
         ) : (
-          <p className="text-sm">
-            <Money value={draft.closingPhysicalBalance} /> · dilihat {formatDateTime(draft.closingAt)}
-          </p>
+          <div className="space-y-1 text-sm">
+            <p>
+              DANA <Money value={draft.closingPhysicalBalance} /> · dilihat {formatDateTime(draft.closingAt)}
+            </p>
+            {draft.cash.tracked ? (
+              <p>
+                Tunai di dompet <Money value={draft.cash.closingPhysicalBalance} />
+              </p>
+            ) : null}
+            {draft.cash.startTracking !== null ? (
+              <p className="text-calculated-fg">
+                Tunai mulai dilacak dengan <Money value={draft.cash.startTracking} /> setelah settlement ini. Setelah diselesaikan, nilai awal ini tidak dapat diubah.
+              </p>
+            ) : null}
+          </div>
         )}
       </Card>
 

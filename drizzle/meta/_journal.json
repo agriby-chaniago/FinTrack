@@ -85,6 +85,13 @@
       "when": 1790758682676,
       "tag": "0011_backup_journal_grant",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790770935443,
+      "tag": "0012_tunai_settlement_pool",
+      "breakpoints": true
     }
   ]
 }

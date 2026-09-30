@@ -8,7 +8,7 @@ import { parseIdrDecimal, toIdrDecimal, type MinorUnits } from "@/lib/money";
 import { ApiError } from "@/server/api/errors";
 import { businessDate, nonNegativeAmount } from "@/server/api/schemas";
 import type { OwnerTx } from "@/server/db/owner";
-import { account } from "@/server/db/schema/onboarding";
+import { account, accountActivationPosition } from "@/server/db/schema/onboarding";
 import { balanceConfirmation, settlement } from "@/server/db/schema/settlement";
 import { transferAllocation } from "@/server/db/schema/transfers";
 import {
@@ -17,10 +17,12 @@ import {
   reconstruct,
   settlementPlan,
   settlementRangeIssues,
+  type CashPosition,
   type DailyIncomeSummary,
   type Reconstruction,
 } from "@/server/domain/daily-income";
 
+import { cashMemberOf, settlementAccountFor, type AccountRow } from "./accounts";
 import { dailyRuleFor, lastSettledEnd, recognizedIncomeFor } from "./daily-income";
 import { lockLedger, postLedgerEntry } from "./ledger";
 import { createTargetVersion, currentVersion, ensureTarget, reserveAccountId, routeTargets, type Route } from "./transfers";
@@ -44,7 +46,10 @@ async function openingPosition(tx: OwnerTx, ownerId: string, accountId: string):
     join fintrack.opening_account_position p on p.snapshot_id = s.id and p.account_id = ${accountId}
     where s.owner_id = ${ownerId} and s.status = 'CONFIRMED' and s.superseded_by_id is null
     group by s.id`);
-  return { physical: BigInt(row?.physical ?? "0"), external: BigInt(row?.external ?? "0") };
+  const [activation] = await tx.execute<{ physical: string }>(sql`
+    select physical_balance_minor::text as physical from fintrack.account_activation_position
+    where owner_id = ${ownerId} and account_id = ${accountId}`);
+  return { physical: BigInt(row?.physical ?? "0") + BigInt(activation?.physical ?? "0"), external: BigInt(row?.external ?? "0") };
 }
 
 async function legTotals(tx: OwnerTx, ownerId: string, accountId: string, boundary: Boundary, excludeSettlementId?: string) {
@@ -59,13 +64,26 @@ async function legTotals(tx: OwnerTx, ownerId: string, accountId: string, bounda
   return { physical: BigInt(row.physical), external: BigInt(row.external) };
 }
 
-async function flowRows(tx: OwnerTx, ownerId: string, accountId: string, from: Boundary, to: Boundary) {
+/**
+ * Personal effect per entry on the settlement pool. Summing an entry across
+ * DANA and Tunai makes an internal DANA ↔ Tunai transfer net to zero, so it is
+ * neither a transfer in nor out (PRD v0.19).
+ */
+async function flowRows(tx: OwnerTx, ownerId: string, accountIds: string[], from: Boundary, to: Boundary) {
+  const pool = sql.join(accountIds.map((id) => sql`${id}::uuid`), sql`, `);
   return tx.execute<{ kind: string; event_class: string; reporting_classification: string | null; correction_role: string | null; personal: string }>(sql`
     select e.kind, e.event_class, e.reporting_classification, e.correction_role,
-           (l.physical_effect_minor - l.external_effect_minor)::text as personal
+           sum(l.physical_effect_minor - l.external_effect_minor)::text as personal
     from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
-    where e.owner_id = ${ownerId} and l.owner_id = ${ownerId} and l.account_id = ${accountId}
-      and e.event_class <> 'LIVING' and ${included(to)} and not ${included(from)}`);
+    where e.owner_id = ${ownerId} and l.owner_id = ${ownerId} and l.account_id in (${pool})
+      and e.event_class <> 'LIVING' and ${included(to)} and not ${included(from)}
+    group by e.id, e.kind, e.event_class, e.reporting_classification, e.correction_role`);
+}
+
+/** Tunai joins the pool for periods that start after the settlement that activated it (PRD v0.19). */
+async function poolCash(tx: OwnerTx, ownerId: string, accountId: string, openingDate: string): Promise<AccountRow | null> {
+  const member = await cashMemberOf(tx, ownerId, accountId);
+  return member && businessDateOf(member.activationCutoverAt) <= openingDate ? member : null;
 }
 
 export type ConfirmationRow = typeof balanceConfirmation.$inferSelect;
@@ -98,7 +116,9 @@ async function openingBoundary(tx: OwnerTx, ownerId: string, row: Pick<Settlemen
   };
 }
 
-export type SettlementComputation = { reconstruction: Reconstruction; income: DailyIncomeSummary };
+/** Tunai's part of the living contribution keeps its calculated balance equal to the wallet count. */
+export type CashShare = { accountId: string; residual: MinorUnits };
+export type SettlementComputation = { reconstruction: Reconstruction; income: DailyIncomeSummary; cash: CashShare | null };
 
 /**
  * Reconstruction for a range. `closingRecordedAt` bounds same-day entries on
@@ -108,7 +128,7 @@ export async function computeSettlement(
   tx: OwnerTx,
   ownerId: string,
   row: { id?: string; accountId: string; startDate: string; endDate: string },
-  closing: { physical: MinorUnits; recordedAt: Date | null },
+  closing: { physical: MinorUnits; recordedAt: Date | null; cashPhysical?: MinorUnits | null },
 ): Promise<SettlementComputation> {
   const rule = await dailyRuleFor(tx, ownerId, row.accountId);
   if (!rule) throw new ApiError("VALIDATION_FAILED", { issues: ["NOT_A_WEEKLY_ACCOUNT"] });
@@ -120,7 +140,9 @@ export async function computeSettlement(
   const incomeBefore = await recognizedIncomeFor(tx, ownerId, row.accountId, rule.effectiveStartDate, opening.incomeThrough);
   const openingPersonal = snapshot.physical - snapshot.external + before.physical - before.external + incomeBefore.recognized;
 
-  const flows = (await flowRows(tx, ownerId, row.accountId, opening.boundary, closingBoundary)).map((flow) =>
+  const cashMember = await poolCash(tx, ownerId, row.accountId, opening.boundary.date);
+  const poolIds = cashMember ? [row.accountId, cashMember.id] : [row.accountId];
+  const flows = (await flowRows(tx, ownerId, poolIds, opening.boundary, closingBoundary)).map((flow) =>
     classifyFlow(
       { kind: flow.kind, eventClass: flow.event_class, reportingClassification: flow.reporting_classification, correctionRole: flow.correction_role },
       BigInt(flow.personal),
@@ -129,6 +151,24 @@ export async function computeSettlement(
   const income = await recognizedIncomeFor(tx, ownerId, row.accountId, row.startDate, row.endDate);
   const atClosing = await legTotals(tx, ownerId, row.accountId, closingBoundary, row.id);
 
+  let cash: CashPosition | null = null;
+  let cashShare: CashShare | null = null;
+  if (cashMember) {
+    if (closing.cashPhysical === null || closing.cashPhysical === undefined) {
+      throw new ApiError("VALIDATION_FAILED", { issues: ["CASH_CLOSING_REQUIRED"] });
+    }
+    const cashOpening = await openingPosition(tx, ownerId, cashMember.id);
+    const cashBefore = await legTotals(tx, ownerId, cashMember.id, opening.boundary);
+    const cashAtClosing = await legTotals(tx, ownerId, cashMember.id, closingBoundary, row.id);
+    cash = {
+      openingPersonal: cashOpening.physical - cashOpening.external + cashBefore.physical - cashBefore.external,
+      closingPhysical: closing.cashPhysical,
+      closingExternal: cashOpening.external + cashAtClosing.external,
+    };
+    const calculatedPersonal = cashOpening.physical - cashOpening.external + cashAtClosing.physical - cashAtClosing.external;
+    cashShare = { accountId: cashMember.id, residual: calculatedPersonal - (cash.closingPhysical - cash.closingExternal) };
+  }
+
   const reconstruction = reconstruct({
     openingPersonal,
     income,
@@ -136,12 +176,39 @@ export async function computeSettlement(
     settlementDays: daysBetweenInclusive(row.startDate, row.endDate),
     closingPhysical: closing.physical,
     closingExternal: snapshot.external + atClosing.external,
+    cash,
   });
-  return { reconstruction, income };
+  return { reconstruction, income, cash: cashShare };
 }
 
 const serialize = (value: Reconstruction) =>
-  Object.fromEntries(Object.entries(value).map(([key, v]) => [key, typeof v === "bigint" ? toIdrDecimal(v) : v])) as Record<string, string | number>;
+  Object.fromEntries(Object.entries(value).map(([key, v]) => [key, typeof v === "bigint" ? toIdrDecimal(v) : v])) as Record<string, string | number | boolean>;
+
+/** Living contribution per pool account; the parts always add up to the pool's living expense. */
+function livingShares(accountId: string, livingExpense: MinorUnits, cash: CashShare | null): [string, MinorUnits][] {
+  return cash ? [[accountId, livingExpense - cash.residual], [cash.accountId, cash.residual]] : [[accountId, livingExpense]];
+}
+
+async function postLivingDelta(tx: OwnerTx, ownerId: string, row: { id: string; endDate: string }, deltas: [string, MinorUnits][], now: Date) {
+  const legs = deltas
+    .filter(([, delta]) => delta !== 0n)
+    .map(([accountId, delta]) => ({ accountId, physicalEffect: delta, externalEffect: 0n, holdingId: null }));
+  if (legs.length === 0) return;
+  await postLedgerEntry(
+    tx,
+    ownerId,
+    {
+      kind: "SETTLEMENT_LIVING_CONTRIBUTION",
+      eventClass: "LIVING",
+      effectiveBusinessDate: row.endDate,
+      reportingClassification: null,
+      sourceType: "SETTLEMENT",
+      sourceId: row.id,
+      legs,
+    },
+    { now, cutoverDayAnswer: "NOT_IN_OPENING", skipSettlementResync: true },
+  );
+}
 
 async function weeklyRoute(tx: OwnerTx, ownerId: string, accountId: string): Promise<Route> {
   return { sourceAccountId: accountId, destinationAccountId: await reserveAccountId(tx, ownerId) };
@@ -185,15 +252,24 @@ export async function settlementRouter(tx: OwnerTx, ownerId: string, now: Date) 
   return { mode, accountId: rule.accountId, draftId: draft?.id ?? null, ...plan, today };
 }
 
+const cashFields = {
+  /** Wallet count at the same closing, once Tunai is tracked. */
+  cashClosingBalance: nonNegativeAmount.optional(),
+  /** `Mulai lacak uang tunai`: the wallet count that opens Tunai when this settlement is settled; null clears it. */
+  startCashTracking: nonNegativeAmount.nullable().optional(),
+};
+
 export const createSettlementSchema = z.object({
   endDate: businessDate,
   closingPhysicalBalance: nonNegativeAmount.optional(),
   closingAt: z.iso.datetime({ offset: true }).optional(),
+  ...cashFields,
 });
 
 export const updateSettlementSchema = z.object({
   closingPhysicalBalance: nonNegativeAmount,
   closingAt: z.iso.datetime({ offset: true }),
+  ...cashFields,
 });
 
 function assertClosingTime(endDate: string, closingAt: Date, now: Date) {
@@ -212,7 +288,19 @@ export async function createSettlementDraft(tx: OwnerTx, ownerId: string, input:
     .values({ ownerId, accountId: router.accountId, startDate: router.periodStart, endDate: input.endDate })
     .returning();
   if (input.closingPhysicalBalance !== undefined && input.closingAt) {
-    return updateSettlementDraft(tx, ownerId, row.id, { closingPhysicalBalance: input.closingPhysicalBalance, closingAt: input.closingAt }, row.version, now);
+    return updateSettlementDraft(
+      tx,
+      ownerId,
+      row.id,
+      {
+        closingPhysicalBalance: input.closingPhysicalBalance,
+        closingAt: input.closingAt,
+        cashClosingBalance: input.cashClosingBalance,
+        startCashTracking: input.startCashTracking,
+      },
+      row.version,
+      now,
+    );
   }
   return row;
 }
@@ -236,9 +324,19 @@ export async function updateSettlementDraft(
   const row = await draftRow(tx, ownerId, id, version);
   const closingAt = new Date(input.closingAt);
   assertClosingTime(row.endDate, closingAt, now);
+  const tracked = Boolean(await cashMemberOf(tx, ownerId, row.accountId));
+  if (tracked && input.startCashTracking !== undefined && input.startCashTracking !== null) {
+    throw new ApiError("VALIDATION_FAILED", { issues: ["CASH_ALREADY_TRACKED"] });
+  }
+  if (!tracked && input.cashClosingBalance !== undefined) throw new ApiError("VALIDATION_FAILED", { issues: ["CASH_NOT_TRACKED"] });
+  const cash = {
+    cashClosingPhysicalMinor: tracked && input.cashClosingBalance !== undefined ? parseIdrDecimal(input.cashClosingBalance) : row.cashClosingPhysicalMinor,
+    cashActivationMinor:
+      input.startCashTracking === undefined ? row.cashActivationMinor : input.startCashTracking === null ? null : parseIdrDecimal(input.startCashTracking),
+  };
   const [updated] = await tx
     .update(settlement)
-    .set({ closingPhysicalMinor: parseIdrDecimal(input.closingPhysicalBalance), closingAt, version: row.version + 1, updatedAt: now })
+    .set({ closingPhysicalMinor: parseIdrDecimal(input.closingPhysicalBalance), closingAt, ...cash, version: row.version + 1, updatedAt: now })
     .where(and(eq(settlement.ownerId, ownerId), eq(settlement.id, id)))
     .returning();
   return updated;
@@ -261,27 +359,46 @@ export async function settle(tx: OwnerTx, ownerId: string, id: string, version: 
   if (row.closingPhysicalMinor === null || !row.closingAt) throw new ApiError("VALIDATION_FAILED", { issues: ["CLOSING_REQUIRED"] });
   if (row.endDate > businessDateOf(now)) throw new ApiError("VALIDATION_FAILED", { issues: ["END_IN_FUTURE"] });
 
-  const { reconstruction, income } = await computeSettlement(tx, ownerId, row, { physical: row.closingPhysicalMinor, recordedAt: null });
+  const { reconstruction, income, cash } = await computeSettlement(tx, ownerId, row, {
+    physical: row.closingPhysicalMinor,
+    recordedAt: null,
+    cashPhysical: row.cashClosingPhysicalMinor,
+  });
   const [confirmation] = await tx
     .insert(balanceConfirmation)
     .values({ ownerId, accountId: row.accountId, physicalBalanceMinor: row.closingPhysicalMinor, asOf: row.closingAt, source: "SETTLEMENT" })
     .returning();
+  const [cashConfirmation] = cash
+    ? await tx
+        .insert(balanceConfirmation)
+        .values({ ownerId, accountId: cash.accountId, physicalBalanceMinor: row.cashClosingPhysicalMinor!, asOf: row.closingAt, source: "SETTLEMENT" })
+        .returning()
+    : [];
 
-  if (reconstruction.livingExpense !== 0n) {
-    await postLedgerEntry(
-      tx,
-      ownerId,
-      {
-        kind: "SETTLEMENT_LIVING_CONTRIBUTION",
-        eventClass: "LIVING",
-        effectiveBusinessDate: row.endDate,
-        reportingClassification: null,
-        sourceType: "SETTLEMENT",
-        sourceId: row.id,
-        legs: [{ accountId: row.accountId, physicalEffect: -reconstruction.livingExpense, externalEffect: 0n, holdingId: null }],
-      },
-      { now, cutoverDayAnswer: "NOT_IN_OPENING", skipSettlementResync: true },
-    );
+  await postLivingDelta(tx, ownerId, row, livingShares(row.accountId, reconstruction.livingExpense, cash).map(([accountId, share]) => [accountId, -share]), now);
+
+  // `Mulai lacak uang tunai`: Tunai opens at this closing and joins the pool from the next period.
+  let cashAccountId: string | null = null;
+  if (row.cashActivationMinor !== null) {
+    if (await cashMemberOf(tx, ownerId, row.accountId)) throw new ApiError("VALIDATION_FAILED", { issues: ["CASH_ALREADY_TRACKED"] });
+    const [{ next }] = await tx.execute<{ next: number }>(sql`
+      select coalesce(max(sort_order), 0) + 1 as next from fintrack.account where owner_id = ${ownerId}`);
+    const [created] = await tx
+      .insert(account)
+      .values({
+        ownerId,
+        displayName: "Tunai",
+        providerName: "Tunai",
+        accountType: "CASH",
+        purposeLabel: "Daily",
+        isCashAccount: true,
+        sortOrder: Number(next),
+        activationCutoverAt: row.closingAt,
+        settlementAccountId: row.accountId,
+      })
+      .returning({ id: account.id });
+    await tx.insert(accountActivationPosition).values({ ownerId, accountId: created.id, physicalBalanceMinor: row.cashActivationMinor });
+    cashAccountId = created.id;
   }
 
   const route = await weeklyRoute(tx, ownerId, row.accountId);
@@ -300,12 +417,14 @@ export async function settle(tx: OwnerTx, ownerId: string, id: string, version: 
     initialTarget: toIdrDecimal(targetAmount),
     days: income.days.map((day) => ({ date: day.date, state: day.state, amount: toIdrDecimal(day.amount), overridden: day.overridden })),
     closingAt: row.closingAt.toISOString(),
+    ...(cashAccountId ? { cashActivated: toIdrDecimal(row.cashActivationMinor!) } : {}),
   };
   await tx
     .update(settlement)
     .set({
       status: "SETTLED",
       closingConfirmationId: confirmation.id,
+      cashClosingConfirmationId: cashConfirmation?.id ?? null,
       livingExpenseMinor: reconstruction.livingExpense,
       snapshot,
       settledAt: now,
@@ -315,11 +434,12 @@ export async function settle(tx: OwnerTx, ownerId: string, id: string, version: 
   return { id, targetId, snapshot };
 }
 
-async function ownLivingEffect(tx: OwnerTx, ownerId: string, settlementId: string): Promise<MinorUnits> {
+async function ownLivingEffect(tx: OwnerTx, ownerId: string, settlementId: string, accountId: string): Promise<MinorUnits> {
   const [row] = await tx.execute<{ total: string }>(sql`
     select coalesce(sum(l.physical_effect_minor), 0)::text as total
     from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
-    where e.owner_id = ${ownerId} and e.source_type = 'SETTLEMENT' and e.source_id = ${settlementId}::uuid`);
+    where e.owner_id = ${ownerId} and e.source_type = 'SETTLEMENT' and e.source_id = ${settlementId}::uuid
+      and l.account_id = ${accountId}::uuid`);
   return BigInt(row.total);
 }
 
@@ -327,7 +447,12 @@ async function ownLivingEffect(tx: OwnerTx, ownerId: string, settlementId: strin
 export async function correctedComputation(tx: OwnerTx, ownerId: string, row: SettlementRow): Promise<SettlementComputation> {
   const [original] = await tx.select().from(balanceConfirmation).where(eq(balanceConfirmation.id, row.closingConfirmationId!));
   const authoritative = await authoritativeConfirmation(tx, ownerId, original.id);
-  return computeSettlement(tx, ownerId, row, { physical: authoritative.physicalBalanceMinor, recordedAt: original.recordedAt });
+  const cash = row.cashClosingConfirmationId ? await authoritativeConfirmation(tx, ownerId, row.cashClosingConfirmationId) : null;
+  return computeSettlement(tx, ownerId, row, {
+    physical: authoritative.physicalBalanceMinor,
+    recordedAt: original.recordedAt,
+    cashPhysical: cash?.physicalBalanceMinor ?? null,
+  });
 }
 
 /**
@@ -337,7 +462,9 @@ export async function correctedComputation(tx: OwnerTx, ownerId: string, row: Se
  * effect, and DANA targets are re-versioned chronologically when their basis
  * changes. As-settled snapshots are never touched.
  */
-export async function resyncSettlements(tx: OwnerTx, ownerId: string, accountId: string, fromDate: string, now: Date): Promise<void> {
+export async function resyncSettlements(tx: OwnerTx, ownerId: string, poolAccountId: string, fromDate: string, now: Date): Promise<void> {
+  // A Tunai record resynchronizes the DANA settlements that cover it.
+  const accountId = (await settlementAccountFor(tx, ownerId, poolAccountId)) ?? poolAccountId;
   const rows = await tx
     .select()
     .from(settlement)
@@ -347,24 +474,12 @@ export async function resyncSettlements(tx: OwnerTx, ownerId: string, accountId:
   const route = await weeklyRoute(tx, ownerId, accountId);
 
   for (const row of rows) {
-    const { reconstruction } = await correctedComputation(tx, ownerId, row);
-    const delta = -reconstruction.livingExpense - (await ownLivingEffect(tx, ownerId, row.id));
-    if (delta !== 0n) {
-      await postLedgerEntry(
-        tx,
-        ownerId,
-        {
-          kind: "SETTLEMENT_LIVING_CONTRIBUTION",
-          eventClass: "LIVING",
-          effectiveBusinessDate: row.endDate,
-          reportingClassification: null,
-          sourceType: "SETTLEMENT",
-          sourceId: row.id,
-          legs: [{ accountId, physicalEffect: delta, externalEffect: 0n, holdingId: null }],
-        },
-        { now, cutoverDayAnswer: "NOT_IN_OPENING", skipSettlementResync: true },
-      );
+    const { reconstruction, cash } = await correctedComputation(tx, ownerId, row);
+    const deltas: [string, MinorUnits][] = [];
+    for (const [shareAccountId, share] of livingShares(accountId, reconstruction.livingExpense, cash)) {
+      deltas.push([shareAccountId, -share - (await ownLivingEffect(tx, ownerId, row.id, shareAccountId))]);
     }
+    await postLivingDelta(tx, ownerId, row, deltas, now);
 
     const targetId = await ensureTarget(tx, ownerId, { contextType: "DANA_SETTLEMENT", contextKey: row.id, contextOrder: row.endDate }, route);
     const version = await currentVersion(tx, ownerId, targetId);
@@ -389,7 +504,26 @@ async function firstVersionTime(tx: OwnerTx, ownerId: string, targetId: string):
   return row?.created_at ? new Date(row.created_at) : null;
 }
 
-export const replaceClosingSchema = z.object({ closingPhysicalBalance: nonNegativeAmount });
+export const replaceClosingSchema = z
+  .object({ closingPhysicalBalance: nonNegativeAmount.optional(), closingCashBalance: nonNegativeAmount.optional() })
+  .refine((value) => value.closingPhysicalBalance !== undefined || value.closingCashBalance !== undefined, "nothing to replace");
+
+async function replaceConfirmationValue(tx: OwnerTx, ownerId: string, confirmationId: string, physical: MinorUnits): Promise<string | null> {
+  const current = await authoritativeConfirmation(tx, ownerId, confirmationId);
+  if (physical === current.physicalBalanceMinor) return null;
+  const replacementId = crypto.randomUUID();
+  await tx.update(balanceConfirmation).set({ supersededById: replacementId }).where(eq(balanceConfirmation.id, current.id));
+  await tx.insert(balanceConfirmation).values({
+    id: replacementId,
+    ownerId,
+    accountId: current.accountId,
+    physicalBalanceMinor: physical,
+    asOf: current.asOf,
+    source: "SETTLEMENT",
+    supersedesId: current.id,
+  });
+  return replacementId;
+}
 
 /**
  * Corrects a mistyped closing balance with a replacement confirmation. The
@@ -400,22 +534,18 @@ export async function replaceSettlementClosing(tx: OwnerTx, ownerId: string, id:
   await lockLedger(tx, ownerId);
   const [row] = await tx.select().from(settlement).where(and(eq(settlement.ownerId, ownerId), eq(settlement.id, id)));
   if (!row || row.status !== "SETTLED") throw new ApiError("NOT_FOUND");
-  const current = await authoritativeConfirmation(tx, ownerId, row.closingConfirmationId!);
-  const physical = parseIdrDecimal(input.closingPhysicalBalance);
-  if (physical === current.physicalBalanceMinor) throw new ApiError("VALIDATION_FAILED", { issues: ["NO_CHANGE"] });
-  const replacementId = crypto.randomUUID();
-  await tx.update(balanceConfirmation).set({ supersededById: replacementId }).where(eq(balanceConfirmation.id, current.id));
-  await tx.insert(balanceConfirmation).values({
-    id: replacementId,
-    ownerId,
-    accountId: row.accountId,
-    physicalBalanceMinor: physical,
-    asOf: current.asOf,
-    source: "SETTLEMENT",
-    supersedesId: current.id,
-  });
+  if (input.closingCashBalance !== undefined && !row.cashClosingConfirmationId) throw new ApiError("VALIDATION_FAILED", { issues: ["CASH_NOT_TRACKED"] });
+  const replaced = [
+    input.closingPhysicalBalance === undefined
+      ? null
+      : await replaceConfirmationValue(tx, ownerId, row.closingConfirmationId!, parseIdrDecimal(input.closingPhysicalBalance)),
+    input.closingCashBalance === undefined
+      ? null
+      : await replaceConfirmationValue(tx, ownerId, row.cashClosingConfirmationId!, parseIdrDecimal(input.closingCashBalance)),
+  ];
+  if (replaced.every((value) => value === null)) throw new ApiError("VALIDATION_FAILED", { issues: ["NO_CHANGE"] });
   await resyncSettlements(tx, ownerId, row.accountId, row.endDate, now);
-  return { confirmationId: replacementId };
+  return { confirmationId: replaced[0], cashConfirmationId: replaced[1] };
 }
 
 export type SettlementView = {
@@ -428,9 +558,11 @@ export type SettlementView = {
   closingPhysicalBalance: string | null;
   closingAt: string | null;
   nonstandard: boolean;
-  preview: Record<string, string | number> | null;
+  /** Tunai in this settlement: tracked (wallet count required), or offered for activation. */
+  cash: { tracked: boolean; canStart: boolean; closingPhysicalBalance: string | null; startTracking: string | null };
+  preview: Record<string, string | number | boolean> | null;
   asSettled: Record<string, unknown> | null;
-  corrected: Record<string, string | number> | null;
+  corrected: Record<string, string | number | boolean> | null;
   hasCorrections: boolean;
   warnings: string[];
 };
@@ -439,7 +571,7 @@ function warningsOf(reconstruction: Reconstruction): string[] {
   const warnings: string[] = [];
   // PRD OD-6: negative living expense is allowed but always explained.
   if (reconstruction.livingExpense < 0n) warnings.push("UNRECORDED_INCOME");
-  if (reconstruction.closingPersonal < 0n) warnings.push("EXTERNAL_FUND_SHORTFALL");
+  if (reconstruction.closingPersonal < 0n || reconstruction.cashClosingPersonal < 0n) warnings.push("EXTERNAL_FUND_SHORTFALL");
   return warnings;
 }
 
@@ -456,14 +588,19 @@ export async function settlementView(tx: OwnerTx, ownerId: string, id: string): 
     closingAt: row.closingAt?.toISOString() ?? null,
     nonstandard: daysBetweenInclusive(row.startDate, row.endDate) !== 7,
   };
+  const amount = (value: MinorUnits | null) => (value === null ? null : toIdrDecimal(value));
   if (row.status === "DRAFT") {
+    const member = await cashMemberOf(tx, ownerId, row.accountId);
+    const waitingForCash = Boolean(member) && row.cashClosingPhysicalMinor === null;
     const preview =
-      row.closingPhysicalMinor === null
+      row.closingPhysicalMinor === null || waitingForCash
         ? null
-        : (await computeSettlement(tx, ownerId, row, { physical: row.closingPhysicalMinor, recordedAt: null })).reconstruction;
+        : (await computeSettlement(tx, ownerId, row, { physical: row.closingPhysicalMinor, recordedAt: null, cashPhysical: row.cashClosingPhysicalMinor }))
+            .reconstruction;
     return {
       ...base,
-      closingPhysicalBalance: row.closingPhysicalMinor === null ? null : toIdrDecimal(row.closingPhysicalMinor),
+      closingPhysicalBalance: amount(row.closingPhysicalMinor),
+      cash: { tracked: Boolean(member), canStart: !member, closingPhysicalBalance: amount(row.cashClosingPhysicalMinor), startTracking: amount(row.cashActivationMinor) },
       preview: preview && serialize(preview),
       asSettled: null,
       corrected: null,
@@ -476,10 +613,19 @@ export async function settlementView(tx: OwnerTx, ownerId: string, id: string): 
   return {
     ...base,
     closingPhysicalBalance: toIdrDecimal(row.closingPhysicalMinor!),
+    cash: {
+      tracked: corrected.cashTracked,
+      canStart: false,
+      closingPhysicalBalance: corrected.cashTracked ? toIdrDecimal(corrected.cashClosingPhysical) : null,
+      startTracking: amount(row.cashActivationMinor),
+    },
     preview: null,
     asSettled,
     corrected: serialize(corrected),
-    hasCorrections: toIdrDecimal(corrected.livingExpense) !== asSettled.livingExpense || toIdrDecimal(corrected.closingPhysical) !== asSettled.closingPhysical,
+    hasCorrections:
+      toIdrDecimal(corrected.livingExpense) !== asSettled.livingExpense ||
+      toIdrDecimal(corrected.closingPhysical) !== asSettled.closingPhysical ||
+      (corrected.cashTracked && toIdrDecimal(corrected.cashClosingPhysical) !== asSettled.cashClosingPhysical),
     warnings: warningsOf(corrected),
   };
 }
@@ -510,7 +656,9 @@ export async function settledSettlementForRecord(
   date: string,
   recordedAt: Date,
 ): Promise<{ id: string; accountId: string } | null> {
-  for (const accountId of accountIds) {
+  const settlementAccounts = new Set<string>();
+  for (const id of accountIds) settlementAccounts.add((await settlementAccountFor(tx, ownerId, id)) ?? id);
+  for (const accountId of settlementAccounts) {
     const [latest] = await tx
       .select()
       .from(settlement)

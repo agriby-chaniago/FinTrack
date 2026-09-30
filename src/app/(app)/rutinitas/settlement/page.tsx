@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import { formatDate, jakartaInputValue } from "@/lib/format";
+import { cashMemberOf } from "@/server/application/accounts";
 import { settlementRouter, settlementView } from "@/server/application/settlement";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
@@ -12,10 +13,11 @@ export default async function SettlementPage() {
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
     const router = await settlementRouter(tx, ownerId, now);
     const draft = router.mode === "DRAFT" && router.draftId ? await settlementView(tx, ownerId, router.draftId) : null;
-    return { router, draft };
+    const tracked = router.mode === "NO_WEEKLY_ACCOUNT" ? false : Boolean(await cashMemberOf(tx, ownerId, router.accountId));
+    return { router, draft, cash: { tracked, canStart: !tracked } };
   });
   if (result.status !== "OWNER") redirect("/login");
-  const { router, draft } = result.value;
+  const { router, draft, cash } = result.value;
   const nowInput = jakartaInputValue(now.toISOString());
 
   if (router.mode === "NO_WEEKLY_ACCOUNT") {
@@ -36,7 +38,7 @@ export default async function SettlementPage() {
       {draft ? (
         <SettlementDraft draft={draft} nowInput={nowInput} />
       ) : router.mode === "NORMAL" || router.mode === "OVERDUE" ? (
-        <StartSettlement mode={router.mode} periodStart={router.periodStart} normalEnd={router.normalEnd} today={router.today} nowInput={nowInput} />
+        <StartSettlement mode={router.mode} periodStart={router.periodStart} normalEnd={router.normalEnd} today={router.today} nowInput={nowInput} cash={cash} />
       ) : (
         <div className="space-y-4">
           <EmptyState title="Belum waktunya settlement">

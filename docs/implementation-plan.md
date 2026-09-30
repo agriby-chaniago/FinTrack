@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.18, audit readiness 30 September 2026 |
-| **Slice aktif** | S0–S13 selesai; production aktif sejak 30 September 2026 (tanpa backup R2 dan custom SMTP atas keputusan pemilik) |
+| **Slice aktif** | S0–S14 selesai; production aktif sejak 30 September 2026 (tanpa backup R2 dan custom SMTP atas keputusan pemilik) |
 
 ## 1. Status ringkas
 
@@ -44,6 +44,7 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | S13: export ZIP (JSON + CSV + manifest, snapshot `REPEATABLE READ`), registry cakupan export | Selesai; test registry gagal bila tabel baru belum diklasifikasikan |
 | S13: manifest PWA + ikon (termasuk maskable), tanpa service worker | Selesai |
 | S13: backup harian terenkripsi (`age`) ke R2 + restore drill otomatis setiap run dan di CI | Selesai di kode (migration `0011`); aktif setelah pemilik mengisi secret |
+| S14: uang tunai (`Tunai`, account `CASH`) di-settle bersama DANA dalam satu settlement pool; aktivasi dari settlement, hitung dompet tiap settlement, koreksi dan freshness pool | Selesai (migration `0012`); test integrasi pool + e2e UI settlement |
 | Staging hosted | Migration `0000`–`0011` diterapkan; suite database 120/120 lulus terhadap staging; bundle backup lewat session pooler + restore drill lulus |
 
 ## 2. Hasil spike S0 (lokal, Supabase CLI 2.118.0, PostgreSQL 17.6, Supavisor 2.9.13)
@@ -131,6 +132,7 @@ Rekomendasi arsitektur (belum dikunci PRD): satu inti append-only `ledger_entry`
 | `0009_monthly_cycles` | Occurrence income/kewajiban, `occurrence_resolution` | S9 |
 | `0010_revision_supersession_deferrable` | FK supersede revision deferrable | S9 |
 | `0011_backup_journal_grant` | `fintrack_backup` dapat membaca journal migration untuk bundle backup | S13 |
+| `0012_tunai_settlement_pool` | `account_type` `CASH`, `account.settlement_account_id`, `account_activation_position`, kolom tunai pada `settlement` | S14 |
 
 Registry cakupan export (M12) berada di `src/server/application/export.ts`, bukan migration.
 
@@ -152,6 +154,7 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S11 | Reporting + metrics | S8–S10 | Seluruh metric; `CALENDAR_DAY_PRORATA_V1`; completeness; as-settled vs corrected | — |
 | S12 | UI | S11 | App shell; dashboard; theme; aksesibilitas; mutation menunggu server | — |
 | S13 | Portability + operations | S11 | Export ZIP; manifest PWA; backup R2 + restore drill; keepalive aktif | Akun Cloudflare R2, SMTP, project production |
+| S14 | Uang tunai dalam settlement pool | S7, S8 | Aktivasi dari settlement; dompet dihitung tiap settlement; transfer internal pool netral; target reserve dari DANA saja; koreksi settled dan replacement dompet; e2e UI | — |
 
 Slice boleh dimulai hanya ketika seluruh item pada kolom "Diblokir oleh" sudah berupa keputusan LOCKED di PRD.
 

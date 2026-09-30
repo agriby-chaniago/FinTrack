@@ -42,6 +42,12 @@ export default async function SettlementDetailPage({ params }: { params: Promise
         action={<LinkButton href="/rutinitas">Kembali</LinkButton>}
       />
 
+      {typeof asSettled.cashActivated === "string" ? (
+        <Alert tone="info" title="Tunai mulai dilacak">
+          Settlement ini memulai pelacakan uang tunai dengan <Money value={asSettled.cashActivated} /> di dompet. Tunai dihitung bersama DANA mulai periode berikutnya.
+        </Alert>
+      ) : null}
+
       {view.warnings.map((code) => (
         <Alert key={code} tone="review" title={settlementWarning[code]?.title ?? code}>
           {settlementWarning[code]?.body}
@@ -104,9 +110,15 @@ export default async function SettlementDetailPage({ params }: { params: Promise
         <details>
           <summary className="flex min-h-11 cursor-pointer items-center font-medium">Saldo penutupan salah?</summary>
           <p className="mb-3 text-sm text-muted">
-            Saldo tercatat <Money value={view.closingPhysicalBalance} />. Koreksi menambah catatan pengganti; nilai saat settlement tetap tersimpan.
+            Saldo DANA tercatat <Money value={view.closingPhysicalBalance} />
+            {view.cash.tracked ? (
+              <>
+                , tunai di dompet <Money value={view.cash.closingPhysicalBalance} />
+              </>
+            ) : null}
+            . Koreksi menambah catatan pengganti; nilai saat settlement tetap tersimpan.
           </p>
-          <ClosingCorrectionForm settlementId={view.id} />
+          <ClosingCorrectionForm settlementId={view.id} cashTracked={view.cash.tracked} />
         </details>
       </Card>
     </div>

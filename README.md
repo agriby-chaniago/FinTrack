@@ -35,7 +35,7 @@ pnpm build
 
 ## Status
 
-All slices S0–S13 are implemented: private authentication, onboarding, the append-only ledger, external funds, transfers and targets, daily income with weekly DANA settlement, BCA monthly cycles, reconciliation, reports, the full UI, owner export, the installable manifest, and the encrypted backup pipeline. Production activation is an owner task.
+All slices S0–S14 are implemented: private authentication, onboarding, the append-only ledger, external funds, transfers and targets, daily income with weekly DANA settlement (with cash in the wallet settled in the same pool), BCA monthly cycles, reconciliation, reports, the full UI, owner export, the installable manifest, and the encrypted backup pipeline. Production runs at https://fintrack-new-woad.vercel.app.
 
 Checks also include `pnpm test:e2e` (Playwright against `next dev` and local Supabase; set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to reuse a system Chromium).
 

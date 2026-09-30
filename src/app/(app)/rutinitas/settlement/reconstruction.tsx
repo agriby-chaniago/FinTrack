@@ -3,25 +3,33 @@ import { Money, Row } from "@/components/ui";
 import { approx } from "@/lib/format";
 
 type Values = Record<string, unknown>;
+type Line = { key: string; label: string; sign?: "+" | "−"; emphasis?: boolean };
 
-const rows: { key: string; label: string; sign?: "+" | "−"; emphasis?: boolean }[] = [
-  { key: "openingPersonal", label: "Uang pribadi awal periode" },
-  { key: "recognizedIncome", label: "Income harian diakui", sign: "+" },
-  { key: "otherInflows", label: "Income lain", sign: "+" },
-  { key: "transfersIn", label: "Transfer masuk", sign: "+" },
-  { key: "transfersOut", label: "Transfer keluar", sign: "−" },
-  { key: "nonLivingDeductions", label: "Pengeluaran bukan biaya hidup", sign: "−" },
-  { key: "closingPersonal", label: "Uang pribadi saat penutupan", sign: "−" },
-  { key: "livingExpense", label: "Biaya hidup", emphasis: true },
-];
+/** Formula lines in order; the wallet lines appear once Tunai is in the pool (PRD v0.19). */
+function formulaRows(cashTracked: boolean): Line[] {
+  const dana = cashTracked ? " DANA" : "";
+  return [
+    { key: "openingPersonal", label: `Uang pribadi${dana} awal periode` },
+    ...(cashTracked ? [{ key: "cashOpeningPersonal", label: "Uang tunai awal periode", sign: "+" as const }] : []),
+    { key: "recognizedIncome", label: "Income harian diakui", sign: "+" },
+    { key: "otherInflows", label: "Income lain", sign: "+" },
+    { key: "transfersIn", label: "Transfer masuk", sign: "+" },
+    { key: "transfersOut", label: "Transfer keluar", sign: "−" },
+    { key: "nonLivingDeductions", label: "Pengeluaran bukan biaya hidup", sign: "−" },
+    { key: "closingPersonal", label: `Uang pribadi${dana} saat penutupan`, sign: "−" },
+    ...(cashTracked ? [{ key: "cashClosingPersonal", label: "Uang tunai di dompet saat penutupan", sign: "−" as const }] : []),
+    { key: "livingExpense", label: "Biaya hidup", emphasis: true },
+  ];
+}
 
 const text = (value: unknown) => (typeof value === "string" ? value : typeof value === "number" ? String(value) : null);
 
 /** One reconstruction as a definition list, with income days and closing composition. */
 export function ReconstructionList({ values }: { values: Values }) {
+  const cashTracked = values.cashTracked === true;
   return (
     <dl>
-      {rows.map((row) => (
+      {formulaRows(cashTracked).map((row) => (
         <Row key={row.key} label={row.sign ? `${row.sign} ${row.label}` : row.label} emphasis={row.emphasis}>
           <Money value={text(values[row.key])} />
         </Row>
@@ -30,12 +38,17 @@ export function ReconstructionList({ values }: { values: Values }) {
       <Row label="Hari income diterima">
         {text(values.receivedDays)} dari {text(values.eligibleDays)} hari aktif
       </Row>
-      <Row label="Saldo fisik penutupan">
+      <Row label="Saldo fisik DANA penutupan">
         <Money value={text(values.closingPhysical)} />
       </Row>
       {text(values.closingExternal) !== "0" ? (
-        <Row label="Dana titipan di dalamnya">
+        <Row label="Dana titipan di DANA">
           <Money value={text(values.closingExternal)} />
+        </Row>
+      ) : null}
+      {cashTracked && text(values.cashClosingExternal) !== "0" ? (
+        <Row label="Dana titipan di dompet">
+          <Money value={text(values.cashClosingExternal)} />
         </Row>
       ) : null}
     </dl>
@@ -44,7 +57,13 @@ export function ReconstructionList({ values }: { values: Values }) {
 
 /** As-settled and corrected values side by side; only rows that differ are highlighted. */
 export function ComparisonTable({ asSettled, corrected }: { asSettled: Values; corrected: Values }) {
-  const compared = [...rows, { key: "averagePerDay", label: "Rata-rata per hari" }, { key: "closingPhysical", label: "Saldo fisik penutupan" }];
+  const cashTracked = corrected.cashTracked === true;
+  const compared: Line[] = [
+    ...formulaRows(cashTracked),
+    { key: "averagePerDay", label: "Rata-rata per hari" },
+    { key: "closingPhysical", label: "Saldo fisik DANA penutupan" },
+    ...(cashTracked ? [{ key: "cashClosingPhysical", label: "Uang tunai di dompet" }] : []),
+  ];
   return (
     <table className="w-full text-sm">
       <caption className="sr-only">Perbandingan nilai saat settlement dan nilai setelah koreksi</caption>
@@ -87,6 +106,6 @@ export const settlementWarning: Record<string, { title: string; body: string }> 
   },
   EXTERNAL_FUND_SHORTFALL: {
     title: "Kekurangan dana titipan",
-    body: "Saldo fisik lebih kecil dari dana titipan yang dipegang. Uang pribadi di DANA menjadi negatif.",
+    body: "Saldo fisik lebih kecil dari dana titipan yang dipegang. Uang pribadi menjadi negatif.",
   },
 };

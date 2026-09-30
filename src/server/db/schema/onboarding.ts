@@ -41,12 +41,20 @@ export const account = fintrack.table(
     /** Stable display order for account lists and dashboard cards. */
     sortOrder: integer("sort_order").notNull(),
     activationCutoverAt: timestamp("activation_cutover_at", { withTimezone: true }).notNull(),
+    /**
+     * Weekly account this account is settled together with (PRD v0.19: Tunai
+     * belongs to the DANA settlement pool). Null for every other account.
+     */
+    settlementAccountId: uuid("settlement_account_id").references((): AnyPgColumn => account.id),
     createdAt: createdAt(),
   },
   (t) => [
     check("account_currency_idr_check", sql`${t.currency} = 'IDR'`),
-    check("account_type_check", sql`${t.accountType} in ('BANK', 'E_WALLET')`),
+    check("account_type_check", sql`${t.accountType} in ('BANK', 'E_WALLET', 'CASH')`),
+    check("account_settlement_account_check", sql`${t.settlementAccountId} is null or ${t.settlementAccountId} <> ${t.id}`),
     index("account_owner_idx").on(t.ownerId),
+    // At most one account per owner joins a weekly settlement pool (Tunai).
+    uniqueIndex("account_one_settlement_member_uq").on(t.ownerId).where(sql`${t.settlementAccountId} is not null`),
   ],
 );
 
@@ -162,6 +170,27 @@ export const openingAccountPosition = fintrack.table(
     physicalBalanceMinor: minor("physical_balance_minor").notNull(),
   },
   (t) => [uniqueIndex("opening_account_position_uq").on(t.snapshotId, t.accountId)],
+);
+
+/**
+ * Opening physical balance of an account activated after onboarding, as of its
+ * `activation_cutover_at` (PRD: Account requirements). Immutable; not income.
+ */
+export const accountActivationPosition = fintrack.table(
+  "account_activation_position",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => account.id),
+    physicalBalanceMinor: minor("physical_balance_minor").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("account_activation_position_account_uq").on(t.accountId),
+    check("account_activation_position_nonnegative_check", sql`${t.physicalBalanceMinor} >= 0`),
+  ],
 );
 
 /** Opening external ownership per holding and account; not income. */

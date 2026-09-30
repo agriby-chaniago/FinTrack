@@ -198,15 +198,25 @@ export type Reconstruction = {
   closingPhysical: MinorUnits;
   closingExternal: MinorUnits;
   closingPersonal: MinorUnits;
+  /** Tunai in the same settlement pool (PRD v0.19); zero and untracked before activation. */
+  cashTracked: boolean;
+  cashOpeningPersonal: MinorUnits;
+  cashClosingPhysical: MinorUnits;
+  cashClosingExternal: MinorUnits;
+  cashClosingPersonal: MinorUnits;
   livingExpense: MinorUnits;
   averagePerDay: MinorUnits;
   availableRemainder: MinorUnits;
 };
 
+export type CashPosition = { openingPersonal: MinorUnits; closingPhysical: MinorUnits; closingExternal: MinorUnits };
+
 /**
  * Ordinary living expense = opening personal + recognized income + other
  * inflows + transfers in − transfers out − non-living deductions − closing
- * personal. It may be negative (PRD OD-6) and is never clamped.
+ * personal. It may be negative (PRD OD-6) and is never clamped. With Tunai in
+ * the pool, both opening and closing personal include the wallet, and flows
+ * cover the whole pool (internal DANA ↔ Tunai transfers net to zero).
  */
 export function reconstruct(input: {
   openingPersonal: MinorUnits;
@@ -215,6 +225,7 @@ export function reconstruct(input: {
   settlementDays: number;
   closingPhysical: MinorUnits;
   closingExternal: MinorUnits;
+  cash?: CashPosition | null;
 }): Reconstruction {
   const total = (bucket: FlowBucket) => input.flows.filter((flow) => flow.bucket === bucket).reduce((sum, flow) => sum + flow.amount, 0n);
   const otherInflows = total("INFLOW");
@@ -222,8 +233,18 @@ export function reconstruct(input: {
   const transfersOut = total("TRANSFER_OUT");
   const nonLivingDeductions = total("DEDUCTION");
   const closingPersonal = input.closingPhysical - input.closingExternal;
+  const cash = input.cash ?? { openingPersonal: 0n, closingPhysical: 0n, closingExternal: 0n };
+  const cashClosingPersonal = cash.closingPhysical - cash.closingExternal;
   const livingExpense =
-    input.openingPersonal + input.income.recognized + otherInflows + transfersIn - transfersOut - nonLivingDeductions - closingPersonal;
+    input.openingPersonal +
+    cash.openingPersonal +
+    input.income.recognized +
+    otherInflows +
+    transfersIn -
+    transfersOut -
+    nonLivingDeductions -
+    closingPersonal -
+    cashClosingPersonal;
   return {
     openingPersonal: input.openingPersonal,
     scheduledIncome: input.income.scheduled,
@@ -238,6 +259,11 @@ export function reconstruct(input: {
     closingPhysical: input.closingPhysical,
     closingExternal: input.closingExternal,
     closingPersonal,
+    cashTracked: Boolean(input.cash),
+    cashOpeningPersonal: cash.openingPersonal,
+    cashClosingPhysical: cash.closingPhysical,
+    cashClosingExternal: cash.closingExternal,
+    cashClosingPersonal,
     livingExpense,
     averagePerDay: roundedAverage(livingExpense, input.settlementDays),
     availableRemainder: closingPersonal,
