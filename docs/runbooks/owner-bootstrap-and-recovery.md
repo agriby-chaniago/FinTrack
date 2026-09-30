@@ -47,7 +47,13 @@ Store each password in the password manager, then set:
 - Vercel Production `KEEPALIVE_DATABASE_URL` = the same form with `fintrack_probe`
 - The backup workflow secret with `fintrack_backup`
 
-Run `pnpm test:db` against staging (pooler host and project ref substituted) before trusting the configuration.
+Before trusting the configuration, put the staging values in `.env.staging.local` (gitignored; see `.env.example` for the variable names, plus `TEST_DIRECT_*_URL` pointing at the session pooler on port 5432) and run:
+
+```bash
+FINTRACK_ENV=staging pnpm vitest run --project db
+```
+
+The suite creates and deletes temporary Auth users and resets `app_owner`, so never run it against production.
 
 ## 3. First owner bootstrap
 

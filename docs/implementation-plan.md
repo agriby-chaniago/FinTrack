@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.17 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.17, audit readiness 30 September 2026 |
-| **Slice aktif** | S0 (menunggu spike hosted) dan S1 (selesai di lokal) |
+| **Slice aktif** | S0 dan S1 selesai (lokal + staging hosted); S2 menunggu review PROPOSED |
 
 ## 1. Status ringkas
 
@@ -17,8 +17,8 @@ _Rencana teknis turunan dari `PRD.md` v0.17 dan `docs/audit/2026-09-30-readiness
 | Role `fintrack_app`, `fintrack_probe`, `fintrack_backup` + schema `fintrack`/`ops` | Selesai (lokal) |
 | `app_owner` singleton + RLS + `withOwnerDb()` / `requireOwner()` | Selesai (lokal) |
 | Internal keepalive route + probe relation | Selesai (belum di-deploy) |
-| CI: lint, typecheck, unit test, build, database test | Workflow tersedia; belum pernah berjalan di GitHub |
-| Spike pada Supabase hosted (pooler `fintrack_app.<project-ref>`) | Menunggu project staging |
+| CI: lint, typecheck, unit test, build, database test | Hijau di GitHub Actions |
+| Spike pada Supabase hosted (pooler `fintrack_app.<project-ref>`) | Lulus pada staging `ap-southeast-1` (39/39 integration test) |
 | S1: bootstrap owner idempoten + recovery `--rebind` | Selesai (lokal) |
 | S1: adapter cookie dan Bearer → principal yang sama; penolakan identity ambigu | Selesai (lokal) |
 | S1: `/api/v1/session`, logout lokal/global, kontrak error JSON | Selesai (lokal) |
@@ -48,7 +48,16 @@ Temuan tambahan S1 (lokal):
 - Link undangan dan recovery memakai `token_hash` yang diverifikasi server di `/auth/callback`; alur email → callback → cookie session → owner berhasil diuji melalui Mailpit dan dev server
 - Script yang dijalankan langsung oleh Node (type stripping) tidak boleh memakai syntax TypeScript non-erasable; `erasableSyntaxOnly` diaktifkan agar typecheck menangkapnya
 
-Yang belum terbukti dan harus diulang pada project Supabase hosted: format username pooler hosted, perilaku pooler hosted untuk role custom, dan pembuatan role `BYPASSRLS` pada project hosted.
+Hasil pada Supabase hosted staging (30 September 2026, PostgreSQL 17.6, region `ap-southeast-1`):
+
+- Seluruh 39 integration test lulus melalui `aws-0-ap-southeast-1.pooler.supabase.com`: transaction mode (port 6543) untuk runtime dan session mode (port 5432) untuk admin serta test koneksi langsung
+- Username pooler hosted berformat `<role>.<project-ref>`, dan role custom diterima pooler
+- `postgres` dapat membuat role `fintrack_backup` dengan `BYPASSRLS`
+- Data API menolak schema `fintrack` dan `ops` (`PGRST106`)
+- Konfigurasi Auth staging sesuai runbook: signup publik mati, provider email aktif, anonymous mati, konfirmasi email aktif
+- Host database langsung `db.<project-ref>.supabase.co` hanya memiliki alamat IPv6; seluruh akses dari mesin tanpa IPv6 memakai pooler
+
+Menjalankan suite terhadap staging: isi `.env.staging.local` (gitignored), lalu `FINTRACK_ENV=staging pnpm vitest run --project db`.
 
 ## 3. Struktur kode
 
