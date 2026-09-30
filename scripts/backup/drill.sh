@@ -21,8 +21,10 @@ cleanup() {
 trap cleanup EXIT
 
 docker run -d --rm --name "$name" -e POSTGRES_PASSWORD="$password" -p "127.0.0.1:$port:5432" "$PG_IMAGE" >/dev/null
+# The image first runs a temporary socket-only server for initialization and
+# then restarts; only the final server listens on TCP, so wait for that one.
 for _ in $(seq 1 60); do
-  docker exec "$name" pg_isready -U postgres >/dev/null 2>&1 && break
+  docker exec "$name" pg_isready -U postgres -h 127.0.0.1 >/dev/null 2>&1 && break
   sleep 1
 done
 url="postgresql://postgres:$password@127.0.0.1:$port/postgres"
