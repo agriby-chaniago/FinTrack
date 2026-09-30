@@ -45,8 +45,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Start local Supabase (database, auth, pooler)
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta
-      # Local-only defaults; no real credential is involved.
-      - run: cp .env.example .env.local
+      # Local-only defaults plus the local Supabase API keys; no real credential is involved.
+      - run: pnpm env:local
       - name: Build the database from committed migrations
         run: pnpm db:migrate
       - run: pnpm db:provision
