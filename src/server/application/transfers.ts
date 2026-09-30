@@ -14,7 +14,7 @@ import { transferAllocation, transferTarget, transferTargetVersion } from "@/ser
 import type { LedgerEntryDraft, LedgerLeg } from "@/server/domain/ledger";
 
 import { requireActiveCashAccounts } from "./accounts";
-import { accountBalances, postLedgerEntry, type CutoverDayAnswer, type PostResult } from "./ledger";
+import { accountBalances, postLedgerEntry, type AccountBalanceView, type CutoverDayAnswer, type PostResult } from "./ledger";
 
 export type Route = { sourceAccountId: string; destinationAccountId: string };
 export type RouteKind = "DANA" | "BCA";
@@ -359,34 +359,46 @@ export type TargetView = {
 export async function listTargets(tx: OwnerTx, ownerId: string): Promise<TargetView[]> {
   const accounts = await tx.select({ id: account.id, name: account.displayName }).from(account).where(eq(account.ownerId, ownerId));
   const names = new Map(accounts.map((row) => [row.id, row.name]));
-  const routes = await tx
-    .selectDistinct({ sourceAccountId: transferTarget.sourceAccountId, destinationAccountId: transferTarget.destinationAccountId })
+  // All routes at once: targets, their current versions, and linked allocations.
+  const targets = await tx
+    .select()
     .from(transferTarget)
-    .where(eq(transferTarget.ownerId, ownerId));
-  const views: TargetView[] = [];
-  for (const route of routes) {
-    for (const target of await routeTargets(tx, ownerId, route)) {
-      views.push({
-        id: target.id,
-        contextType: target.contextType,
-        contextKey: target.contextKey,
-        contextOrder: target.contextOrder,
-        route: { ...route, sourceName: names.get(route.sourceAccountId)!, destinationName: names.get(route.destinationAccountId)! },
-        version: target.version && {
-          id: target.version.id,
-          amount: toIdrDecimal(target.version.amountMinor),
-          isActionable: target.version.isActionable,
-          retirementReason: target.version.retirementReason,
-          basis: target.version.basis,
-          createdAt: target.version.createdAt.toISOString(),
-        },
-        linked: toIdrDecimal(target.linked),
-        remaining: toIdrDecimal(remainingOf(target)),
-        progress: progressOf(target),
-      });
-    }
-  }
-  return views.sort((a, b) => (a.contextOrder < b.contextOrder ? -1 : a.contextOrder > b.contextOrder ? 1 : 0));
+    .where(eq(transferTarget.ownerId, ownerId))
+    .orderBy(asc(transferTarget.contextOrder), asc(transferTarget.createdAt));
+  const ids = targets.map((target) => target.id);
+  const versions = ids.length
+    ? await tx
+        .select()
+        .from(transferTargetVersion)
+        .where(and(eq(transferTargetVersion.ownerId, ownerId), inArray(transferTargetVersion.targetId, ids), isNull(transferTargetVersion.supersededById)))
+    : [];
+  const linked = await linkedAmounts(tx, ownerId, ids);
+  return targets.map((row) => {
+    const target = { version: versions.find((version) => version.targetId === row.id) ?? null, linked: linked.get(row.id) ?? 0n };
+    return {
+      id: row.id,
+      contextType: row.contextType,
+      contextKey: row.contextKey,
+      contextOrder: row.contextOrder,
+      route: {
+        sourceAccountId: row.sourceAccountId,
+        sourceName: names.get(row.sourceAccountId)!,
+        destinationAccountId: row.destinationAccountId,
+        destinationName: names.get(row.destinationAccountId)!,
+      },
+      version: target.version && {
+        id: target.version.id,
+        amount: toIdrDecimal(target.version.amountMinor),
+        isActionable: target.version.isActionable,
+        retirementReason: target.version.retirementReason,
+        basis: target.version.basis,
+        createdAt: target.version.createdAt.toISOString(),
+      },
+      linked: toIdrDecimal(target.linked),
+      remaining: toIdrDecimal(remainingOf(target)),
+      progress: progressOf(target),
+    };
+  });
 }
 
 /**
@@ -412,19 +424,29 @@ export async function closeTarget(tx: OwnerTx, ownerId: string, targetId: string
 /**
  * Operational "transfer sekarang" suggestion per saving route: remaining
  * actionable targets capped by the current personal source balance above the
- * operational floor (DANA Rp0; BCA the retained floor).
+ * operational floor (DANA Rp0; BCA the retained floor). Callers that already
+ * loaded balances or targets pass them in to avoid repeating those queries.
  */
-export async function transferSuggestions(tx: OwnerTx, ownerId: string) {
+export async function transferSuggestions(
+  tx: OwnerTx,
+  ownerId: string,
+  loaded: { balances?: AccountBalanceView[]; targets?: TargetView[] } = {},
+) {
   const reserve = await reserveAccountId(tx, ownerId);
-  const { accounts } = await accountBalances(tx, ownerId);
+  const accounts = loaded.balances ?? (await accountBalances(tx, ownerId)).accounts;
+  const targets = loaded.targets ?? (await listTargets(tx, ownerId));
   const floors = await tx.select().from(monthlyAccountSetting).where(eq(monthlyAccountSetting.ownerId, ownerId));
+  const daily = new Set((await tx.select({ id: dailyIncomeRule.accountId }).from(dailyIncomeRule).where(eq(dailyIncomeRule.ownerId, ownerId))).map((r) => r.id));
+  const monthly = new Set((await tx.select({ id: monthlyIncomeRule.accountId }).from(monthlyIncomeRule).where(eq(monthlyIncomeRule.ownerId, ownerId))).map((r) => r.id));
   const suggestions = [];
   for (const balance of accounts) {
     if (balance.id === reserve) continue;
-    const route = { sourceAccountId: balance.id, destinationAccountId: reserve };
-    const kind = await routeKind(tx, ownerId, route);
+    const kind: RouteKind | null = daily.has(balance.id) ? "DANA" : monthly.has(balance.id) ? "BCA" : null;
     if (!kind) continue;
-    const outstanding = (await routeTargets(tx, ownerId, route)).reduce((sum, target) => sum + remainingOf(target), 0n);
+    const route = { sourceAccountId: balance.id, destinationAccountId: reserve };
+    const outstanding = targets
+      .filter((target) => target.route.sourceAccountId === balance.id && target.route.destinationAccountId === reserve)
+      .reduce((sum, target) => sum + parseIdrDecimal(target.remaining), 0n);
     const floor = kind === "BCA" ? (floors.find((row) => row.accountId === balance.id)?.retainedBalanceFloorMinor ?? 0n) : 0n;
     const available = parseIdrDecimal(balance.personal) - floor;
     const liquidity = available > 0n ? available : 0n;

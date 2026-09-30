@@ -30,13 +30,16 @@ const ruleStatus: Record<string, string> = { ACTIVE: "Aktif", SCHEDULED: "Terjad
 export default async function PengaturanPage() {
   const now = new Date();
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
-  const result = await runAsPageOwner(async (tx, { ownerId }) => ({
-    settings: await getSettings(tx, ownerId),
-    daily: await dailyIncomeView(tx, ownerId, now),
-    rules: await listRecurringRules(tx, ownerId, now),
-    categories: await listCategories(tx, ownerId, { includeArchived: true }),
-    context: await recordingContext(tx, ownerId),
-  }));
+  const result = await runAsPageOwner(async (tx, { ownerId }) => {
+    const [settings, daily, rules, categories, context] = await Promise.all([
+      getSettings(tx, ownerId),
+      dailyIncomeView(tx, ownerId, now),
+      listRecurringRules(tx, ownerId, now),
+      listCategories(tx, ownerId, { includeArchived: true }),
+      recordingContext(tx, ownerId),
+    ]);
+    return { settings, daily, rules, categories, context };
+  });
   if (result.status !== "OWNER") redirect("/login");
   const { settings, daily, rules, categories, context } = result.value;
   const currentCycle = cycleKeyOf(businessDateOf(now));

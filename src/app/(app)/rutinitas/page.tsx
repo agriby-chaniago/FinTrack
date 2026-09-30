@@ -28,14 +28,17 @@ function targetContext(target: TargetView): string {
 
 export default async function RutinitasPage() {
   const now = new Date();
-  const result = await runAsPageOwner(async (tx, { ownerId }) => ({
-    router: await settlementRouter(tx, ownerId, now),
-    history: await settlementHistory(tx, ownerId),
-    cycles: await listMonthlyCycles(tx, ownerId, now),
-    targets: await listTargets(tx, ownerId),
-    suggestions: await transferSuggestions(tx, ownerId),
-    daily: await dailyIncomeView(tx, ownerId, now),
-  }));
+  const result = await runAsPageOwner(async (tx, { ownerId }) => {
+    // Cycles may freeze a due target; the rest only reads and is pipelined.
+    const cycles = await listMonthlyCycles(tx, ownerId, now);
+    const [targets, router, history, daily] = await Promise.all([
+      listTargets(tx, ownerId),
+      settlementRouter(tx, ownerId, now),
+      settlementHistory(tx, ownerId),
+      dailyIncomeView(tx, ownerId, now),
+    ]);
+    return { router, history, cycles, targets, suggestions: await transferSuggestions(tx, ownerId, { targets }), daily };
+  });
   if (result.status !== "OWNER") redirect("/login");
   const { router, history, cycles, targets, suggestions, daily } = result.value;
   const openTargets = targets.filter((t) => t.version?.isActionable && parseIdrDecimal(t.remaining) > 0n);

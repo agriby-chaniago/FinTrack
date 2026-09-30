@@ -14,6 +14,7 @@ import { lastDayOfCycle } from "@/server/domain/monthly";
 
 import { requireActiveCashAccounts, weeklySettlementAccountIds } from "./accounts";
 import { lockLedger, postLedgerEntry } from "./ledger";
+import type { CycleView } from "./monthly";
 
 export type Position = { physical: MinorUnits; external: MinorUnits };
 
@@ -215,7 +216,12 @@ export type ReconciliationPrompt = { accountId: string; reason: "BCA_CYCLE_COMPL
  * opens with the target still incomplete), and at month end when no BCA
  * cycle is active. A later manual confirmation satisfies the prompt.
  */
-export async function reconciliationPrompts(tx: OwnerTx, ownerId: string, now: Date): Promise<ReconciliationPrompt[]> {
+export async function reconciliationPrompts(
+  tx: OwnerTx,
+  ownerId: string,
+  now: Date,
+  loaded: { cycles?: CycleView[] } = {},
+): Promise<ReconciliationPrompt[]> {
   const today = businessDateOf(now);
   const { reserveAccountId } = await import("./transfers");
   const { listMonthlyCycles } = await import("./monthly");
@@ -225,7 +231,7 @@ export async function reconciliationPrompts(tx: OwnerTx, ownerId: string, now: D
   } catch {
     return [];
   }
-  const cycles = await listMonthlyCycles(tx, ownerId, now);
+  const cycles = loaded.cycles ?? (await listMonthlyCycles(tx, ownerId, now));
   const prompts: ReconciliationPrompt[] = [];
 
   let due: { reason: ReconciliationPrompt["reason"]; cycleKey: string | null; since: string; accounts: string[] } | null = null;

@@ -14,10 +14,10 @@ import { CorrectionForm } from "./correction-form";
 export default async function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
-  const result = await runAsPageOwner(async (tx, { ownerId }) => ({
-    thread: (await listActivity(tx, ownerId, { limit: 20, thread: id })).items,
-    categories: await listCategories(tx, ownerId, { includeArchived: false }),
-  }));
+  const result = await runAsPageOwner(async (tx, { ownerId }) => {
+    const [activity, categories] = await Promise.all([listActivity(tx, ownerId, { limit: 20, thread: id }), listCategories(tx, ownerId, { includeArchived: false })]);
+    return { thread: activity.items, categories };
+  });
   if (result.status !== "OWNER") redirect("/login");
   const entries = result.value.thread.filter((item) => item.type === "LEDGER_ENTRY");
   const entry = entries.find((item) => item.id === id);

@@ -303,7 +303,7 @@ export async function accountBalances(
     }
     if (rule) {
       // Daily income is evaluated lazily through the as-of date (PRD: no cron).
-      physical += (await recognizedIncomeFor(tx, ownerId, row.id, rule.effectiveStartDate, today)).recognized;
+      physical += (await recognizedIncomeFor(tx, ownerId, row.id, rule.effectiveStartDate, today, rule)).recognized;
       const freshness = await weeklyAccountFreshness(tx, ownerId, row.id, rule.effectiveStartDate, await lastSettledEnd(tx, ownerId, row.id), today);
       status = freshness.status ?? status;
       openWeekDisclosure = freshness.openWeek;

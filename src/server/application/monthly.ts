@@ -49,9 +49,20 @@ async function monthlyRoute(tx: OwnerTx, ownerId: string, accountId: string): Pr
 /** Creates missing occurrences for every rule through the current cycle (idempotent, no cron). */
 export async function syncMonthlyOccurrences(tx: OwnerTx, ownerId: string, now: Date): Promise<void> {
   const current = cycleKeyOf(businessDateOf(now));
+  // Occurrences are created contiguously, so a rule whose latest occurrence is
+  // already its last due cycle needs no work (the common case on every page load).
+  const latest = new Map(
+    (
+      await tx.execute<{ rule_id: string; last: string }>(sql`
+        select rule_id, max(cycle_key) as last from fintrack.monthly_income_occurrence where owner_id = ${ownerId} group by rule_id
+        union all
+        select rule_id, max(cycle_key) from fintrack.recurring_expense_occurrence where owner_id = ${ownerId} group by rule_id`)
+    ).map((row) => [row.rule_id, row.last]),
+  );
+  const upToDate = (ruleId: string, last: string) => (latest.get(ruleId) ?? "") >= last;
   for (const rule of await tx.select().from(monthlyIncomeRule).where(eq(monthlyIncomeRule.ownerId, ownerId))) {
     const last = rule.lastExpectedCycle && rule.lastExpectedCycle < current ? rule.lastExpectedCycle : current;
-    const cycles = rule.firstExpectedCycle <= last ? cyclesBetween(rule.firstExpectedCycle, last) : [];
+    const cycles = rule.firstExpectedCycle <= last && !upToDate(rule.id, last) ? cyclesBetween(rule.firstExpectedCycle, last) : [];
     if (cycles.length > 0) {
       await tx
         .insert(monthlyIncomeOccurrence)
@@ -61,7 +72,7 @@ export async function syncMonthlyOccurrences(tx: OwnerTx, ownerId: string, now: 
   }
   for (const rule of await tx.select().from(recurringExpenseRule).where(eq(recurringExpenseRule.ownerId, ownerId))) {
     const last = rule.lastCycle && rule.lastCycle < current ? rule.lastCycle : current;
-    if (rule.firstCycle > last) continue;
+    if (rule.firstCycle > last || upToDate(rule.id, last)) continue;
     const revisions = await tx
       .select()
       .from(recurringExpenseRuleRevision)
@@ -104,15 +115,34 @@ async function currentRecordInChain(tx: OwnerTx, ownerId: string, entryId: strin
   }
 }
 
-async function actualOf(tx: OwnerTx, ownerId: string, entryId: string | null): Promise<{ date: string; amount: string; entryId: string } | null> {
-  if (!entryId) return null;
-  const currentId = await currentRecordInChain(tx, ownerId, entryId);
-  if (!currentId) return null;
-  const [row] = await tx.execute<{ date: string; amount: string }>(sql`
-    select e.effective_business_date::text as date, abs(sum(l.physical_effect_minor))::text as amount
-    from fintrack.ledger_entry e join fintrack.ledger_leg l on l.entry_id = e.id
-    where e.owner_id = ${ownerId} and e.id = ${currentId}::uuid group by e.id`);
-  return row ? { date: row.date, amount: toIdrDecimal(BigInt(row.amount)), entryId: currentId } : null;
+type Actual = { date: string; amount: string; entryId: string };
+
+/**
+ * Current actual event per confirmed resolution entry, in one query: follows
+ * each replacement chain to its last record (as currentRecordInChain does)
+ * and drops chains whose last record was reversed.
+ */
+async function actualsOf(tx: OwnerTx, ownerId: string, entryIds: string[]): Promise<Map<string, Actual>> {
+  if (entryIds.length === 0) return new Map();
+  const roots = sql.join(entryIds.map((id) => sql`${id}::uuid`), sql`, `);
+  const rows = await tx.execute<{ root: string; current: string; date: string; amount: string; reversed: boolean }>(sql`
+    with recursive chain(root, current, depth) as (
+      select e.id, e.id, 0 from fintrack.ledger_entry e where e.owner_id = ${ownerId} and e.id in (${roots})
+      union all
+      select c.root, r.id, c.depth + 1 from chain c
+      join fintrack.ledger_entry r on r.owner_id = ${ownerId} and r.corrects_entry_id = c.current and r.correction_role = 'REPLACEMENT'
+    ),
+    latest as (select distinct on (root) root, current from chain order by root, depth desc)
+    select l.root, l.current, e.effective_business_date::text as date, abs(sum(g.physical_effect_minor))::text as amount,
+           exists (select 1 from fintrack.ledger_entry v
+                   where v.owner_id = ${ownerId} and v.corrects_entry_id = l.current and v.correction_role = 'REVERSAL') as reversed
+    from latest l
+    join fintrack.ledger_entry e on e.id = l.current
+    join fintrack.ledger_leg g on g.entry_id = e.id
+    group by l.root, l.current, e.effective_business_date`);
+  return new Map(
+    rows.filter((row) => !row.reversed).map((row) => [row.root, { date: row.date, amount: toIdrDecimal(BigInt(row.amount)), entryId: row.current }]),
+  );
 }
 
 type CycleData = {
@@ -175,19 +205,30 @@ async function floorOf(tx: OwnerTx, ownerId: string, accountId: string): Promise
  * one (PRD: target created atomically at readiness), including a cycle whose
  * income was confirmed again after NOT_RECEIVED.
  */
-export async function syncCycleTargets(tx: OwnerTx, ownerId: string, now: Date): Promise<void> {
+type LoadedTargets = Map<string, Awaited<ReturnType<typeof routeTargets>>>;
+
+export async function syncCycleTargets(tx: OwnerTx, ownerId: string, now: Date): Promise<{ cycles: CycleData[]; targets: LoadedTargets }> {
   await syncMonthlyOccurrences(tx, ownerId, now);
   const cycles = await loadCycles(tx, ownerId);
+  const reserve = await reserveAccountId(tx, ownerId);
+  // Current targets per monthly account, dropped when this sync freezes a new one.
+  const frozen: LoadedTargets = new Map();
   const blocked = new Set<string>();
   for (const cycle of cycles) {
     const priorBlocked = blocked.has(cycle.accountId);
     if (!resolvedCycle(cycle)) blocked.add(cycle.accountId);
     if (priorBlocked || cycle.income?.status !== "CONFIRMED" || !resolvedCycle(cycle)) continue;
 
-    const route = await monthlyRoute(tx, ownerId, cycle.accountId);
+    const route = { sourceAccountId: cycle.accountId, destinationAccountId: reserve };
+    // Targets already frozen for this route are read once; only a cycle without one does work.
+    if (!frozen.has(cycle.accountId)) frozen.set(cycle.accountId, await routeTargets(tx, ownerId, route));
+    const existing = frozen.get(cycle.accountId)!.find((t) => t.contextType === "BCA_CYCLE" && t.contextKey === cycle.cycleKey);
+    if (existing?.version && existing.version.retirementReason !== "INCOME_NOT_RECEIVED") continue;
+
     const targetId = await ensureTarget(tx, ownerId, { contextType: "BCA_CYCLE", contextKey: cycle.cycleKey, contextOrder: cycle.cycleKey }, route);
     const version = await currentVersion(tx, ownerId, targetId);
     if (version && !(version.retirementReason === "INCOME_NOT_RECEIVED")) continue;
+    frozen.delete(cycle.accountId);
 
     const { accounts } = await accountBalances(tx, ownerId);
     const personalBalance = parseIdrDecimal(accounts.find((row) => row.id === cycle.accountId)!.personal);
@@ -209,6 +250,7 @@ export async function syncCycleTargets(tx: OwnerTx, ownerId: string, now: Date):
       isActionable: true,
     });
   }
+  return { cycles, targets: frozen };
 }
 
 type Basis = {
@@ -397,18 +439,38 @@ export type CycleView = {
 
 /** Cycles newest first with derived states and labels; freezes due targets first. */
 export async function listMonthlyCycles(tx: OwnerTx, ownerId: string, now: Date): Promise<CycleView[]> {
-  await syncCycleTargets(tx, ownerId, now);
+  const { cycles, targets: targetsByAccount } = await syncCycleTargets(tx, ownerId, now);
   const today = businessDateOf(now);
-  const cycles = await loadCycles(tx, ownerId);
   const names = new Map((await tx.select({ id: account.id, name: account.displayName }).from(account).where(eq(account.ownerId, ownerId))).map((a) => [a.id, a.name]));
+  const missing = [...new Set(cycles.map((cycle) => cycle.accountId))].filter((accountId) => !targetsByAccount.has(accountId));
+  if (missing.length > 0) {
+    const reserve = await reserveAccountId(tx, ownerId);
+    for (const accountId of missing) targetsByAccount.set(accountId, await routeTargets(tx, ownerId, { sourceAccountId: accountId, destinationAccountId: reserve }));
+  }
+  const actuals = await actualsOf(
+    tx,
+    ownerId,
+    cycles.flatMap((cycle) => [cycle.income?.resolution?.entryId, ...cycle.obligations.map((o) => o.resolution?.entryId)]).filter((id): id is string => Boolean(id)),
+  );
+  // Confirmed amount per obligation rule and cycle: the latest earlier one suggests the next amount.
+  const confirmedByRule = new Map<string, { cycleKey: string; amount: string }[]>();
+  for (const row of await tx.execute<{ rule_id: string; cycle_key: string; amount: string }>(sql`
+    select o.rule_id, o.cycle_key, abs(sum(l.physical_effect_minor))::text as amount
+    from fintrack.occurrence_resolution r
+    join fintrack.recurring_expense_occurrence o on o.id = r.occurrence_id
+    join fintrack.ledger_leg l on l.entry_id = r.entry_id
+    where r.owner_id = ${ownerId} and r.outcome = 'CONFIRMED' and r.superseded_by_id is null
+    group by o.rule_id, o.cycle_key order by o.cycle_key`)) {
+    confirmedByRule.set(row.rule_id, [...(confirmedByRule.get(row.rule_id) ?? []), { cycleKey: row.cycle_key, amount: row.amount }]);
+  }
+  const actualOf = (entryId: string | null | undefined) => (entryId ? (actuals.get(entryId) ?? null) : null);
   const views: CycleView[] = [];
   const blocked = new Set<string>();
 
   for (const cycle of cycles) {
     const priorBlocked = blocked.has(cycle.accountId);
     if (!resolvedCycle(cycle)) blocked.add(cycle.accountId);
-    const route = await monthlyRoute(tx, ownerId, cycle.accountId);
-    const target = (await routeTargets(tx, ownerId, route)).find((t) => t.contextType === "BCA_CYCLE" && t.contextKey === cycle.cycleKey);
+    const target = targetsByAccount.get(cycle.accountId)!.find((t) => t.contextType === "BCA_CYCLE" && t.contextKey === cycle.cycleKey);
     const version = target?.version ?? null;
     const { state, note } = cycleState({
       priorBlocked,
@@ -422,7 +484,7 @@ export async function listMonthlyCycles(tx: OwnerTx, ownerId: string, now: Date)
       occurrenceId: cycle.income.occurrence.id,
       expectedAmount: toIdrDecimal(cycle.income.occurrence.expectedAmountMinor),
       status: cycle.income.status,
-      actual: await actualOf(tx, ownerId, cycle.income.resolution?.entryId ?? null),
+      actual: actualOf(cycle.income.resolution?.entryId),
       label: null as string | null,
     };
     if (income) income.label = incomeLabel(cycle.cycleKey, income.status, income.actual?.date ?? null, today);
@@ -431,14 +493,7 @@ export async function listMonthlyCycles(tx: OwnerTx, ownerId: string, now: Date)
     for (const o of cycle.obligations) {
       const expectedDate = expectedDateFor(cycle.cycleKey, o.occurrence.expectedDay);
       // The latest actual amount is only a suggestion for the next cycle.
-      const [previous] = await tx.execute<{ amount: string }>(sql`
-        select abs(sum(l.physical_effect_minor))::text as amount
-        from fintrack.occurrence_resolution r
-        join fintrack.recurring_expense_occurrence o on o.id = r.occurrence_id
-        join fintrack.ledger_leg l on l.entry_id = r.entry_id
-        where r.owner_id = ${ownerId} and o.rule_id = ${o.rule.id}::uuid and o.cycle_key < ${cycle.cycleKey}
-          and r.outcome = 'CONFIRMED' and r.superseded_by_id is null
-        group by o.cycle_key order by o.cycle_key desc limit 1`);
+      const previous = (confirmedByRule.get(o.rule.id) ?? []).filter((row) => row.cycleKey < cycle.cycleKey).at(-1);
       obligations.push({
         occurrenceId: o.occurrence.id,
         ruleId: o.rule.id,
@@ -448,7 +503,7 @@ export async function listMonthlyCycles(tx: OwnerTx, ownerId: string, now: Date)
         expectedAmount: o.occurrence.expectedAmountMinor === null ? null : toIdrDecimal(o.occurrence.expectedAmountMinor),
         status: o.status,
         label: obligationLabel(cycle.cycleKey, o.status, expectedDate, today),
-        actual: await actualOf(tx, ownerId, o.resolution?.entryId ?? null),
+        actual: actualOf(o.resolution?.entryId),
         suggestedAmount: previous ? toIdrDecimal(BigInt(previous.amount)) : o.occurrence.expectedAmountMinor === null ? null : toIdrDecimal(o.occurrence.expectedAmountMinor),
       });
     }

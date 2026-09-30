@@ -15,11 +15,14 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const now = new Date();
-  const result = await runAsPageOwner(async (tx, { ownerId }) => ({
-    overview: await accountsOverview(tx, ownerId, now),
-    reconciliation: await reconciliationView(tx, ownerId, id),
-    context: await recordingContext(tx, ownerId),
-  }));
+  const result = await runAsPageOwner(async (tx, { ownerId }) => {
+    const [overview, reconciliation, context] = await Promise.all([
+      accountsOverview(tx, ownerId, now),
+      reconciliationView(tx, ownerId, id),
+      recordingContext(tx, ownerId),
+    ]);
+    return { overview, reconciliation, context };
+  });
   if (result.status !== "OWNER") redirect("/login");
   const { overview, reconciliation, context } = result.value;
   const account = overview.accounts.find((a) => a.id === id);

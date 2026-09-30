@@ -48,9 +48,8 @@ export async function dailyRuleFor(tx: OwnerTx, ownerId: string, accountId?: str
   return rule;
 }
 
-export async function dailyRuleContext(tx: OwnerTx, ownerId: string, ruleId: string): Promise<DailyRuleContext> {
-  const [rule] = await tx.select().from(dailyIncomeRule).where(and(eq(dailyIncomeRule.ownerId, ownerId), eq(dailyIncomeRule.id, ruleId)));
-  if (!rule) throw new ApiError("NOT_FOUND");
+/** Active transitions and current overrides of a rule: the inputs of daily income. */
+async function incomeInputs(tx: OwnerTx, ownerId: string, ruleId: string) {
   const transitions = await tx
     .select()
     .from(dailyIncomeStateTransition)
@@ -61,19 +60,30 @@ export async function dailyRuleContext(tx: OwnerTx, ownerId: string, ruleId: str
     .from(dailyIncomeOverride)
     .where(and(eq(dailyIncomeOverride.ownerId, ownerId), eq(dailyIncomeOverride.ruleId, ruleId), isNull(dailyIncomeOverride.supersededById)));
   return {
-    rule,
     transitions: transitions.map((t) => ({ id: t.id, toState: t.toState as RuleState, effectiveDate: t.effectiveDate, createdAt: t.createdAt })),
     overrides: overrides.map((o) => ({ id: o.id, businessDate: o.businessDate, amount: o.amountMinor, afterSettlement: o.afterSettlement })),
-    lastSettledEnd: await lastSettledEnd(tx, ownerId, rule.accountId),
   };
 }
 
+export async function dailyRuleContext(tx: OwnerTx, ownerId: string, ruleId: string): Promise<DailyRuleContext> {
+  const [rule] = await tx.select().from(dailyIncomeRule).where(and(eq(dailyIncomeRule.ownerId, ownerId), eq(dailyIncomeRule.id, ruleId)));
+  if (!rule) throw new ApiError("NOT_FOUND");
+  return { rule, ...(await incomeInputs(tx, ownerId, ruleId)), lastSettledEnd: await lastSettledEnd(tx, ownerId, rule.accountId) };
+}
+
 /** Recognized daily income for an account between two business dates (inclusive). */
-export async function recognizedIncomeFor(tx: OwnerTx, ownerId: string, accountId: string, from: string, to: string): Promise<DailyIncomeSummary> {
-  const rule = await dailyRuleFor(tx, ownerId, accountId);
+export async function recognizedIncomeFor(
+  tx: OwnerTx,
+  ownerId: string,
+  accountId: string,
+  from: string,
+  to: string,
+  knownRule?: typeof dailyIncomeRule.$inferSelect,
+): Promise<DailyIncomeSummary> {
+  const rule = knownRule ?? (await dailyRuleFor(tx, ownerId, accountId));
   if (!rule || from > to) return { days: [], scheduled: 0n, recognized: 0n, eligibleDays: 0, receivedDays: 0 };
-  const context = await dailyRuleContext(tx, ownerId, rule.id);
-  return dailyIncomeBetween({ amount: rule.amountMinor, startDate: rule.effectiveStartDate }, context.transitions, context.overrides, from, to);
+  const inputs = await incomeInputs(tx, ownerId, rule.id);
+  return dailyIncomeBetween({ amount: rule.amountMinor, startDate: rule.effectiveStartDate }, inputs.transitions, inputs.overrides, from, to);
 }
 
 export type DailyIncomeView = {

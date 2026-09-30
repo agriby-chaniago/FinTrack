@@ -10,11 +10,10 @@ import { TransferForm } from "./transfer-form";
 
 export default async function TransferPage({ searchParams }: { searchParams: Promise<{ target?: string }> }) {
   const { target: targetId } = await searchParams;
-  const result = await runAsPageOwner(async (tx, { ownerId }) => ({
-    context: await recordingContext(tx, ownerId),
-    targets: await listTargets(tx, ownerId),
-    suggestions: await transferSuggestions(tx, ownerId),
-  }));
+  const result = await runAsPageOwner(async (tx, { ownerId }) => {
+    const targets = await listTargets(tx, ownerId);
+    return { context: await recordingContext(tx, ownerId), targets, suggestions: await transferSuggestions(tx, ownerId, { targets }) };
+  });
   if (result.status !== "OWNER") redirect("/login");
   const { context, targets, suggestions } = result.value;
   const target = targets.find((t) => t.id === targetId && t.version?.isActionable) ?? null;

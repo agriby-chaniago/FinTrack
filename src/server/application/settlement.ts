@@ -137,7 +137,7 @@ export async function computeSettlement(
 
   const snapshot = await openingPosition(tx, ownerId, row.accountId);
   const before = await legTotals(tx, ownerId, row.accountId, opening.boundary);
-  const incomeBefore = await recognizedIncomeFor(tx, ownerId, row.accountId, rule.effectiveStartDate, opening.incomeThrough);
+  const incomeBefore = await recognizedIncomeFor(tx, ownerId, row.accountId, rule.effectiveStartDate, opening.incomeThrough, rule);
   const openingPersonal = snapshot.physical - snapshot.external + before.physical - before.external + incomeBefore.recognized;
 
   const cashMember = await poolCash(tx, ownerId, row.accountId, opening.boundary.date);
@@ -148,7 +148,7 @@ export async function computeSettlement(
       BigInt(flow.personal),
     ),
   );
-  const income = await recognizedIncomeFor(tx, ownerId, row.accountId, row.startDate, row.endDate);
+  const income = await recognizedIncomeFor(tx, ownerId, row.accountId, row.startDate, row.endDate, rule);
   const atClosing = await legTotals(tx, ownerId, row.accountId, closingBoundary, row.id);
 
   let cash: CashPosition | null = null;
@@ -441,6 +441,20 @@ async function ownLivingEffect(tx: OwnerTx, ownerId: string, settlementId: strin
     where e.owner_id = ${ownerId} and e.source_type = 'SETTLEMENT' and e.source_id = ${settlementId}::uuid
       and l.account_id = ${accountId}::uuid`);
   return BigInt(row.total);
+}
+
+/**
+ * Corrected living expense of settled settlements in one query. Every change to
+ * settled history resynchronizes the posted living contributions (see
+ * resyncSettlements), so their sum always equals the corrected reconstruction.
+ */
+export async function correctedLivingExpenses(tx: OwnerTx, ownerId: string): Promise<Map<string, MinorUnits>> {
+  const rows = await tx.execute<{ settlement_id: string; living: string }>(sql`
+    select e.source_id as settlement_id, (-coalesce(sum(l.physical_effect_minor), 0))::text as living
+    from fintrack.ledger_entry e join fintrack.ledger_leg l on l.entry_id = e.id
+    where e.owner_id = ${ownerId} and e.source_type = 'SETTLEMENT' and e.event_class = 'LIVING'
+    group by e.source_id`);
+  return new Map(rows.map((row) => [row.settlement_id, BigInt(row.living)]));
 }
 
 /** Corrected view of a settled settlement: same range and days, corrected ledger, authoritative closing. */

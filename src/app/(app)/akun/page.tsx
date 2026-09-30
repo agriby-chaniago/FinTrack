@@ -9,10 +9,10 @@ import { runAsPageOwner } from "@/server/auth/page-owner";
 
 export default async function AkunPage() {
   const now = new Date();
-  const result = await runAsPageOwner(async (tx, { ownerId }) => ({
-    overview: await accountsOverview(tx, ownerId, now),
-    subjects: await listExternalSubjects(tx, ownerId),
-  }));
+  const result = await runAsPageOwner(async (tx, { ownerId }) => {
+    const [overview, subjects] = await Promise.all([accountsOverview(tx, ownerId, now), listExternalSubjects(tx, ownerId)]);
+    return { overview, subjects };
+  });
   if (result.status !== "OWNER") redirect("/login");
   const { overview, subjects } = result.value;
   const open = subjects.filter((s) => s.status === "OPEN");

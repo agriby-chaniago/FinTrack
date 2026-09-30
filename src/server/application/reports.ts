@@ -15,7 +15,7 @@ import { accountsOverview } from "./accounts-overview";
 import { dailyRuleContext, dailyRuleFor, recognizedIncomeFor } from "./daily-income";
 import { listExternalSubjects } from "./external-funds";
 import { listMonthlyCycles } from "./monthly";
-import { correctedComputation, settlementRouter } from "./settlement";
+import { correctedLivingExpenses, settlementRouter } from "./settlement";
 import { listTargets, reserveAccountId, transferSuggestions } from "./transfers";
 
 export type ReportView = "corrected" | "as_settled";
@@ -149,12 +149,12 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
   }
 
   // Living expense: prorata of each settlement touching the month.
+  const correctedLiving = view === "as_settled" ? null : await correctedLivingExpenses(tx, ownerId);
   let living = 0n;
   const livingParts: { settlementId: string; startDate: string; endDate: string; allocated: string }[] = [];
   for (const row of settledRows) {
     if (row.endDate < first || row.startDate > last) continue;
-    const total =
-      view === "as_settled" ? row.livingExpenseMinor! : (await correctedComputation(tx, ownerId, row)).reconstruction.livingExpense;
+    const total = correctedLiving ? (correctedLiving.get(row.id) ?? 0n) : row.livingExpenseMinor!;
     const share = prorataByMonth(total, row.startDate, row.endDate).get(month) ?? 0n;
     living += share;
     livingParts.push({ settlementId: row.id, startDate: row.startDate, endDate: row.endDate, allocated: amount(share) });
@@ -202,10 +202,52 @@ export type DashboardTask =
   | { type: "TRANSFER"; targetId: string; route: string; remaining: string; transferNow: string; contextKey: string }
   | { type: "RECONCILE"; accountId: string; reason: string };
 
+/** DANA card: the open week shows known values only; living cost waits for settlement. */
+async function danaCard(tx: OwnerTx, ownerId: string, router: Awaited<ReturnType<typeof settlementRouter>>, today: string) {
+  const rule = await dailyRuleFor(tx, ownerId);
+  if (!rule) return null;
+  const [completed] = await tx
+    .select()
+    .from(settlement)
+    .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
+    .orderBy(sql`${settlement.endDate} desc`)
+    .limit(1);
+  const openFrom = router.mode === "NO_WEEKLY_ACCOUNT" ? null : router.periodStart;
+  const incomeToDate = openFrom && openFrom <= today ? await recognizedIncomeFor(tx, ownerId, rule.accountId, openFrom, today, rule) : null;
+  let latest = null;
+  if (completed) {
+    const livingExpense = (await correctedLivingExpenses(tx, ownerId)).get(completed.id) ?? 0n;
+    const settlementDays = daysBetweenInclusive(completed.startDate, completed.endDate);
+    latest = {
+      settlementId: completed.id,
+      startDate: completed.startDate,
+      endDate: completed.endDate,
+      livingExpense: amount(livingExpense),
+      averagePerDay: amount(roundedAverage(livingExpense, settlementDays)),
+      settlementDays,
+      hasCorrections: completed.livingExpenseMinor !== livingExpense,
+    };
+  }
+  return {
+    accountId: rule.accountId,
+    openWeek: openFrom && openFrom <= today ? { periodStart: openFrom, recognizedIncomeToDate: amount(incomeToDate?.recognized ?? 0n), livingExpense: null } : null,
+    latestCompleted: latest,
+  };
+}
+
 /** Everything Beranda shows, in the locked reading order (PRD: Dashboard hierarchy). */
 export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
   const today = businessDateOf(now);
-  const overview = await accountsOverview(tx, ownerId, now);
+  // Cycles first: loading them may freeze a due BCA target. Everything else only reads,
+  // so it is issued together and pipelined on the transaction's connection.
+  const cycles = await listMonthlyCycles(tx, ownerId, now);
+  const [overview, { router, dana }, targets, month, externalSubjects] = await Promise.all([
+    accountsOverview(tx, ownerId, now, { cycles }),
+    settlementRouter(tx, ownerId, now).then(async (router) => ({ router, dana: await danaCard(tx, ownerId, router, today) })),
+    listTargets(tx, ownerId),
+    monthReport(tx, ownerId, cycleKeyOf(today), "corrected", now),
+    listExternalSubjects(tx, ownerId),
+  ]);
   const confirmedPersonalCash = overview.accounts.reduce((sum, a) => sum + parseIdrDecimal(a.confirmedPersonal), 0n);
 
   const warnings = overview.accounts.flatMap((a) => {
@@ -217,11 +259,9 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
   });
 
   const tasks: DashboardTask[] = [];
-  const router = await settlementRouter(tx, ownerId, now);
   if (router.mode === "NORMAL" || router.mode === "OVERDUE" || router.mode === "DRAFT") {
     tasks.push({ type: "SETTLEMENT", mode: router.mode, periodStart: router.periodStart, normalEnd: router.normalEnd, draftId: router.draftId });
   }
-  const cycles = await listMonthlyCycles(tx, ownerId, now);
   for (const cycle of [...cycles].reverse()) {
     if (cycle.income?.status === "PENDING") {
       tasks.push({ type: "CONFIRM_INCOME", cycleKey: cycle.cycleKey, occurrenceId: cycle.income.occurrenceId, name: "Income bulanan", label: cycle.income.label, expectedAmount: cycle.income.expectedAmount, expectedDate: null });
@@ -230,8 +270,8 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
       tasks.push({ type: "CONFIRM_OBLIGATION", cycleKey: cycle.cycleKey, occurrenceId: o.occurrenceId, name: o.name, label: o.label, expectedAmount: o.expectedAmount, expectedDate: o.expectedDate });
     }
   }
-  const suggestions = await transferSuggestions(tx, ownerId);
-  for (const target of await listTargets(tx, ownerId)) {
+  const suggestions = await transferSuggestions(tx, ownerId, { balances: overview.accounts, targets });
+  for (const target of targets) {
     if (target.version?.isActionable && parseIdrDecimal(target.remaining) > 0n) {
       const suggestion = suggestions.find((s) => s.route.sourceAccountId === target.route.sourceAccountId);
       tasks.push({
@@ -246,42 +286,9 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
   }
   for (const prompt of overview.prompts) tasks.push({ type: "RECONCILE", accountId: prompt.accountId, reason: prompt.reason });
 
-  // DANA: the open week shows known values only; living cost waits for settlement.
-  let dana: unknown = null;
-  const rule = await dailyRuleFor(tx, ownerId);
-  if (rule) {
-    const completed = await tx
-      .select()
-      .from(settlement)
-      .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
-      .orderBy(sql`${settlement.endDate} desc`)
-      .limit(1);
-    const openFrom = router.mode === "NO_WEEKLY_ACCOUNT" ? null : router.periodStart;
-    const incomeToDate = openFrom && openFrom <= today ? await recognizedIncomeFor(tx, ownerId, rule.accountId, openFrom, today) : null;
-    let latest = null;
-    if (completed[0]) {
-      const corrected = (await correctedComputation(tx, ownerId, completed[0])).reconstruction;
-      latest = {
-        settlementId: completed[0].id,
-        startDate: completed[0].startDate,
-        endDate: completed[0].endDate,
-        livingExpense: amount(corrected.livingExpense),
-        averagePerDay: amount(corrected.averagePerDay),
-        settlementDays: corrected.settlementDays,
-        hasCorrections: completed[0].livingExpenseMinor !== corrected.livingExpense,
-      };
-    }
-    dana = {
-      accountId: rule.accountId,
-      openWeek: openFrom && openFrom <= today ? { periodStart: openFrom, recognizedIncomeToDate: amount(incomeToDate?.recognized ?? 0n), livingExpense: null } : null,
-      latestCompleted: latest,
-    };
-  }
-
   const currentCycle = cycles.find((c) => c.cycleKey === cycleKeyOf(today)) ?? null;
   const latestCompletedCycle = cycles.find((c) => c.cycleKey < cycleKeyOf(today) && (c.state === "COMPLETE" || c.state === "CLOSED_NO_INCOME")) ?? null;
-  const month = await monthReport(tx, ownerId, cycleKeyOf(today), "corrected", now);
-  const external = (await listExternalSubjects(tx, ownerId)).filter((s) => s.status === "OPEN");
+  const external = externalSubjects.filter((s) => s.status === "OPEN");
 
   return {
     personalCashRecorded: overview.personalCashRecorded,
@@ -306,17 +313,16 @@ export async function settlementHistory(tx: OwnerTx, ownerId: string) {
     .from(settlement)
     .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
     .orderBy(asc(settlement.startDate));
-  const history = [];
-  for (const row of rows) {
-    const corrected = (await correctedComputation(tx, ownerId, row)).reconstruction;
-    history.push({
+  const living = await correctedLivingExpenses(tx, ownerId);
+  return rows.map((row) => {
+    const livingExpense = living.get(row.id) ?? 0n;
+    return {
       settlementId: row.id,
       startDate: row.startDate,
       endDate: row.endDate,
-      livingExpense: amount(corrected.livingExpense),
-      averagePerDay: amount(roundedAverage(corrected.livingExpense, daysBetweenInclusive(row.startDate, row.endDate))),
-    });
-  }
-  return history;
+      livingExpense: amount(livingExpense),
+      averagePerDay: amount(roundedAverage(livingExpense, daysBetweenInclusive(row.startDate, row.endDate))),
+    };
+  });
 }
 
