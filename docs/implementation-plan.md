@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.18, audit readiness 30 September 2026 |
-| **Slice aktif** | S0 dan S1 selesai (lokal + staging hosted); S2 siap dimulai |
+| **Slice aktif** | S0, S1, dan S2 selesai; S3 (ledger core) berikutnya |
 
 ## 1. Status ringkas
 
@@ -24,6 +24,11 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | S1: `/api/v1/session`, logout lokal/global, kontrak error JSON | Selesai (lokal) |
 | S1: `/login`, `/forgot-password`, `/auth/callback`, `/reset-password`, `proxy.ts` | Selesai (lokal); login form belum diuji otomatis di browser |
 | S1: runbook bootstrap dan recovery | `docs/runbooks/owner-bootstrap-and-recovery.md` |
+| S2: utilitas uang IDR persis dan kalender Asia/Jakarta | Selesai |
+| S2: schema account, kategori, setting, dana titipan, onboarding, posisi awal, definisi rule | Selesai (migration `0002`, RLS di file yang sama) |
+| S2: `/api/v1/onboarding` (GET, PUT draft dengan `If-Match`, POST confirm atomik) | Selesai; fixture onboarding direproduksi, konfirmasi paralel dan rollback diuji |
+| S2: UI onboarding 5 layar (mobile-first) + test end-to-end Playwright | Selesai |
+| Koreksi saldo awal melalui superseding opening snapshot | Dipindah ke S3 karena membutuhkan saldo calculated dari ledger |
 
 ## 2. Hasil spike S0 (lokal, Supabase CLI 2.118.0, PostgreSQL 17.6, Supavisor 2.9.13)
 
@@ -117,7 +122,7 @@ Rekomendasi arsitektur (belum dikunci PRD): satu inti append-only `ledger_entry`
 | S0 | Platform + security spike | — | Lint/typecheck/test/build hijau di CI; DB dibangun dari nol; spike lokal lulus; spike hosted lulus | — (spike hosted lulus) |
 | S1 | Identity + authorization | S0 | Bootstrap idempoten; adapter cookie dan Bearer → `VerifiedClaims`; login/logout lokal dan global; recovery generik; 13 skenario auth + jalur pengecualian auth hijau; runbook rebind | — |
 | S2 | Accounts, onboarding, konfigurasi awal | S1 | Draft → confirmed atomik; opening + external; rule dan setting awal; seed `Vape`; fixture onboarding PRD direproduksi | — |
-| S3 | Ledger core | S2 | Konvensi tanda PRD; saldo calculated as-of; urutan kanonik; aturan inklusi date-only terhadap timestamp | — |
+| S3 | Ledger core | S2 | Konvensi tanda PRD; saldo calculated as-of; urutan kanonik; aturan inklusi date-only terhadap timestamp; superseding opening snapshot | — |
 | S4 | External funds | S3 | Lima quick action; posisi ≥ 0; syarat arsip; fixture 7 langkah direproduksi | — |
 | S5 | Financial events + koreksi periode terbuka | S3 | Special expense + kategori; reversal/replacement; reversal-only void; `Catat income/expense lain` | — |
 | S6 | Transfer + target + allocation | S4, S5 | Ownership composition; allocation oldest-first; surplus; `Tutup target`; recalculation chain | — |
