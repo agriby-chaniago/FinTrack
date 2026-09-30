@@ -9,7 +9,7 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | **Pemilik produk** | Agriby Chaniago |
 | **Status** | Draft / discovery |
 | **Versi dokumen** | 0.18 |
-| **Terakhir diperbarui** | 30 September 2026 |
+| **Terakhir diperbarui** | 30 September 2026 (v0.19) |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
 | **Target berikutnya** | Aplikasi mobile dengan backend yang sama |
@@ -119,12 +119,14 @@ FinTrack bukan:
 | **Jago** | Bank | Reserve | Transfer BCA/DANA | Pengeluaran tidak rutin |
 | **BCA** | Bank | Monthly | Income bulanan | Subscription dan biaya bulanan bank |
 | **DANA** | E-wallet | Daily | Income harian | Biaya hidup harian |
+| **Tunai** | Uang fisik | Daily (bersama DANA) | Tarik tunai DANA, tarik tunai ATM | Biaya hidup harian |
 
 Nama akun di UI:
 
 - `Jago — Reserve`
 - `BCA — Monthly`
 - `DANA — Daily`
+- `Tunai — Daily` (opsional, diaktifkan saat settlement; lihat "Uang tunai dalam settlement mingguan")
 
 ### Pemisahan konsep
 
@@ -470,6 +472,33 @@ Income-eligible days menentukan scheduled income berdasarkan state `ACTIVE`; per
 - Preview settlement menampilkan warning `Ada pemasukan yang belum tercatat` beserta signed living expense, lalu menyarankan pengguna mencatat inflow yang terlewat sebelum konfirmasi
 - Living expense dan average per day negatif disimpan serta ditampilkan apa adanya dengan leading minus; nilai tidak di-clamp ke Rp0
 - Warning memakai icon dan teks eksplisit, bukan warna saja, dan tetap terlihat pada detail settlement yang sudah `SETTLED`
+
+### Uang tunai dalam settlement mingguan
+
+**LOCKED (30 September 2026, disetujui pemilik):** Uang fisik di dompet dilacak sebagai account `Tunai` yang di-settle bersama DANA. Pemilik menarik tunai dari DANA kira-kira dua hari sekali dan kadang menyisakan uang di dompet; belanja tunai tidak dicatat satu per satu.
+
+- `Tunai` adalah active cash account dengan `account_type = CASH` yang menunjuk account weekly settlement-nya (DANA). DANA dan Tunai membentuk satu *settlement pool*
+- Tunai diaktifkan dari settlement DANA: pengguna memilih `Mulai lacak uang tunai` dan mengisi uang di dompet saat penutupan. Nilai itu menjadi opening position Tunai dengan `activation_cutover_at` = waktu saldo penutupan settlement tersebut. Settlement pengaktif dan seluruh settlement sebelumnya tidak berubah; Tunai ikut dalam pool mulai periode berikutnya
+- Setelah aktif, setiap settlement meminta saldo penutupan DANA dan `Uang tunai di dompet` pada waktu penutupan yang sama. Keduanya wajib dan menjadi balance confirmation masing-masing account
+- Tarik tunai dari DANA tidak perlu dicatat. Jika dicatat sebagai transfer DANA → Tunai, transfer internal pool tidak dihitung sebagai transfer masuk atau keluar
+- Tarik tunai dari account lain dicatat sebagai transfer ke Tunai; pemasukan tunai dicatat sebagai income lain pada Tunai; pengeluaran khusus boleh bersumber dari Tunai. Ordinary expense dan balance confirmation manual tidak tersedia untuk Tunai, sama seperti DANA
+- Formula pool:
+
+```text
+Ordinary living expense
+= opening personal DANA + opening personal Tunai
++ recognized daily income
++ other personal inflows (pool)
++ personal transfer components in from outside the pool
+- personal transfer components out to outside the pool
+- recorded non-living deductions (pool)
+- closing personal DANA - closing personal Tunai
+```
+
+- Living contribution di-posting per account agar saldo terhitung DANA dan Tunai masing-masing sama dengan saldo penutupannya; total contribution sama dengan living expense pool
+- Target transfer DANA → reserve tetap memakai closing personal DANA saja; uang di dompet tidak disarankan untuk ditransfer
+- Koreksi riwayat yang sudah di-settle, replacement saldo penutupan (DANA maupun Tunai), as-settled vs corrected view, dan freshness berlaku untuk seluruh pool
+- Account card Tunai tampil di dashboard dan masuk `Personal cash tercatat`; statusnya mengikuti minggu berjalan DANA
 
 ### Monthly flow BCA
 
@@ -2643,6 +2672,9 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Full owner-initiated JSON+CSV ZIP export dengan manifest dan consistent snapshot termasuk MVP; automatic import ditunda |
 | **LOCKED** | Website MVP installable tetapi online-only tanpa service worker, offline financial cache, background sync, atau push notification |
 | **LOCKED** | Minimal observability memakai platform logs, request ID, stable error code, failure notification, dan smoke check tanpa financial payload di logs |
+| **LOCKED** | Uang fisik dilacak sebagai account `Tunai` (`CASH`) yang di-settle bersama DANA dalam satu settlement pool; diaktifkan dari settlement, saldo dompet diisi setiap settlement, dan target reserve tetap dari DANA saja (30 September 2026) |
+| **LOCKED** | Production berjalan tanpa daily R2 backup atas keputusan pemilik; bila data hilang, pemilik melakukan setup ulang. Pipeline backup tetap tersedia dan nonaktif (30 September 2026) |
+| **DEFERRED** | Custom SMTP; owner production dibuat langsung di Supabase Dashboard dengan Auto Confirm (30 September 2026) |
 
 ### Aturan pemeliharaan dokumen
 
@@ -2655,4 +2687,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.18 · Draft discovery · Slice 0–1 implemented; Slice 2 next_
+_FinTrack PRD v0.19 · Production active · Slices 0–13 implemented; Slice 14 (Tunai) in progress_
