@@ -8,6 +8,9 @@ import { GET as getAccounts } from "@/app/api/v1/accounts/route";
 import { POST as postTransitions } from "@/app/api/v1/daily-income/[ruleId]/transitions/route";
 import { PUT as putOverride } from "@/app/api/v1/daily-income/[ruleId]/overrides/route";
 import { GET as getDailyIncome } from "@/app/api/v1/daily-income/route";
+import { POST as openingCorrection } from "@/app/api/v1/onboarding/opening-corrections/route";
+import { GET as getOnboarding } from "@/app/api/v1/onboarding/route";
+import { GET as settlementHistoryRoute } from "@/app/api/v1/reports/settlement-history/route";
 import { POST as correct } from "@/app/api/v1/ledger-entries/[id]/corrections/route";
 import { POST as closingCorrection } from "@/app/api/v1/settlements/[id]/closing-corrections/route";
 import { GET as getSettlement, PATCH as patchSettlement } from "@/app/api/v1/settlements/[id]/route";
@@ -272,5 +275,41 @@ describe("settled-history corrections", () => {
     const result = await call(correct, { method: "POST", params: { id: transfer.body.data.entryId }, body: { action: "REPLACE", amount: "100000", businessDate: "2026-08-09" } });
     expect(result.body.data.mode).toBe("SETTLED_HISTORY");
     expect((await view(w2.id)).corrected).toMatchObject({ transfersOut: "100000", livingExpense: "290000" });
+  });
+});
+
+describe("opening correction after settlement", () => {
+  it("re-anchors settled periods and keeps the history equal to the corrected views", async () => {
+    const w1 = await settleWeek("2026-08-09", "110000");
+    await toJago("110000", "2026-08-09");
+    const w2 = await settleWeek("2026-08-16", "70000");
+    const danaBefore = (await dana()).physical;
+
+    // The owner finds Rp10.000 more in DANA at cutover than entered at onboarding.
+    const snapshotId = (await call(getOnboarding)).body.data.snapshotId as string;
+    const response = await openingCorrection(
+      new Request("http://127.0.0.1:3000/api/v1/onboarding/opening-corrections", {
+        method: "POST",
+        headers: { authorization: `Bearer ${user.accessToken}`, "content-type": "application/json", "if-match": `"${snapshotId}"` },
+        body: JSON.stringify({
+          accounts: [
+            { accountId: owner.accountIds.reserve, physicalBalance: "0" },
+            { accountId: owner.accountIds.monthly, physicalBalance: "831999.93" },
+            { accountId: owner.accountIds.daily, physicalBalance: "10000" },
+          ],
+          externals: [{ accountId: owner.accountIds.monthly, subjectName: "Dosen", amount: "431999.93" }],
+        }),
+      }),
+      { params: Promise.resolve({}) },
+    );
+    expect(response.status, await response.clone().text()).toBe(201);
+
+    // Week 1 absorbs the extra opening; week 2 opens from week 1's confirmed closing, so it does not change.
+    expect((await view(w1.id)).corrected).toMatchObject({ openingPersonal: "10000", livingExpense: "250000" });
+    expect((await view(w2.id)).corrected.livingExpense).toBe(w2.view.asSettled.livingExpense);
+    expect((await dana()).physical).toBe(danaBefore);
+
+    const history = (await call(settlementHistoryRoute)).body.data as { settlementId: string; livingExpense: string }[];
+    for (const row of history) expect(row.livingExpense).toBe((await view(row.settlementId)).corrected.livingExpense);
   });
 });

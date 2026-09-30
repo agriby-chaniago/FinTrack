@@ -1,6 +1,6 @@
 // Correction of a confirmed opening snapshot through a superseding snapshot
 // (PRD: Saldo awal, Correction dan reconciliation). No financial event is made.
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { parseIdrDecimal } from "@/lib/money";
@@ -168,6 +168,13 @@ export async function supersedeOpeningSnapshot(
       newExternals.map((row) => ({ ownerId, snapshotId, accountId: row.accountId, holdingId: row.holdingId, amountMinor: row.amount })),
     );
   }
+
+  // A different opening changes every settled DANA period after it; keep their
+  // living contributions anchored to the confirmed closings (PRD: settled history).
+  const { resyncSettlements } = await import("./settlement");
+  const weekly = await tx.execute<{ account_id: string }>(sql`
+    select distinct account_id from fintrack.daily_income_rule where owner_id = ${ownerId}`);
+  for (const row of weekly) await resyncSettlements(tx, ownerId, row.account_id, "0001-01-01", now);
 
   return { snapshotId, supersedesId: current.id };
 }
