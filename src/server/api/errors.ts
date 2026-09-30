@@ -7,6 +7,10 @@ export type ApiErrorCode =
   | "NOT_OWNER"
   | "APP_NOT_INITIALIZED"
   | "VALIDATION_FAILED"
+  | "PRECONDITION_REQUIRED"
+  | "STALE_VERSION"
+  | "ONBOARDING_NOT_STARTED"
+  | "ONBOARDING_ALREADY_CONFIRMED"
   | "INTERNAL_ERROR";
 
 const statusByCode: Record<ApiErrorCode, number> = {
@@ -15,6 +19,10 @@ const statusByCode: Record<ApiErrorCode, number> = {
   NOT_OWNER: 403,
   APP_NOT_INITIALIZED: 503,
   VALIDATION_FAILED: 422,
+  PRECONDITION_REQUIRED: 428,
+  STALE_VERSION: 409,
+  ONBOARDING_NOT_STARTED: 409,
+  ONBOARDING_ALREADY_CONFIRMED: 409,
   INTERNAL_ERROR: 500,
 };
 
@@ -24,6 +32,10 @@ const messageByCode: Record<ApiErrorCode, string> = {
   NOT_OWNER: "Akun ini tidak memiliki akses ke FinTrack.",
   APP_NOT_INITIALIZED: "FinTrack belum diinisialisasi.",
   VALIDATION_FAILED: "Input tidak valid.",
+  PRECONDITION_REQUIRED: "Versi data (If-Match) wajib dikirim.",
+  STALE_VERSION: "Data sudah berubah. Muat ulang lalu coba lagi.",
+  ONBOARDING_NOT_STARTED: "Onboarding belum dimulai.",
+  ONBOARDING_ALREADY_CONFIRMED: "Onboarding sudah dikonfirmasi.",
   INTERNAL_ERROR: "Terjadi kesalahan pada server.",
 };
 
