@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { appOrigin } from "@/server/app-origin";
 import { createSupabaseClientFromNextCookies } from "@/server/auth/next-cookies";
 
 // Exact allowlist: the callback never redirects to an arbitrary URL.
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // Redirect only within the configured app origin so the session cookie that
   // was just set is sent back on the next request.
-  const origin = process.env.APP_ORIGIN ?? request.nextUrl.origin;
+  const origin = appOrigin();
   const target = ok ? new URL(next, origin) : new URL("/login?error=link", origin);
   const response = NextResponse.redirect(target);
   response.headers.set("Cache-Control", "no-store");

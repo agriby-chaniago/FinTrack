@@ -16,7 +16,7 @@ Set these in **Authentication → Sign In / Providers** and related pages before
 | All social and phone providers | Off |
 | Minimum password length | 12 |
 | Site URL | The production origin, for example `https://fintrack.example` |
-| Redirect URLs | Exactly `<origin>/auth/callback` |
+| Redirect URLs | Exactly `<origin>/auth/callback`; on staging also `https://*-agriby-chaniagos-projects.vercel.app/auth/callback` for Vercel Preview |
 | Custom SMTP | Configured and tested (required before invite and recovery count as production-ready) |
 
 Do not turn off the Email provider to block signups. Turning it off also blocks email and password login; blocking signups is the job of "Allow new users to sign up".

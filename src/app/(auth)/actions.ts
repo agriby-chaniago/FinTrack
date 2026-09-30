@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { appOrigin } from "@/server/app-origin";
 import { createSupabaseClientFromNextCookies } from "@/server/auth/next-cookies";
 
 export type AuthFormState = { error?: string; message?: string };
@@ -30,8 +31,7 @@ export async function requestPasswordReset(_previous: AuthFormState, formData: F
     return { error: "Email wajib diisi." };
   }
 
-  const origin = process.env.APP_ORIGIN;
-  if (!origin) throw new Error("APP_ORIGIN is not configured");
+  const origin = appOrigin();
 
   const supabase = await createSupabaseClientFromNextCookies();
   // The outcome is ignored so the response never reveals whether the email is registered.
