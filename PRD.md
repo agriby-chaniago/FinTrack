@@ -8,8 +8,8 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | --- | --- |
 | **Pemilik produk** | Agriby Chaniago |
 | **Status** | Draft / discovery |
-| **Versi dokumen** | 0.15 |
-| **Terakhir diperbarui** | 26 September 2026 |
+| **Versi dokumen** | 0.16 |
+| **Terakhir diperbarui** | 30 September 2026 |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
 | **Target berikutnya** | Aplikasi mobile dengan backend yang sama |
@@ -259,6 +259,7 @@ Ketentuan lifecycle:
 - **OPEN DATA:** Nominal opening terbaru Jago, BCA, DANA, serta external subject/amount belum diberikan
 - **LOCKED:** Initial onboarding memakai satu shared `cutover_at` untuk seluruh active account awal; default-nya waktu sekarang dalam `Asia/Jakarta`
 - Jago, BCA, dan DANA harus memiliki physical provider balance sebelum onboarding dapat dikonfirmasi
+- `Saldo minimum ditahan` BCA wajib dipilih sebelum onboarding dapat dikonfirmasi; nilai ini adalah workflow setting, bukan opening position atau financial event
 - Jika satu saldo belum dapat diperiksa, onboarding tetap `DRAFT` dan dapat dilanjutkan kemudian
 - External section collapsed secara default; pengguna mengaktifkan `Ada uang milik orang lain` lalu mengisi subject dan exact amount bila relevan
 - Personal opening balance selalu diturunkan dari physical balance dikurangi external position, bukan diinput sebagai angka kedua
@@ -366,6 +367,15 @@ New DANA transfer target
 
 Total operational suggestion tetap dibatasi oleh current personal DANA balance. Bila outstanding target melebihi saldo karena remainder lama kemudian terpakai, FinTrack menampilkan liquidity warning dan tidak mengubah target historis secara diam-diam.
 
+**LOCKED:** Jika remainder DANA lama sudah terpakai dan target tersebut tidak lagi realistis dipenuhi, pengguna dapat memilih aksi eksplisit `Tutup target` pada target DANA → Jago yang masih actionable:
+
+- Aksi hanya tersedia untuk target DANA actionable dengan remaining transferable amount > Rp0 dan memerlukan konfirmasi pengguna
+- FinTrack membuat superseding target version non-actionable dengan reason `LIQUIDITY_WRITE_OFF`; frozen amount dan basis versi sebelumnya tetap tersimpan untuk audit
+- Allocation dan actual transfer yang sudah terjadi tidak berubah; linked confirmed amount tetap tercatat pada logical target
+- Target yang ditutup tidak lagi masuk `Prior DANA outstanding at settlement` maupun operational transfer-now suggestion, sehingga target settlement berikutnya kembali dihitung dari closing personal balance
+- Penutupan target bukan financial event, bukan expense, dan tidak mengubah living expense, saldo, atau snapshot settlement
+- Penutupan bersifat final; FinTrack tidak otomatis menutup target dan tidak menyediakan aksi membuka kembali. Transfer aktual yang tetap dilakukan kemudian mengikuti auto-allocation normal ke target actionable yang tersisa
+
 Aturan late dan catch-up settlement:
 
 - Jika saldo historis Minggu malam diketahui, periode asli tetap dapat diselesaikan terlambat dengan business date asli
@@ -431,6 +441,13 @@ Average daily living cost
 
 Income-eligible days menentukan scheduled income berdasarkan state `ACTIVE`; per-date override menentukan recognized income aktualnya. Average living cost tetap menggunakan jumlah hari kalender yang tercakup oleh settlement agar pause atau missed income tidak membuat biaya hidup per hari tampak lebih tinggi. Opening balance tidak boleh diasumsikan selalu nol oleh sistem.
 
+**LOCKED:** Ordinary living expense hasil rekonstruksi boleh bernilai negatif, misalnya ketika DANA menerima uang yang belum tercatat:
+
+- Settlement tetap dapat dikonfirmasi; FinTrack tidak memblokir konfirmasi dan tidak membuat adjustment otomatis
+- Preview settlement menampilkan warning `Ada pemasukan yang belum tercatat` beserta signed living expense, lalu menyarankan pengguna mencatat inflow yang terlewat sebelum konfirmasi
+- Living expense dan average per day negatif disimpan serta ditampilkan apa adanya dengan leading minus; nilai tidak di-clamp ke Rp0
+- Warning memakai icon dan teks eksplisit, bukan warna saja, dan tetap terlihat pada detail settlement yang sudah `SETTLED`
+
 ### Monthly flow BCA
 
 - Income saat ini sekitar Rp750.000 per bulan dan harus configurable
@@ -456,12 +473,20 @@ Income-eligible days menentukan scheduled income berdasarkan state `ACTIVE`; per
 
 Kewajiban bulanan BCA dimodelkan sebagai recurring expense definitions yang menghasilkan occurrence per siklus. Jenis awalnya adalah `SUBSCRIPTION` dan `BANK_FEE`. Istilah _monthly obligation occurrence_ dalam workflow adalah recurring expense occurrence yang menjadi kewajiban pada siklus bulanan BCA, bukan entity terpisah.
 
+**LOCKED:** Aturan umum untuk recurring expense rule dan monthly income rule:
+
+- Source account recurring expense rule dan actual source account pada occurrence wajib berupa active cash account yang tidak direkonsiliasi melalui weekly settlement; DANA tidak dapat menjadi source subscription atau biaya bank, dan aturan ini tidak bergantung pada provider name
+- Jika kewajiban tersebut pernah benar-benar dibayar dari DANA, pembayaran dicatat sebagai special expense dari DANA agar terdeduksi sebagai non-living pada settlement, dan occurrence terkait diselesaikan `NOT_CHARGED` karena source account rule memang tidak didebit
+- First cycle rule baru tidak boleh lebih awal dari cycle berjalan; default-nya cycle bulan berikutnya, sedangkan cycle berjalan hanya dapat dipilih melalui explicit opt-in bila occurrence bulan ini belum terjadi atau belum tercakup opening position
+- Rule dengan first cycle di masa lalu ditolak; FinTrack tidak membuat backfill occurrence untuk cycle yang sudah lewat
+- Tagihan atau income yang sudah terjadi sebelum first cycle rule tidak dibuat sebagai occurrence; jika terjadi setelah cutover dan belum tercatat, kejadian tersebut dicatat sebagai actual financial event biasa pada source account aktual
+
 Subscription:
 
 - **LOCKED:** Subscription adalah collection dinamis, bukan satu field khusus
 - **LOCKED:** FinTrack mendukung satu atau lebih subscription
 - Setiap subscription memiliki nama, source account, expected date, expected amount, dan active period
-- Source account normal adalah BCA
+- Source account normal adalah BCA; DANA tidak diperbolehkan sebagai source subscription
 - Subscription yang aktif saat ini memiliki expected date tanggal 5
 - Expected date adalah perkiraan/reminder berbentuk day-of-month, bukan klaim tanggal debit aktual
 - Setiap occurrence menyimpan snapshot expected date dan expected amount dari rule revision yang berlaku pada cycle tersebut
@@ -517,7 +542,9 @@ Jika monthly income berstatus `NOT_RECEIVED`, cycle dapat ditutup sebagai `CLOSE
 
 BCA memiliki setting configurable `retained_balance_floor`, ditampilkan sebagai `Saldo minimum ditahan`:
 
-- Nilainya wajib dipilih secara eksplisit dan tidak boleh negatif ketika BCA remainder suggestion diaktifkan; Rp0 adalah pilihan valid
+- Nilainya wajib dipilih secara eksplisit dan tidak boleh negatif; Rp0 adalah pilihan valid
+- **LOCKED:** Floor menjadi field wajib pada financial onboarding; onboarding tidak dapat dikonfirmasi tanpa nilai floor untuk account monthly (initial: BCA), sehingga cycle yang memasuki ready branch selalu memiliki floor
+- Account monthly yang diaktifkan setelah onboarding wajib memilih floor pada activation flow-nya sebelum remainder suggestion dapat dibuat
 - Nilai ini bukan income, expense, reservation, atau ledger event
 - Sistem tidak mengubah floor otomatis ketika expected subscription berubah
 - Jika total expected obligation siklus berikutnya melebihi floor, FinTrack hanya menampilkan warning
@@ -1159,12 +1186,13 @@ Financial onboarding hanya tersedia setelah private auth bootstrap selesai dan `
 1. Pilih shared `cutover_at`, default sekarang
 2. Masukkan physical balance Jago, BCA, dan DANA yang terlihat pada provider
 3. Aktifkan external toggle hanya pada account yang memerlukannya, lalu isi subject dan amount
-4. Review physical, external, signed personal balance, total personal cash, dan shortfall
-5. Konfirmasi seluruh opening snapshot dengan satu aksi `Mulai FinTrack`
+4. Pilih `Saldo minimum ditahan` BCA secara eksplisit; Rp0 valid, tetapi field tidak boleh kosong
+5. Review physical, external, signed personal balance, total personal cash, shortfall, dan retained floor
+6. Konfirmasi seluruh opening snapshot dengan satu aksi `Mulai FinTrack`
 
 Input amount memakai numeric keyboard dan formatting rupiah saat mengetik, tetapi tidak membulatkan nilai provider. External section collapsed secara default dan mendukung tambah subject tanpa menjadikan form utama panjang. Confirmation button dapat sticky pada layar kecil.
 
-Jika satu active account belum diisi, pengguna dapat menyimpan draft tetapi belum dapat menyelesaikan onboarding. Account yang ditambahkan setelahnya memakai activation flow sendiri dengan `activation_cutover_at` baru.
+Jika satu active account atau retained floor belum diisi, pengguna dapat menyimpan draft tetapi belum dapat menyelesaikan onboarding. Account yang ditambahkan setelahnya memakai activation flow sendiri dengan `activation_cutover_at` baru.
 
 ### Information architecture
 
@@ -1200,7 +1228,7 @@ Pembagian action:
 | Surface | Action |
 | --- | --- |
 | **Global `+ Catat`** | Pengeluaran khusus; actual transfer; update/konfirmasi saldo; dana external |
-| **`Perlu dilakukan` / Rutinitas** | Weekly/catch-up settlement, konfirmasi income atau kewajiban BCA, `NOT_RECEIVED`, `NOT_CHARGED`, dan daily-income exception |
+| **`Perlu dilakukan` / Rutinitas** | Weekly/catch-up settlement, konfirmasi income atau kewajiban BCA, `NOT_RECEIVED`, `NOT_CHARGED`, daily-income exception, dan `Tutup target` untuk target DANA yang tidak lagi dapat dipenuhi |
 | **Detail Aktivitas** | Correction terhadap record yang dipilih |
 | **Detail Akun** | Reconciliation dan ownership-aware balance review |
 | **Pengaturan rule** | Pause/resume daily income dan konfigurasi recurring rules |
@@ -1619,7 +1647,7 @@ Referensi implementasi resmi:
 
 #### Keepalive Supabase Free
 
-Selama production menggunakan Supabase Free, GitHub Actions pada default branch mengecek jadwal setiap hari pukul 02:17 UTC (`17 2 * * *`), tetapi hanya mengirim satu heartbeat ke database setiap tiga hari UTC. Gate berbasis jumlah hari sejak epoch menjaga jarak antartanggal melintasi pergantian bulan; ekspresi cron tanggal `*/3` tidak melakukannya. `workflow_dispatch` tersedia untuk percobaan manual dan melewati gate tersebut. Ini adalah maintenance operasional, bukan domain automation:
+Selama production menggunakan Supabase Free, GitHub Actions pada default branch mengirim satu heartbeat ke database setiap hari pukul 02:17 UTC (`17 2 * * *`). `workflow_dispatch` tersedia untuk percobaan manual. Ini adalah maintenance operasional, bukan domain automation:
 
 - Workflow memanggil `POST /api/internal/keepalive` pada production melalui HTTPS dengan random Bearer secret yang sama-sama tersimpan di GitHub Actions dan Vercel secrets
 - Internal route memvalidasi secret, melakukan satu query read-only nyata ke relasi probe nonfinansial, lalu memberi `204` tanpa data dan dengan `Cache-Control: no-store`
@@ -1630,10 +1658,10 @@ Selama production menggunakan Supabase Free, GitHub Actions pada default branch 
 - Hanya production diping; staging boleh pause. Jika GitHub repository bersifat public, owner harus memperhatikan bahwa scheduled workflow dapat dinonaktifkan setelah 60 hari tanpa aktivitas repository
 - Jika project terlanjur pause, owner melakukan resume dari Supabase Dashboard dan memeriksa backup serta workflow
 - Aktivasi workflow dilakukan setelah endpoint, database probe, production URL, dan secrets siap; sebelum itu scheduled job berstatus disabled melalui repository variable `FINTRACK_KEEPALIVE_ENABLED`
-- Setelah aktivasi, jalankan `workflow_dispatch` sekali untuk membuktikan response 204 sebelum mengandalkan jadwal tiga hari
+- Setelah aktivasi, jalankan `workflow_dispatch` sekali untuk membuktikan response 204 sebelum mengandalkan jadwal harian
 - Variable `FINTRACK_KEEPALIVE_URL` menunjuk tepat ke production endpoint dan secret `FINTRACK_KEEPALIVE_TOKEN` disimpan di GitHub Actions serta Vercel Production
 
-Supabase menyatakan beberapa user database queries **per hari** biasanya cukup, tetapi tidak menerbitkan ambang pasti. Pilihan satu query setiap tiga hari lebih jarang daripada panduan tersebut, sehingga pause masih mungkin terjadi. GitHub schedule juga dapat terlambat atau terlewat. Heartbeat ini best effort; bila warning pause muncul, owner mengevaluasi ulang frekuensinya. Supabase Pro adalah pilihan bila production tidak boleh pause akibat inactivity.
+Supabase menyatakan beberapa user database queries **per hari** biasanya cukup, tetapi tidak menerbitkan ambang pasti. Satu query per hari mengikuti batas bawah panduan tersebut, tetapi pause tetap mungkin terjadi karena GitHub schedule dapat terlambat atau terlewat. Heartbeat ini best effort; bila warning pause muncul, owner mengevaluasi ulang frekuensinya. Supabase Pro adalah pilihan bila production tidak boleh pause akibat inactivity.
 
 #### Backup dan restore
 
@@ -1698,7 +1726,7 @@ Model berikut adalah arah konseptual, bukan schema final.
 | **Transfer** | Perpindahan physical aktual antar-account dengan ownership composition |
 | **Transfer ownership component** | External composition per holding; personal component merupakan residual |
 | **Transfer target** | Logical non-financial fulfillment context untuk satu settlement/cycle dan route |
-| **Transfer target version** | Immutable suggestion amount, frozen basis, actionability/retirement reason, dan optional `supersedes_id` |
+| **Transfer target version** | Immutable suggestion amount, frozen basis, actionability/retirement reason (`INCOME_NOT_RECEIVED` atau `LIQUIDITY_WRITE_OFF`), dan optional `supersedes_id` |
 | **Transfer allocation** | Signed/effective fulfillment dari personal transfer component ke logical targets |
 | **Settlement** | Rekonstruksi cashflow untuk rentang contiguous tanpa overlap/gap |
 | **Balance confirmation** | Physical provider balance aktual pada waktu tertentu |
@@ -1901,6 +1929,7 @@ Baseline teknis:
 - Automatic oldest-first transfer allocation across outstanding targets
 - Confirmed personal transfer components BCA/DANA → Jago
 - Multiple linked transfers dan derived fulfillment progress
+- Explicit `Tutup target` untuk target DANA yang tidak lagi dapat dipenuhi
 - Special expense dari actual active cash account dengan Jago sebagai default
 - Reusable special-expense categories dengan seeded `Vape` dan inline `Lainnya…`
 - Calendar-month `CALENDAR_DAY_PRORATA_V1` allocation untuk cross-month living expense
@@ -2214,6 +2243,12 @@ Jalur pengecualian juga wajib diuji:
 - Regular balance confirmation hanya merekam physical balance; external outstanding tetap berasal dari ownership ledger dan tidak di-overwrite oleh reconciliation
 - Reconciliation BCA membandingkan confirmed physical dengan calculated physical, lalu menurunkan personal menggunakan external outstanding pada timestamp yang sama
 - Closing balance DANA merekonstruksi ordinary living expense dan tidak otomatis membuat adjustment
+- Target DANA yang tidak dipenuhi dan remainder-nya sudah terpakai membuat target berikutnya berkurang serta memunculkan liquidity warning; setelah `Tutup target`, target tersebut keluar dari prior outstanding dan settlement berikutnya kembali memakai closing personal balance penuh tanpa mengubah allocation atau actual transfer lama
+- `Tutup target` ditolak untuk target yang sudah non-actionable, target BCA, atau target dengan remaining transferable amount Rp0
+- Onboarding tanpa `Saldo minimum ditahan` BCA dapat disimpan sebagai draft tetapi tidak dapat dikonfirmasi; Rp0 diterima sebagai nilai eksplisit
+- Recurring expense rule dengan source DANA ditolak; pembayaran kewajiban yang benar-benar terjadi dari DANA dicatat sebagai special expense DANA dan occurrence terkait diselesaikan `NOT_CHARGED`
+- Recurring expense atau monthly income rule baru dengan first cycle di masa lalu ditolak; rule tanpa opt-in dimulai cycle bulan berikutnya dan tidak pernah membuat backfill occurrence
+- Settlement DANA dengan living expense negatif tetap dapat dikonfirmasi, menampilkan warning `Ada pemasukan yang belum tercatat`, serta menyimpan living expense dan average negatif tanpa clamp
 
 ### Acceptance criteria produk
 
@@ -2338,6 +2373,11 @@ Jalur pengecualian juga wajib diuji:
 - Akun tambahan dapat dibuat tanpa mengubah source code
 - Subscription atau recurring expense instance baru dapat ditambahkan tanpa mengubah schema
 - Semua aksi utama dapat digunakan pada layar ponsel
+- Target DANA hanya dapat ditutup melalui aksi eksplisit `Tutup target` yang membuat superseding non-actionable version dengan reason `LIQUIDITY_WRITE_OFF`; FinTrack tidak pernah menutup target otomatis
+- Onboarding tidak dapat dikonfirmasi tanpa `Saldo minimum ditahan` BCA yang dipilih eksplisit
+- Subscription dan biaya bank tidak dapat memakai DANA sebagai source account
+- Recurring expense dan monthly income rule baru tidak dapat dimulai pada cycle yang sudah lewat dan tidak membuat backfill occurrence
+- Living expense negatif tidak memblokir settlement, tidak di-clamp, dan selalu disertai warning `Ada pemasukan yang belum tercatat`
 - Local/staging/production memakai database dan secrets terpisah; Preview tidak menerima production credential atau data
 - Migration hanya dijalankan oleh trusted release runner dan tidak terjadi otomatis saat build, startup, atau request
 - Daily encrypted backup mempunyai visible failure dan last-success timestamp; restore drill terisolasi lulus sebelum production
@@ -2351,7 +2391,12 @@ Jalur pengecualian juga wajib diuji:
 
 | Prioritas | Topik | Keputusan yang dibutuhkan |
 | ---: | --- | --- |
-| **1** | Implementation readiness | MVP slices, schema/API map, dan acceptance-test plan |
+| **1** | Initial rule dan setting creation | Kapan dan di mana account awal, daily/monthly income rule, subscription, biaya bank, default special-expense source, dan seed `Vape` dibuat, termasuk boundary opt-in pada flow onboarding (audit HB-5, MC-11, MC-14) |
+| **2** | Transfer-target recalculation chain | Lingkup affected chain, urutan evaluasi, batas iterasi, dan perlakuan allocation ketika target mengecil (audit HB-4) |
+| **3** | Database roles dan probe | Nama/grant runtime role tanpa `BYPASSRLS`, dukungan Supabase pooler (spike), relasi probe nonfinansial, dan credential backup (audit HB-1, HB-2) |
+| **4** | Mechanical clarifications | Temuan MC-1 sampai MC-14 pada audit readiness |
+
+Rincian temuan berada di `docs/audit/2026-09-30-readiness.md`. Keputusan pemilik OD-1 sampai OD-6 dari audit tersebut telah diterapkan pada v0.16.
 
 ### Pending onboarding data
 
@@ -2360,8 +2405,13 @@ Hal berikut adalah data aktual yang nanti perlu diberikan pengguna, bukan keputu
 - Actual initial `cutover_at`
 - Latest exact physical balance Jago, BCA, dan DANA pada cutover tersebut
 - External subjects yang masih aktif beserta opening amount dan account position-nya
+- Nilai `Saldo minimum ditahan` BCA
+- Nama dan expected amount subscription aktif; expected date tanggal 5 sudah diketahui
 
 ### Open questions
+
+- **OPEN:** Target BCA → Jago memiliki carry-over yang sama dengan DANA melalui `prior_outstanding_at_readiness`, tetapi `Tutup target` pada v0.16 hanya berlaku untuk DANA karena tabel precedence BCA cycle belum memiliki state untuk target yang ditutup
+- **OPEN:** Entry point untuk actual income/expense biasa di luar occurrence dan di luar special expense belum ada pada `+ Catat`, padahal aturan current-month movement setelah cutover dan pembatasan first cycle rule memerlukannya
 
 Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti URL production, project ID, secret, dan saldo opening diisi saat setup/onboarding.
 
@@ -2388,6 +2438,9 @@ Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti 
 | Semua quick actions ditampilkan bersama | Global `+ Catat`, contextual tasks, dan detail actions dipisahkan berdasarkan konteks |
 | Stock daisyUI theme atau provider-colored cards | Custom Quiet Ledger themes dengan neutral surfaces dan indigo accent |
 | Semua preferred animation/carousel library dipasang sejak awal | Motion dipakai selektif; Anime.js dan Embla ditunda sampai ada concrete use case |
+| Target DANA yang tidak terpenuhi hanya mendapat liquidity warning | Liquidity warning tetap ada, ditambah aksi eksplisit `Tutup target` dengan reason `LIQUIDITY_WRITE_OFF` |
+| Retained floor dipilih ketika BCA remainder suggestion diaktifkan | Retained floor wajib dipilih saat financial onboarding |
+| Keepalive satu kali setiap tiga hari UTC | Keepalive harian pukul 02:17 UTC |
 
 ### Decision log
 
@@ -2513,7 +2566,12 @@ Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti 
 | **DEFERRED** | shadcn bukan dependency MVP dan hanya dapat dipertimbangkan sebagai pengganti terisolasi, bukan design system kedua di atas daisyUI |
 | **LOCKED** | Vercel Hobby + Supabase Free menjadi tier awal; local, Preview/staging, dan production terisolasi, dengan Singapore sebagai hosting region dan Asia/Jakarta sebagai business timezone |
 | **LOCKED** | Committed Drizzle/SQL migrations memakai trusted release runner, staging gate, pre-release backup, dan production smoke check |
-| **LOCKED** | Production Supabase Free mendapat best-effort GitHub Actions keepalive satu kali setiap tiga hari UTC melalui secret-protected read-only database probe; workflow mengecek jadwal harian dan aktif hanya setelah endpoint serta secrets siap |
+| **LOCKED** | Production Supabase Free mendapat best-effort GitHub Actions keepalive satu kali setiap hari pukul 02:17 UTC melalui secret-protected read-only database probe; workflow aktif hanya setelah endpoint serta secrets siap |
+| **LOCKED** | Target DANA yang tidak lagi dapat dipenuhi dapat ditutup melalui aksi eksplisit `Tutup target`, yang membuat superseding non-actionable version dengan reason `LIQUIDITY_WRITE_OFF` tanpa mengubah allocation atau actual transfer |
+| **LOCKED** | `Saldo minimum ditahan` BCA wajib dipilih pada financial onboarding; onboarding tidak dapat dikonfirmasi tanpa nilai tersebut |
+| **LOCKED** | Recurring expense rule dan actual occurrence source tidak boleh memakai account yang direkonsiliasi melalui weekly settlement (DANA); pembayaran aktual dari DANA dicatat sebagai special expense DANA dengan occurrence `NOT_CHARGED` |
+| **LOCKED** | Recurring expense dan monthly income rule baru tidak boleh memiliki first cycle di masa lalu dan tidak membuat backfill occurrence |
+| **LOCKED** | Living expense negatif tidak memblokir settlement, tidak di-clamp, dan menampilkan warning `Ada pemasukan yang belum tercatat` |
 | **LOCKED** | Daily encrypted logical backup disimpan pada private R2 di luar Supabase dengan 30 daily dan 12 monthly retention, failure notification, serta restore drill |
 | **LOCKED** | Full owner-initiated JSON+CSV ZIP export dengan manifest dan consistent snapshot termasuk MVP; automatic import ditunda |
 | **LOCKED** | Website MVP installable tetapi online-only tanpa service worker, offline financial cache, background sync, atau push notification |
@@ -2530,4 +2588,4 @@ Tidak ada keputusan produk terbuka pada paket operations. Detail aktual seperti 
 
 ---
 
-_FinTrack PRD v0.15 · Draft discovery · Application implementation not started_
+_FinTrack PRD v0.16 · Draft discovery · Application implementation not started_

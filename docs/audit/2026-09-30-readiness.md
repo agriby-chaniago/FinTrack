@@ -2,7 +2,7 @@
 
 > **Asal dokumen:** Audit read-only oleh subagent pada 30 September 2026 pukul 11:04 WIB, disalin utuh dari transcript sesi tersebut. Auditor membaca `AGENTS.md` (saat ini sudah tidak ada di repository), `~/.codex/RTK.md`, `PRD.md` v0.15 lengkap, dan `.github/workflows/supabase-keepalive.yml`, lalu memeriksa langsung dokumentasi Supabase project-pausing dan GitHub scheduled workflows.
 >
-> **Status:** Temuan belum diterapkan ke PRD. `PRD.md` v0.15 tetap menjadi source of truth sampai setiap temuan dijadikan keputusan tertulis di PRD. Nomor baris `PRD:<n>` merujuk ke PRD v0.15.
+> **Status:** OD-1 sampai OD-6 telah diputuskan pemilik dan diterapkan pada PRD v0.16 (semuanya mengikuti rekomendasi audit). Hard blocker, mechanical clarification, dan implementation risk belum diterapkan. `PRD.md` tetap menjadi source of truth. Nomor baris `PRD:<n>` merujuk ke PRD v0.15.
 >
 > **Koreksi setelah audit (30 September 2026):**
 >
