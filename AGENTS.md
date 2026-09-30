@@ -14,13 +14,15 @@ FinTrack is a single-owner, low-input personal cashflow tracker. Read this file 
 
 ```bash
 supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta
-cp .env.example .env.local   # local defaults only
+pnpm env:local               # .env.local with local Supabase keys
 pnpm db:migrate              # apply committed migrations (admin connection)
 pnpm db:provision            # enable LOGIN and set local role passwords
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:db && pnpm build
 ```
 
-`pnpm test:db` resets the local `app_owner` row.
+`pnpm test:db` resets the local `app_owner` row and creates temporary Auth users.
+
+Scripts in `scripts/` run directly on Node's TypeScript type stripping, so they (and anything they import) must use erasable syntax only and relative `.ts` imports.
 
 ## Database rules
 

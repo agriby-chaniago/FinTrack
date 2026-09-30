@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.17 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.17, audit readiness 30 September 2026 |
-| **Slice aktif** | S0 — platform dan security spike |
+| **Slice aktif** | S0 (menunggu spike hosted) dan S1 (selesai di lokal) |
 
 ## 1. Status ringkas
 
@@ -19,6 +19,11 @@ _Rencana teknis turunan dari `PRD.md` v0.17 dan `docs/audit/2026-09-30-readiness
 | Internal keepalive route + probe relation | Selesai (belum di-deploy) |
 | CI: lint, typecheck, unit test, build, database test | Workflow tersedia; belum pernah berjalan di GitHub |
 | Spike pada Supabase hosted (pooler `fintrack_app.<project-ref>`) | Menunggu project staging |
+| S1: bootstrap owner idempoten + recovery `--rebind` | Selesai (lokal) |
+| S1: adapter cookie dan Bearer → principal yang sama; penolakan identity ambigu | Selesai (lokal) |
+| S1: `/api/v1/session`, logout lokal/global, kontrak error JSON | Selesai (lokal) |
+| S1: `/login`, `/forgot-password`, `/auth/callback`, `/reset-password`, `proxy.ts` | Selesai (lokal); login form belum diuji otomatis di browser |
+| S1: runbook bootstrap dan recovery | `docs/runbooks/owner-bootstrap-and-recovery.md` |
 
 ## 2. Hasil spike S0 (lokal, Supabase CLI 2.118.0, PostgreSQL 17.6, Supavisor 2.9.13)
 
@@ -36,6 +41,12 @@ Terbukti oleh `tests/db/platform.integration.test.ts`:
 - Role `postgres` bawaan Supabase memiliki `BYPASSRLS`, sehingga runtime memang wajib memakai role terpisah
 - `postgres` dapat membuat role `fintrack_backup` dengan `BYPASSRLS`; backup role dapat membaca seluruh row tetapi tidak dapat menulis
 - Database dapat dibangun dari nol (`supabase db reset` → `pnpm db:migrate`) dan migration idempotent
+
+Temuan tambahan S1 (lokal):
+
+- Menonaktifkan provider Email untuk memblokir signup juga memblokir login email/password. Signup publik diblokir melalui setting global "Allow new users to sign up", sedangkan provider Email tetap aktif
+- Link undangan dan recovery memakai `token_hash` yang diverifikasi server di `/auth/callback`; alur email → callback → cookie session → owner berhasil diuji melalui Mailpit dan dev server
+- Script yang dijalankan langsung oleh Node (type stripping) tidak boleh memakai syntax TypeScript non-erasable; `erasableSyntaxOnly` diaktifkan agar typecheck menangkapnya
 
 Yang belum terbukti dan harus diulang pada project Supabase hosted: format username pooler hosted, perilaku pooler hosted untuk role custom, dan pembuatan role `BYPASSRLS` pada project hosted.
 
