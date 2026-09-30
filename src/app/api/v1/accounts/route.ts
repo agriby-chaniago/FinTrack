@@ -1,8 +1,5 @@
 import { ownerRoute } from "@/server/api/owner-route";
-import { accountBalances } from "@/server/application/ledger";
+import { accountsOverview } from "@/server/application/accounts-overview";
 
-/** Active cash accounts with calculated physical, external, and personal balances. */
-export const GET = ownerRoute(async ({ tx, principal }) => {
-  const balances = await accountBalances(tx, principal.ownerId);
-  return Response.json({ data: balances });
-});
+/** Active cash accounts with calculated balances, primary status badge, and reconciliation prompts. */
+export const GET = ownerRoute(async ({ tx, principal }) => Response.json({ data: await accountsOverview(tx, principal.ownerId, new Date()) }));

@@ -169,7 +169,7 @@ export async function postLedgerEntry(
   return { recorded: true, entryId: entry.id };
 }
 
-export type BalanceStatus = "CONFIRMED" | "CALCULATED_AFTER_CONFIRMATION" | "OPEN_WEEK" | "NEEDS_REVIEW";
+export type BalanceStatus = "CONFIRMED" | "CALCULATED_AFTER_CONFIRMATION" | "OPEN_WEEK" | "NEEDS_REVIEW" | "DISCREPANCY";
 
 export type AccountBalanceView = {
   id: string;
@@ -266,6 +266,15 @@ export async function accountBalances(
     let openWeekDisclosure = false;
 
     const rule = row.has_daily_income ? await dailyRuleFor(tx, ownerId, row.id) : undefined;
+    if (!rule) {
+      const { manualFreshness } = await import("./reconciliation");
+      const manual = await manualFreshness(tx, ownerId, row.id);
+      if (manual) {
+        status = manual.status;
+        confirmedPersonal = manual.confirmedPersonal;
+        lastConfirmedAt = manual.lastConfirmedAt;
+      }
+    }
     if (rule) {
       // Daily income is evaluated lazily through the as-of date (PRD: no cron).
       physical += (await recognizedIncomeFor(tx, ownerId, row.id, rule.effectiveStartDate, today)).recognized;

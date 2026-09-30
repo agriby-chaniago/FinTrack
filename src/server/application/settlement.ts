@@ -48,7 +48,10 @@ async function openingPosition(tx: OwnerTx, ownerId: string, accountId: string):
 }
 
 async function legTotals(tx: OwnerTx, ownerId: string, accountId: string, boundary: Boundary, excludeSettlementId?: string) {
-  const exclude = excludeSettlementId ? sql`and not (e.source_type = 'SETTLEMENT' and e.source_id = ${excludeSettlementId}::uuid)` : sql``;
+  // IS DISTINCT FROM keeps rows whose source is NULL (three-valued logic).
+  const exclude = excludeSettlementId
+    ? sql`and (e.source_type is distinct from 'SETTLEMENT' or e.source_id is distinct from ${excludeSettlementId}::uuid)`
+    : sql``;
   const [row] = await tx.execute<{ physical: string; external: string }>(sql`
     select coalesce(sum(l.physical_effect_minor), 0)::text as physical, coalesce(sum(l.external_effect_minor), 0)::text as external
     from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id

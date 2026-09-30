@@ -14,6 +14,7 @@ import { GET as getSettlement, PATCH as patchSettlement } from "@/app/api/v1/set
 import { POST as settleRoute } from "@/app/api/v1/settlements/[id]/settle/route";
 import { GET as nextSettlement } from "@/app/api/v1/settlements/next/route";
 import { POST as createSettlement } from "@/app/api/v1/settlements/route";
+import { POST as postExternal } from "@/app/api/v1/external-movements/route";
 import { POST as postSpecial } from "@/app/api/v1/special-expenses/route";
 import { GET as getTargets } from "@/app/api/v1/transfer-targets/route";
 import { POST as postTransfer } from "@/app/api/v1/transfers/route";
@@ -185,6 +186,18 @@ describe("settlement rules", () => {
     expect(account).toMatchObject({ status: "NEEDS_REVIEW", openWeekDisclosure: true, confirmedPersonal: "110000" });
     // Weeks since the closing are unsettled, so income through today is still counted.
     expect(Number(account.personal)).toBeGreaterThan(0);
+  });
+});
+
+describe("external funds on the weekly account", () => {
+  it("derives the closing personal balance net of external funds held in DANA", async () => {
+    await call(postExternal, {
+      method: "POST",
+      body: { type: "RECEIPT", subjectName: "Adik", accountId: owner.accountIds.daily, amount: "50000", businessDate: "2026-08-04" },
+    });
+    const week = await settleWeek("2026-08-09", "160000");
+    // Physical Rp160.000 includes Rp50.000 owned by Adik: personal closing Rp110.000, living Rp240.000.
+    expect(week.view.asSettled).toMatchObject({ closingExternal: "50000", closingPersonal: "110000", livingExpense: "240000" });
   });
 });
 
