@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.18, audit readiness 30 September 2026 |
-| **Slice aktif** | S0, S1, dan S2 selesai; S3 (ledger core) berikutnya |
+| **Slice aktif** | S0–S3 selesai; S4 (external funds) berikutnya |
 
 ## 1. Status ringkas
 
@@ -28,7 +28,10 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | S2: schema account, kategori, setting, dana titipan, onboarding, posisi awal, definisi rule | Selesai (migration `0002`, RLS di file yang sama) |
 | S2: `/api/v1/onboarding` (GET, PUT draft dengan `If-Match`, POST confirm atomik) | Selesai; fixture onboarding direproduksi, konfirmasi paralel dan rollback diuji |
 | S2: UI onboarding 5 layar (mobile-first) + test end-to-end Playwright | Selesai |
-| Koreksi saldo awal melalui superseding opening snapshot | Dipindah ke S3 karena membutuhkan saldo calculated dari ledger |
+| Koreksi saldo awal melalui superseding opening snapshot | Selesai di S3 (API; UI menyusul bersama halaman Akun di S12) |
+| S3: ledger append-only `ledger_entry` + `ledger_leg` (physical/external effect terpisah) | Selesai (migration `0003`, `0004`) |
+| S3: `postLedgerEntry()` dengan invariant per jenis, batas cutover, pertanyaan hari cutover, dana titipan tidak negatif sepanjang riwayat | Selesai; fixture dana titipan 7 langkah direproduksi |
+| S3: `GET /api/v1/accounts` (saldo calculated, status freshness, `Personal cash tercatat`) | Selesai |
 
 ## 2. Hasil spike S0 (lokal, Supabase CLI 2.118.0, PostgreSQL 17.6, Supavisor 2.9.13)
 
@@ -85,6 +88,8 @@ Aturan: domain function menerima dan mengembalikan nilai murni; repository hanya
 | Topik | Keputusan teknis | Asal |
 | --- | --- | --- |
 | Uang | `bigint` minor unit (sen) di database; string desimal di API; tidak ada `number` untuk uang | PRD Representasi uang |
+| Ledger | Satu inti append-only `ledger_entry` + `ledger_leg`; `personal_effect = physical_effect − external_effect`; runtime hanya `SELECT`/`INSERT`; penulisan diserialkan dengan advisory lock per owner | Keputusan teknis S3 |
+| Waktu pencatatan | `recorded_at` berpresisi milidetik agar round-trip DB↔JavaScript persis; saldo terkini tidak membandingkan jam aplikasi dengan jam database | Temuan S3 di staging |
 | Urutan ledger | `(effective_business_date, recorded_at, id)` | PRD Time rules, audit MC-1 |
 | Supersession | Setiap tabel dengan `supersedes_id` juga menyimpan `superseded_by_id` dan partial unique index `WHERE superseded_by_id IS NULL` pada kunci logisnya; keduanya ditulis dalam transaction yang sama | Audit MC-7 |
 | Transfer target | `transfer_target(owner_id, context_type, context_key, source_account_id, destination_account_id)` unik; `context_key` = settlement id atau `YYYY-MM` | Audit MC-6 |
