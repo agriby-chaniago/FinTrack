@@ -1,0 +1,42 @@
+{
+  "name": "fintrack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mts",
+    "db:provision": "node --env-file-if-exists=.env.local scripts/provision-roles.mts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.3",
+    "next": "16.3.7",
+    "postgres": "^3.4.9",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.7",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=24"
+  }
+}
