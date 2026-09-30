@@ -53,3 +53,13 @@ jobs:
       - name: Prove migrations are idempotent
         run: pnpm db:migrate
       - run: pnpm test:db
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests against next dev and local Supabase
+        run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

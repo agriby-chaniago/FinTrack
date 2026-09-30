@@ -15,7 +15,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mts",
     "db:provision": "node --env-file-if-exists=.env.local scripts/provision-roles.mts",
     "env:local": "node scripts/write-local-env.mts",
-    "owner:bind": "node --env-file-if-exists=.env.local scripts/bootstrap-owner.mts"
+    "owner:bind": "node --env-file-if-exists=.env.local scripts/bootstrap-owner.mts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -28,6 +29,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
