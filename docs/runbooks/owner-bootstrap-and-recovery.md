@@ -62,16 +62,20 @@ Keep test-only variables (`TEST_DIRECT_*_URL`), the backup credential, and `SUPA
 ## 3. First owner bootstrap
 
 1. Confirm step 1 is complete, especially that signups are off.
-2. In **Authentication → Users**, choose **Invite user** and enter the owner's email address.
+2. Create the owner in Auth, either way:
+   - **Without custom SMTP** (used for production on 30 September 2026): **Authentication → Users → Add user → Create new user**, enter the owner's email and a generated password (store it in the password manager), and tick **Auto Confirm User**. No email is sent. Supabase only allows editing email templates after custom SMTP is configured, so the invite link format of step 1 is not available without it.
+   - **With custom SMTP and the templates of step 1:** **Invite user** and let the owner set a password from the email.
 3. Copy the new user's UUID from the Users table.
-4. On the trusted machine, with `ADMIN_DATABASE_URL` set:
+4. On the trusted machine, from the repository root, with `ADMIN_DATABASE_URL` set for that environment:
 
    ```bash
-   pnpm owner:bind --auth-user-id <uuid>
+   ADMIN_DATABASE_URL='<admin url>' node scripts/bootstrap-owner.mts --auth-user-id <uuid>
    ```
 
-   Expected output: `Owner binding: CREATED`. Running it again prints `ALREADY_BOUND`.
-5. The owner opens the invitation email, sets a password on `/reset-password`, and signs in on `/login`.
+   (`pnpm owner:bind` does the same but reads `.env.local`, which points at local Supabase.) Expected output: `Owner binding: CREATED`. Running it again prints `ALREADY_BOUND`.
+5. The owner signs in on `/login` (after setting a password from the invitation, when invited).
+
+Without custom SMTP, password recovery email only reaches members of the Supabase organization and works only when the link opens in the browser that requested it. The admin can always recover access by deleting the Auth user, creating it again, and rebinding (section 4).
 
 Bootstrap does not create accounts, balances, or any financial record. Financial onboarding happens inside the app afterwards.
 

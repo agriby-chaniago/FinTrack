@@ -6,6 +6,8 @@ Audience: the FinTrack owner. Covers the one-time production setup and every lat
 
 Do these in order. Production never shares a project, credential, or secret with staging, and the test suites never run against production.
 
+Keep every production secret in the password manager and read it at the moment of use instead of writing it to a file. With the 1Password CLI, for example: `ADMIN_DATABASE_URL="postgresql://postgres.<ref>:$(op read --no-newline op://<vault>/<item>/<field> | node -e 'process.stdout.write(encodeURIComponent(require("fs").readFileSync(0,"utf8")))')@<pooler-host>:5432/postgres" node scripts/migrate.mts`. URL-encode database passwords that contain special characters.
+
 1. **MFA** on Supabase, Vercel, GitHub, Cloudflare, and the recovery email account.
 2. **Supabase project** `fintrack-production` in `ap-southeast-1`. Configure Auth exactly as in [owner-bootstrap-and-recovery.md §1](owner-bootstrap-and-recovery.md), with Site URL set to the production origin and custom SMTP tested.
 3. **Database**: run migrations and provision the three roles with new random passwords (bootstrap runbook §2). Store the passwords in the password manager.
@@ -22,7 +24,7 @@ Do these in order. Production never shares a project, credential, or secret with
 
    Do not add `SUPABASE_SECRET_KEY`, `ADMIN_DATABASE_URL`, the backup credential, or any `TEST_DIRECT_*` variable.
 5. **Deploy** `main` to Production and run the smoke check (§3).
-6. **Owner bootstrap**: invite the owner from the Supabase Dashboard, then `pnpm owner:bind --auth-user-id <uuid>` with the production `ADMIN_DATABASE_URL` (bootstrap runbook §3). Complete onboarding in the browser.
+6. **Owner bootstrap**: create (or invite) the owner in Supabase Auth, then bind it with the production `ADMIN_DATABASE_URL` (bootstrap runbook §3). Complete onboarding in the browser.
 7. **Keepalive**: in GitHub set secret `FINTRACK_KEEPALIVE_TOKEN` (same value as Vercel `KEEPALIVE_TOKEN`), variable `FINTRACK_KEEPALIVE_URL` = `https://<origin>/api/internal/keepalive`, then variable `FINTRACK_KEEPALIVE_ENABLED` = `true`. Run the workflow once manually; it must pass with HTTP 204.
 8. **Backup**: follow [backup-and-restore.md §3](backup-and-restore.md), run the workflow once, then do the restore drill with the real key (§4 there). The first production release is not complete until that drill passed.
 9. **Install**: open the production site on the phone and add it to the home screen (Pengaturan shows the steps). The app stays online-only; there is no service worker.
