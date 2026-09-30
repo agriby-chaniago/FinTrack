@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+// Loaded on every app page so the browser install prompt is kept for Pengaturan.
+import "@/lib/install-prompt";
 import { applyTheme, type ThemePreference } from "@/lib/theme";
 
 import { Icon, type IconName } from "./ui";

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { InstallApp } from "@/components/install-app";
 import { Card, Money, PageHeader, SectionTitle, Tag } from "@/components/ui";
 import { businessDateOf, cycleKeyOf } from "@/lib/business-time";
 import { formatCycle } from "@/lib/format";
@@ -156,12 +157,8 @@ export default async function PengaturanPage() {
       </Card>
 
       <Card>
-        <SectionTitle>Pasang di layar utama</SectionTitle>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-          <li>Android (Chrome): menu ⋮ lalu Tambahkan ke layar utama.</li>
-          <li>iPhone (Safari): tombol Bagikan lalu Tambah ke Layar Utama.</li>
-          <li>Desktop (Chrome/Edge): ikon pasang di kolom alamat.</li>
-        </ul>
+        <SectionTitle>Pasang aplikasi</SectionTitle>
+        <InstallApp />
       </Card>
 
       <Card>
