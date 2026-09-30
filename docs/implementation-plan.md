@@ -6,7 +6,7 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | **Dibuat** | 30 September 2026 |
 | **Basis** | PRD v0.18, audit readiness 30 September 2026 |
-| **Slice aktif** | S0–S13 selesai di kode; aktivasi production (project, SMTP, R2, keepalive) menunggu pemilik |
+| **Slice aktif** | S0–S13 selesai; production aktif sejak 30 September 2026 (tanpa backup R2 dan custom SMTP atas keputusan pemilik) |
 
 ## 1. Status ringkas
 
@@ -198,10 +198,10 @@ Mengikuti audit §9 dengan perubahan berikut:
 
 Seluruh langkah ada di `docs/runbooks/production-and-release.md` dan `docs/runbooks/backup-and-restore.md`:
 
-1. Membuat project Supabase production (`ap-southeast-1`), mengisi environment Vercel Production, dan mengaktifkan MFA pada seluruh akun
-2. Menyediakan custom SMTP untuk invite dan password recovery
-3. Menyediakan bucket Cloudflare R2 privat, token R2, dan kunci `age`; lalu mengaktifkan `FINTRACK_BACKUP_ENABLED` dan menjalankan restore drill dengan kunci asli sebelum production pertama
-4. Mengaktifkan keepalive (`FINTRACK_KEEPALIVE_*`) setelah production di-deploy
-5. Bootstrap owner production dan onboarding dengan data nyata
+1. ~~Project Supabase production, environment Vercel Production, MFA~~: selesai 30 September 2026 (`fintrack_prod`, `fintrack-new-woad.vercel.app`)
+2. Custom SMTP untuk invite dan password recovery: ditunda; owner dibuat langsung di Dashboard (runbook bootstrap §3)
+3. ~~Backup R2~~: **tidak diaktifkan atas keputusan pemilik (30 September 2026)**. Jika data production hilang, pemilik memilih setup ulang. Workflow `database-backup.yml` tetap nonaktif (`FINTRACK_BACKUP_ENABLED` tidak diisi) dan secret koneksinya dihapus dari GitHub; pipeline tetap diuji di CI sehingga dapat diaktifkan kapan saja
+4. ~~Keepalive~~: aktif sejak 30 September 2026
+5. ~~Bootstrap owner production dan onboarding~~: selesai 30 September 2026
 
 Catatan: password database dan secret key staging yang pernah dibagikan lewat chat tidak dirotasi atas keputusan pemilik (30 September 2026); staging tidak pernah dipakai untuk data production.
