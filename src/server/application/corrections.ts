@@ -15,6 +15,7 @@ import { requireActiveCashAccounts, weeklySettlementAccountIds } from "./account
 import { otherEventDraft, specialExpenseDraft, createOrReuseCategory } from "./events";
 import { externalMovementDraft } from "./external-funds";
 import { assertExternalHoldingsNonNegative, postLedgerEntry } from "./ledger";
+import { postTransfer, resolveComponents, reverseAllocations, transferDraft, transferShape } from "./transfers";
 import { correctSettledEntry, settledSettlementFor } from "./settlement-corrections";
 
 export const correctionSchema = z.discriminatedUnion("action", [
@@ -27,12 +28,14 @@ export const correctionSchema = z.discriminatedUnion("action", [
     accountId: z.uuid().optional(),
     categoryId: z.uuid().optional(),
     newCategoryName: z.string().trim().min(1).max(60).optional(),
+    /** Transfers only: corrected external composition (defaults to the original). */
+    externalComponents: z.array(z.object({ subjectId: z.uuid(), amount: positiveAmount })).max(10).optional(),
     cutoverDayAnswer,
   }),
 ]);
 export type CorrectionInput = z.infer<typeof correctionSchema>;
 
-const correctableClasses = new Set<EventClass>(["SPECIAL_EXPENSE", "OTHER_INCOME", "OTHER_EXPENSE", "EXTERNAL_MOVEMENT"]);
+const correctableClasses = new Set<EventClass>(["SPECIAL_EXPENSE", "OTHER_INCOME", "OTHER_EXPENSE", "EXTERNAL_MOVEMENT", "PERSONAL_TRANSFER"]);
 
 export type LoadedEntry = typeof ledgerEntry.$inferSelect & { legs: (typeof ledgerLeg.$inferSelect)[] };
 
@@ -141,6 +144,8 @@ export async function correctEntry(
     throw new ApiError("VALIDATION_FAILED", { issues: ["USE_DEDICATED_CORRECTION_FLOW"] });
   }
 
+  if (entry.eventClass === "PERSONAL_TRANSFER") return correctTransfer(tx, ownerId, entry, input, now);
+
   const replacement = input.action === "REPLACE" ? await replacementFor(tx, ownerId, entry, input) : null;
 
   const settlementId = await settledSettlementFor(tx, ownerId, entry);
@@ -166,6 +171,48 @@ export async function correctEntry(
     if (posted.recorded) ids.push(posted.entryId);
   }
 
+  await assertExternalHoldingsNonNegative(tx, ownerId);
+  return { mode: "OPEN_PERIOD", entryIds: ids };
+}
+
+/**
+ * Transfer correction keeps route and history: the reversal also negates its
+ * target allocations, and the replacement is allocated oldest-first again.
+ */
+async function correctTransfer(tx: OwnerTx, ownerId: string, entry: LoadedEntry, input: CorrectionInput, now: Date): Promise<CorrectionResult> {
+  const shape = await transferShape(tx, ownerId, entry.id);
+  const components =
+    input.action === "REPLACE" && input.externalComponents
+      ? await resolveComponents(tx, ownerId, input.externalComponents)
+      : shape.components;
+
+  if (await settledSettlementFor(tx, ownerId, entry)) {
+    const replacement =
+      input.action === "REPLACE"
+        ? { draft: transferDraft(shape.route, parseIdrDecimal(input.amount), components, input.businessDate), categoryId: null }
+        : null;
+    return correctSettledEntry(tx, ownerId, entry, replacement, now);
+  }
+
+  const reversal = await postLedgerEntry(tx, ownerId, reversalDraft(entry), {
+    now,
+    cutoverDayAnswer: "NOT_IN_OPENING",
+    deferHoldingCheck: true,
+  });
+  const ids: string[] = [];
+  if (reversal.recorded) {
+    ids.push(reversal.entryId);
+    await reverseAllocations(tx, ownerId, entry.id, reversal.entryId);
+  }
+  if (input.action === "REPLACE") {
+    const posted = await postTransfer(tx, ownerId, shape.route, parseIdrDecimal(input.amount), components, input.businessDate, {
+      now,
+      note: input.note ?? entry.note,
+      cutoverDayAnswer: input.cutoverDayAnswer,
+      correctsEntryId: entry.id,
+    });
+    if (posted.recorded) ids.push(posted.entryId);
+  }
   await assertExternalHoldingsNonNegative(tx, ownerId);
   return { mode: "OPEN_PERIOD", entryIds: ids };
 }

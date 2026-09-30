@@ -275,8 +275,11 @@ export async function confirmOnboarding(
   });
   await tx
     .insert(ownerSetting)
-    .values({ ownerId, defaultSpecialSourceAccountId: accountIds.reserve })
-    .onConflictDoUpdate({ target: ownerSetting.ownerId, set: { defaultSpecialSourceAccountId: accountIds.reserve } });
+    .values({ ownerId, defaultSpecialSourceAccountId: accountIds.reserve, reserveAccountId: accountIds.reserve })
+    .onConflictDoUpdate({
+      target: ownerSetting.ownerId,
+      set: { defaultSpecialSourceAccountId: accountIds.reserve, reserveAccountId: accountIds.reserve },
+    });
   await tx
     .insert(specialExpenseCategory)
     .values({ ownerId, displayName: "Vape", normalizedName: normalizeName("Vape") })
