@@ -55,6 +55,10 @@ FINTRACK_ENV=staging pnpm vitest run --project db
 
 The suite creates and deletes temporary Auth users and resets `app_owner`, so never run it against production.
 
+After rotating a role password, the Supabase pooler can keep accepting only the previous password for a short time. Wait a minute before concluding that a connection failure is a real misconfiguration.
+
+Keep test-only variables (`TEST_DIRECT_*_URL`), the backup credential, and `SUPABASE_SECRET_KEY` out of Vercel. The app runtime needs only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, and, in production, `APP_ORIGIN`, `KEEPALIVE_DATABASE_URL`, and `KEEPALIVE_TOKEN`.
+
 ## 3. First owner bootstrap
 
 1. Confirm step 1 is complete, especially that signups are off.
