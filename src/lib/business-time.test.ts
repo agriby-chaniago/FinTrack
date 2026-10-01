@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addDays, businessDateOf, cycleKeyOf, isBusinessDate, nextCycleKey } from "./business-time";
+import { addDays, businessDateOf, cycleKeyOf, isBusinessDate, nextCycleKey, previousCycleKey, trailingCycleKeys } from "./business-time";
 
 describe("businessDateOf", () => {
   it("uses Asia/Jakarta regardless of the server time zone", () => {
@@ -29,5 +29,18 @@ describe("calendar arithmetic", () => {
     expect(cycleKeyOf("2027-02-15")).toBe("2027-02");
     expect(nextCycleKey("2027-02")).toBe("2027-03");
     expect(nextCycleKey("2026-12")).toBe("2027-01");
+  });
+});
+
+describe("previousCycleKey and trailingCycleKeys", () => {
+  it("steps back across a year boundary", () => {
+    expect(previousCycleKey("2026-01")).toBe("2025-12");
+    expect(previousCycleKey("2026-10")).toBe("2026-09");
+  });
+  it("lists trailing months oldest first, ending at the given month", () => {
+    expect(trailingCycleKeys("2026-02", 4)).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
+  });
+  it("rejects an invalid cycle key", () => {
+    expect(() => previousCycleKey("2026-13")).toThrow();
   });
 });

@@ -48,3 +48,16 @@ export function nextCycleKey(cycle: string): string {
   const [year, month] = cycle.split("-").map(Number);
   return month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`;
 }
+
+export function previousCycleKey(cycle: string): string {
+  if (!isCycleKey(cycle)) throw new Error(`Invalid cycle key: ${cycle}`);
+  const [year, month] = cycle.split("-").map(Number);
+  return month === 1 ? `${year - 1}-12` : `${year}-${String(month - 1).padStart(2, "0")}`;
+}
+
+/** `count` months ending at `cycle`, oldest first. */
+export function trailingCycleKeys(cycle: string, count: number): string[] {
+  const months = [cycle];
+  while (months.length < count) months.unshift(previousCycleKey(months[0]));
+  return months;
+}
