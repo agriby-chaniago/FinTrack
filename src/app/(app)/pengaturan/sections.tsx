@@ -26,7 +26,7 @@ export function ThemeSetting({ initial }: { initial: ThemePreference }) {
       <legend className="sr-only">Tema</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
-          <label key={option.value} className="flex min-h-11 items-center gap-2 rounded-lg border border-control px-3 has-[:checked]:border-primary has-[:checked]:bg-primary-soft">
+          <label key={option.value} className="flex min-h-11 items-center gap-2 border border-control px-3 has-[:checked]:border-primary has-[:checked]:bg-primary-soft">
             <input
               type="radio"
               name="theme"
@@ -67,7 +67,7 @@ export function DailyIncomeSetting({ daily }: { daily: DailyView }) {
         <Tag tone={daily.currentState === "ACTIVE" ? "success" : "neutral"}>{daily.currentState === "ACTIVE" ? "Aktif" : daily.currentState === "PAUSED" ? "Dijeda" : "Belum mulai"}</Tag>
       </p>
       {daily.upcomingTransition ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-subtle p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 bg-surface-subtle p-3 text-sm">
           <span>
             {daily.upcomingTransition.toState === "PAUSED" ? "Dijeda" : "Aktif kembali"} mulai {formatDate(daily.upcomingTransition.effectiveDate)}
           </span>

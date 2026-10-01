@@ -51,7 +51,7 @@ export function OpeningCorrectionForm({ snapshot }: { snapshot: OpeningSnapshotV
       <fieldset className="space-y-3">
         <legend className="mb-2 font-medium">Dana titipan saat mulai</legend>
         {externals.map((x, index) => (
-          <div key={index} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-3 sm:items-end">
+          <div key={index} className="grid gap-3 border border-border p-3 sm:grid-cols-3 sm:items-end">
             <TextField label="Pemilik" value={x.subjectName} maxLength={80} onChange={(value) => setExternals(externals.map((row, i) => (i === index ? { ...row, subjectName: value } : row)))} />
             <SelectField
               label="Di akun"

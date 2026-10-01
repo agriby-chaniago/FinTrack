@@ -36,7 +36,7 @@ function CashFields({ state, values, onChange }: { state: CashState; values: Cas
   }
   if (!state.canStart) return null;
   return (
-    <div className="rounded-lg border border-border p-3">
+    <div className="border border-border p-3">
       <Checkbox
         label="Mulai lacak uang tunai"
         hint="Mulai periode berikutnya, tarik tunai dari DANA tidak perlu dicatat dan sisa uang di dompet tidak dihitung sebagai biaya hidup."

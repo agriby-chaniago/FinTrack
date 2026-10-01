@@ -48,7 +48,7 @@ const statusStyle: Record<string, { icon: IconName; className: string }> = {
 export function StatusBadge({ status }: { status: string }) {
   const style = statusStyle[status] ?? statusStyle.CONFIRMED;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${style.className}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${style.className}`}>
       <Icon name={style.icon} className="size-3.5" />
       {balanceStatusLabel[status] ?? status}
     </span>
@@ -70,7 +70,7 @@ const toneIcon: Record<Tone, IconName> = { neutral: "check", info: "clock", revi
 
 export function Tag({ tone, children, icon }: { tone: Tone; children: ReactNode; icon?: IconName }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${toneClass[tone]}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${toneClass[tone]}`}>
       <Icon name={icon ?? toneIcon[tone]} className="size-3.5" />
       {children}
     </span>
@@ -79,7 +79,7 @@ export function Tag({ tone, children, icon }: { tone: Tone; children: ReactNode;
 
 export function Alert({ tone, title, children, live }: { tone: Tone; title?: string; children?: ReactNode; live?: boolean }) {
   return (
-    <div role={tone === "danger" ? "alert" : live ? "status" : undefined} className={`flex gap-2 rounded-lg px-3 py-2 text-sm ${toneClass[tone]}`}>
+    <div role={tone === "danger" ? "alert" : live ? "status" : undefined} className={`flex gap-2 px-3 py-2 text-sm ${toneClass[tone]}`}>
       <Icon name={toneIcon[tone]} className="mt-0.5 size-4" />
       <div>
         {title ? <p className="font-medium">{title}</p> : null}
@@ -97,7 +97,7 @@ export function Money({ value, className = "", signed = false }: { value: string
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-xl border border-border bg-surface p-4 md:p-5 ${className}`}>{children}</section>;
+  return <section className={`border border-border bg-surface p-4 md:p-5 ${className}`}>{children}</section>;
 }
 
 export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
@@ -132,7 +132,7 @@ export function Row({ label, children, emphasis }: { label: ReactNode; children:
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
+    <div className="border border-dashed border-border px-4 py-6 text-center">
       <p className="font-medium">{title}</p>
       {children ? <div className="mt-1 text-sm text-muted">{children}</div> : null}
     </div>
@@ -141,11 +141,11 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 
 export const buttonClass = {
   primary:
-    "inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 font-medium text-primary-content transition-colors duration-150 hover:bg-primary-hover active:bg-primary-pressed disabled:cursor-not-allowed disabled:opacity-60",
+    "inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 font-medium text-primary-content transition-colors duration-150 hover:bg-primary-hover active:bg-primary-pressed disabled:cursor-not-allowed disabled:opacity-60",
   secondary:
-    "inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-control bg-surface px-4 font-medium transition-colors duration-150 hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60",
+    "inline-flex h-11 items-center justify-center gap-2 border border-control bg-surface px-4 font-medium transition-colors duration-150 hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60",
   danger:
-    "inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-danger-fg px-4 font-medium text-danger-fg transition-colors duration-150 hover:bg-danger-bg disabled:opacity-60",
+    "inline-flex h-11 items-center justify-center gap-2 border border-danger-fg px-4 font-medium text-danger-fg transition-colors duration-150 hover:bg-danger-bg disabled:opacity-60",
   link: "inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline",
 };
 

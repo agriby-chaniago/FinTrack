@@ -105,7 +105,7 @@ export function TransferForm(props: {
       <DateField label="Tanggal transfer" value={date} min={context.cutoverDate} max={today} onChange={setDate} />
 
       {heldHere.length > 0 ? (
-        <div className="rounded-lg border border-border p-3">
+        <div className="border border-border p-3">
           <Checkbox
             label="Sebagian adalah dana titipan"
             hint="Pilih jika transfer ini ikut memindahkan uang milik orang lain."

@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <AuthCard title="Masuk">
       {linkError ? (
-        <p role="alert" className="mb-4 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
+        <p role="alert" className="mb-4 bg-danger-bg px-3 py-2 text-sm text-danger-fg">
           {linkError}
         </p>
       ) : null}

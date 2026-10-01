@@ -6,7 +6,7 @@ import type { ComponentProps } from "react";
 import { PageHeader } from "./ui";
 
 export function Skeleton({ className = "", ...props }: ComponentProps<"div">) {
-  return <div data-slot="skeleton" aria-hidden="true" className={`animate-pulse rounded-md bg-border ${className}`} {...props} />;
+  return <div data-slot="skeleton" aria-hidden="true" className={`animate-pulse bg-border ${className}`} {...props} />;
 }
 
 /** Announces loading once to assistive technology; the blocks themselves are hidden. */
@@ -21,7 +21,7 @@ function Loading({ children }: { children: React.ReactNode }) {
 
 function CardBlock({ lines = 3, className = "" }: { lines?: number; className?: string }) {
   return (
-    <div className={`rounded-xl border border-border bg-surface p-4 md:p-5 ${className}`}>
+    <div className={`border border-border bg-surface p-4 md:p-5 ${className}`}>
       <Skeleton className="h-4 w-1/3" />
       <div className="mt-4 space-y-3">
         {Array.from({ length: lines }, (_, index) => (
@@ -37,7 +37,7 @@ function CardBlock({ lines = 3, className = "" }: { lines?: number; className?: 
 
 function ListBlock({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+    <div className="divide-y divide-border border border-border bg-surface">
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">
           <div className="w-3/5 space-y-2">
@@ -55,7 +55,7 @@ function FieldBlock() {
   return (
     <div className="space-y-2">
       <Skeleton className="h-3.5 w-28" />
-      <Skeleton className="h-11 w-full rounded-lg" />
+      <Skeleton className="h-11 w-full" />
     </div>
   );
 }
@@ -110,7 +110,7 @@ export function FormSkeleton({ title, fields = 4 }: { title?: string; fields?: n
         {Array.from({ length: fields }, (_, index) => (
           <FieldBlock key={index} />
         ))}
-        <Skeleton className="h-11 w-40 rounded-lg" />
+        <Skeleton className="h-11 w-40" />
       </div>
     </Loading>
   );
@@ -121,7 +121,7 @@ export function DetailSkeleton() {
     <Loading>
       <div className="flex items-end justify-between gap-3">
         <Skeleton className="h-7 w-56" />
-        <Skeleton className="h-11 w-24 rounded-lg" />
+        <Skeleton className="h-11 w-24" />
       </div>
       <CardBlock lines={4} />
       <CardBlock lines={3} />

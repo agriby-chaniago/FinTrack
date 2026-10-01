@@ -5,7 +5,7 @@ import { useId, type ReactNode } from "react";
 import { Alert, buttonClass } from "./ui";
 
 const controlClass =
-  "mt-1 block h-11 w-full rounded-lg border border-control bg-surface px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
+  "mt-1 block h-11 w-full border border-control bg-surface px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
 
 export function TextField(props: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; hint?: string; maxLength?: number }) {
   const id = useId();
@@ -85,7 +85,7 @@ export function TextArea(props: { label: string; value: string; onChange: (value
         maxLength={500}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
-        className="mt-1 block w-full rounded-lg border border-control bg-surface px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-1 block w-full border border-control bg-surface px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary"
       />
       {props.hint ? <p className="mt-1 text-sm text-muted">{props.hint}</p> : null}
     </div>
@@ -114,7 +114,7 @@ export function FormErrors({ errors }: { errors: string[] | null }) {
  */
 export function CutoverDayQuestion({ onAnswer, pending }: { onAnswer: (answer: "ALREADY_IN_OPENING" | "NOT_IN_OPENING") => void; pending: boolean }) {
   return (
-    <div role="alertdialog" aria-labelledby="cutover-question" className="rounded-xl border border-border bg-review-bg p-4 text-review-fg">
+    <div role="alertdialog" aria-labelledby="cutover-question" className="border border-border bg-review-bg p-4 text-review-fg">
       <p id="cutover-question" className="font-medium">
         Sudah termasuk saldo awal?
       </p>

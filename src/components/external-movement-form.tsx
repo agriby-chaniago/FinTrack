@@ -113,7 +113,7 @@ export function ExternalMovementForm(props: { context: RecordingContext; types: 
           <legend className="text-sm font-medium">Jenis</legend>
           <div className="mt-1 space-y-1">
             {props.types.map((option) => (
-              <label key={option} className="flex min-h-11 items-start gap-3 rounded-lg px-2 py-2 hover:bg-surface-subtle">
+              <label key={option} className="flex min-h-11 items-start gap-3 px-2 py-2 hover:bg-surface-subtle">
                 <input type="radio" name="movement-type" className="radio radio-primary mt-0.5" checked={type === option} onChange={() => chooseType(option)} />
                 <span>
                   <span className="block text-sm font-medium">{movementTypeLabel[option]}</span>

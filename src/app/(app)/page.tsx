@@ -63,7 +63,7 @@ export default async function BerandaPage() {
           <SectionTitle>
             <span id="tasks-title">Perlu dilakukan</span>
           </SectionTitle>
-          <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+          <ul className="divide-y divide-border border border-border bg-surface">
             {tasks.slice(0, 6).map(({ task, view }, index) => (
               <li key={index}>
                 <Link href={view.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
@@ -98,7 +98,7 @@ export default async function BerandaPage() {
           {data.accounts.map((account) => {
             const recordedChanges = parseIdrDecimal(account.personal) - parseIdrDecimal(account.confirmedPersonal);
             return (
-              <Link key={account.id} href={`/akun/${account.id}`} className="block rounded-xl border border-border bg-surface p-4 hover:border-control md:p-5">
+              <Link key={account.id} href={`/akun/${account.id}`} className="block border border-border bg-surface p-4 hover:border-control md:p-5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{account.displayName}</p>

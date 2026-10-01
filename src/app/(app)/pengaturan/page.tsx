@@ -152,7 +152,7 @@ export default async function PengaturanPage() {
       <Card>
         <SectionTitle>Data</SectionTitle>
         <p className="mb-3 text-sm text-muted">Unduh seluruh data dalam format JSON dan CSV untuk arsip pribadi.</p>
-        <a href="/api/v1/export" className="inline-flex h-11 items-center rounded-lg border border-control px-4 font-medium hover:bg-surface-subtle" download>
+        <a href="/api/v1/export" className="inline-flex h-11 items-center border border-control px-4 font-medium hover:bg-surface-subtle" download>
           Ekspor data
         </a>
       </Card>

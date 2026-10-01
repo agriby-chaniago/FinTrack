@@ -31,7 +31,7 @@ export default async function AkunPage() {
         <ul className="space-y-3">
           {overview.accounts.map((account) => (
             <li key={account.id}>
-              <Link href={`/akun/${account.id}`} className="block rounded-xl border border-border bg-surface p-4 hover:border-control md:p-5">
+              <Link href={`/akun/${account.id}`} className="block border border-border bg-surface p-4 hover:border-control md:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{account.displayName}</p>
@@ -85,7 +85,7 @@ export default async function AkunPage() {
         {open.length === 0 ? (
           <p className="text-sm text-muted">Tidak ada dana titipan yang sedang dipegang.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+          <ul className="divide-y divide-border border border-border bg-surface">
             {open.map((subject) => (
               <li key={subject.id}>
                 <Link href={`/akun/dana-titipan/${subject.id}`} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
@@ -102,7 +102,7 @@ export default async function AkunPage() {
         {cleared.length > 0 ? (
           <details className="mt-3">
             <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-primary">Sudah lunas ({cleared.length})</summary>
-            <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+            <ul className="divide-y divide-border border border-border bg-surface">
               {cleared.map((subject) => (
                 <li key={subject.id}>
                   <Link href={`/akun/dana-titipan/${subject.id}`} className="flex min-h-11 items-center justify-between gap-3 px-4 py-2 text-sm hover:bg-surface-subtle">

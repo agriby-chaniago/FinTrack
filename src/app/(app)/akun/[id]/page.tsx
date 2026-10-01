@@ -130,7 +130,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
                 </div>
               ) : null}
               {reconciliation && reconciliation.status === "DISCREPANCY" ? (
-                <div className="rounded-lg border border-border p-4">
+                <div className="border border-border p-4">
                   <p className="mb-3 font-medium">Selesaikan selisih</p>
                   <DiscrepancyResolver view={reconciliation} accountId={id} weekly={weekly} cutoverDate={context.cutoverDate} />
                 </div>

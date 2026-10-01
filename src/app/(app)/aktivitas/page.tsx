@@ -25,7 +25,7 @@ export default async function AktivitasPage({ searchParams }: { searchParams: Pr
       {items.length === 0 ? (
         <EmptyState title="Belum ada aktivitas" />
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="divide-y divide-border border border-border bg-surface">
           {items.map((item) =>
             item.type === "OPENING_SNAPSHOT" ? (
               <li key={item.id} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3">

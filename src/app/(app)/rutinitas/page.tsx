@@ -92,8 +92,8 @@ export default async function RutinitasPage() {
                           <Link href={`/rutinitas/settlement/${row.settlementId}`} className="text-primary">
                             {formatDate(row.startDate)} – {formatDate(row.endDate)}
                           </Link>
-                          <span aria-hidden="true" className="mt-1 block h-1.5 rounded-full bg-primary-soft">
-                            <span className="block h-1.5 rounded-full bg-primary" style={{ width: `${width}%` }} />
+                          <span aria-hidden="true" className="mt-1 block h-1.5 bg-primary-soft">
+                            <span className="block h-1.5 bg-primary" style={{ width: `${width}%` }} />
                           </span>
                         </td>
                         <td className="py-2 text-right align-top">
@@ -185,7 +185,7 @@ export default async function RutinitasPage() {
         {doneTargets.length > 0 ? (
           <details className="mt-3">
             <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-primary">Target sebelumnya</summary>
-            <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+            <ul className="divide-y divide-border border border-border bg-surface">
               {doneTargets.map((target) => (
                 <li key={target.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                   <span>
@@ -223,7 +223,7 @@ export default async function RutinitasPage() {
 
               <ul className="mt-3 space-y-4">
                 {cycle.income ? (
-                  <li className="rounded-lg bg-surface-subtle p-3">
+                  <li className="bg-surface-subtle p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-medium">Income bulanan</p>
                       <span className="flex items-center gap-2">
@@ -257,7 +257,7 @@ export default async function RutinitasPage() {
                   </li>
                 ) : null}
                 {cycle.obligations.map((o) => (
-                  <li key={o.occurrenceId} className="rounded-lg bg-surface-subtle p-3">
+                  <li key={o.occurrenceId} className="bg-surface-subtle p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-medium">{o.name}</p>
                       <span className="flex items-center gap-2">

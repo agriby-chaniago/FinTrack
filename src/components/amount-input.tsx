@@ -67,7 +67,7 @@ export function AmountInput({ label, value, onChange, error, hint, allowNegative
         {label}
       </label>
       <div
-        className={`mt-1 flex h-11 items-center rounded-lg border bg-surface focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-surface ${
+        className={`mt-1 flex h-11 items-center border bg-surface focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-surface ${
           message ? "border-danger-fg" : "border-control"
         }`}
       >
@@ -83,7 +83,7 @@ export function AmountInput({ label, value, onChange, error, hint, allowNegative
           onChange={(event) => handleChange(event.target.value)}
           aria-invalid={message ? true : undefined}
           aria-describedby={describedBy}
-          className="h-full w-full rounded-r-lg bg-transparent pr-3 text-base tabular-nums outline-none"
+          className="h-full w-full bg-transparent pr-3 text-base tabular-nums outline-none"
         />
       </div>
       {hint ? (

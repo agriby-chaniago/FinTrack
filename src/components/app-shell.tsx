@@ -67,7 +67,7 @@ function ThemeToggle({ initial }: { initial: ThemePreference }) {
         applyTheme(next);
         setTheme(next);
       }}
-      className="inline-flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-muted hover:bg-surface-subtle"
+      className="inline-flex min-h-11 w-full items-center gap-2 px-3 text-sm text-muted hover:bg-surface-subtle"
     >
       <Icon name={theme === "dark" ? "clock" : "check"} className="size-4" />
       {themeCycle[theme].label}
@@ -88,22 +88,22 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
       ref={ref}
       onClose={onClose}
       aria-labelledby="catat-title"
-      className="m-0 mt-auto w-full max-w-none rounded-t-2xl bg-surface p-0 text-text shadow-xl backdrop:bg-black/40 md:m-auto md:max-w-md md:rounded-2xl"
+      className="m-0 mt-auto w-full max-w-none bg-surface p-0 text-text shadow-xl backdrop:bg-black/40 md:m-auto md:max-w-md"
     >
       <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="catat-title" className="text-lg font-semibold">
             Catat
           </h2>
-          <button type="button" onClick={onClose} className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-surface-subtle" aria-label="Tutup">
+          <button type="button" onClick={onClose} className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Tutup">
             <Icon name="close" className="size-5" />
           </button>
         </div>
         <ul className="space-y-1">
           {catatActions.map((action) => (
             <li key={action.href}>
-              <Link href={action.href} onClick={onClose} className="flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface-subtle">
-                <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <Link href={action.href} onClick={onClose} className="flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-surface-subtle">
+                <span className="inline-flex size-9 items-center justify-center bg-primary-soft text-primary">
                   <Icon name={action.icon} />
                 </span>
                 <span>
@@ -138,7 +138,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
     <div className="flex min-h-full flex-1">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
         <p className="px-3 text-lg font-semibold">FinTrack</p>
-        <button type="button" onClick={() => setCatatOpen(true)} className="mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary font-medium text-primary-content hover:bg-primary-hover">
+        <button type="button" onClick={() => setCatatOpen(true)} className="mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content hover:bg-primary-hover">
           <Icon name="plus" /> Catat
         </button>
         <nav aria-label="Navigasi utama" className="mt-5 flex-1">
@@ -149,7 +149,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
                   href={item.href}
                   prefetch={warm}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                  className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
+                  className="flex min-h-11 items-center gap-3 px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
                 >
                   <Icon name={item.icon} className="size-5" />
                   {item.label}
@@ -162,7 +162,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
           <Link
             href="/pengaturan"
             aria-current={pathname.startsWith("/pengaturan") ? "page" : undefined}
-            className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm text-muted hover:bg-surface-subtle aria-[current=page]:text-primary"
+            className="flex min-h-11 items-center gap-3 px-3 text-sm text-muted hover:bg-surface-subtle aria-[current=page]:text-primary"
           >
             <Icon name="settings" className="size-5" />
             Pengaturan
@@ -174,7 +174,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
           <span className="font-semibold">FinTrack</span>
-          <Link href="/pengaturan" className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-surface-subtle" aria-label="Pengaturan">
+          <Link href="/pengaturan" className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Pengaturan">
             <Icon name="settings" className="size-5" />
           </Link>
         </header>
@@ -184,7 +184,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
       <button
         type="button"
         onClick={() => setCatatOpen(true)}
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-content shadow-lg hover:bg-primary-hover md:hidden"
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg hover:bg-primary-hover md:hidden"
       >
         <Icon name="plus" /> Catat
       </button>

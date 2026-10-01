@@ -95,7 +95,7 @@ export function CorrectionForm(props: Props) {
       {props.allowVoid ? (
         <div className="border-t border-border pt-4">
           {confirmVoid ? (
-            <div className="space-y-2 rounded-lg bg-review-bg p-3 text-review-fg">
+            <div className="space-y-2 bg-review-bg p-3 text-review-fg">
               <p className="text-sm">Catatan ini akan dibatalkan dengan catatan pembalik. Riwayat tetap terlihat di Aktivitas.</p>
               <div className="flex flex-wrap gap-2">
                 <button

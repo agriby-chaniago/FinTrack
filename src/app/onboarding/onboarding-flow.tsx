@@ -87,7 +87,7 @@ function TextField(props: { label: string; value: string; onChange: (value: stri
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}
         aria-invalid={props.error ? true : undefined}
-        className="mt-1 block h-11 w-full rounded-lg border border-control bg-surface px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+        className="mt-1 block h-11 w-full border border-control bg-surface px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
       />
       {props.error ? <span className="mt-1 block text-sm text-danger-fg">{props.error}</span> : null}
     </label>
@@ -112,9 +112,9 @@ function Checkbox(props: { label: string; checked: boolean; onChange: (checked: 
 }
 
 const secondaryButton =
-  "h-11 rounded-lg border border-control px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "h-11 border border-control px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 const primaryButton =
-  "h-12 flex-1 rounded-lg bg-primary px-4 font-medium text-primary-content transition-colors duration-150 hover:bg-primary-hover disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "h-12 flex-1 bg-primary px-4 font-medium text-primary-content transition-colors duration-150 hover:bg-primary-hover disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: OnboardingFlowProps) {
   const router = useRouter();
@@ -209,7 +209,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
 
       <div aria-live="polite" className="mt-4">
         {banner ? (
-          <p role="alert" className="flex gap-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
+          <p role="alert" className="flex gap-2 bg-danger-bg px-3 py-2 text-sm text-danger-fg">
             <AlertIcon />
             {banner}
           </p>
@@ -232,7 +232,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
                     next.cutoverAt = event.target.value ? `${event.target.value}:00+07:00` : null;
                   })
                 }
-                className="mt-1 block h-11 w-full rounded-lg border border-control bg-surface px-3 text-base"
+                className="mt-1 block h-11 w-full border border-control bg-surface px-3 text-base"
               />
               {issue("cutoverAt") ? <span className="mt-1 block text-sm text-danger-fg">{issue("cutoverAt")}</span> : null}
             </label>
@@ -245,7 +245,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
             description="Masukkan saldo persis seperti yang terlihat di aplikasi bank atau e-wallet, termasuk sen jika ada."
           >
             {draft.accounts.map((account, index) => (
-              <div key={account.key} className="space-y-3 rounded-xl border border-border bg-surface p-4">
+              <div key={account.key} className="space-y-3 border border-border bg-surface p-4">
                 <TextField
                   label={`Nama akun (${account.purposeLabel})`}
                   value={account.displayName}
@@ -268,7 +268,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
             {hasExternal ? (
               <div className="space-y-4">
                 {draft.externals.map((external, index) => (
-                  <div key={index} className="space-y-3 rounded-xl border border-border bg-surface p-4">
+                  <div key={index} className="space-y-3 border border-border bg-surface p-4">
                     <TextField
                       label="Pemilik dana"
                       value={external.subjectName}
@@ -282,7 +282,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
                         onChange={(event) =>
                           update((next) => void (next.externals[index].accountKey = event.target.value as typeof external.accountKey))
                         }
-                        className="mt-1 block h-11 w-full rounded-lg border border-control bg-surface px-3 text-base"
+                        className="mt-1 block h-11 w-full border border-control bg-surface px-3 text-base"
                       >
                         {draft.accounts.map((account) => (
                           <option key={account.key} value={account.key}>
@@ -322,7 +322,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
 
         {step === 3 ? (
           <Section title="Rutinitas awal" description="Automation dimulai setelah waktu mulai, kecuali Anda memilih memasukkan periode berjalan.">
-            <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
+            <div className="space-y-3 border border-border bg-surface p-4">
               <h3 className="font-medium">Income harian {accountName("daily")}</h3>
               <AmountInput
                 label="Nominal per hari"
@@ -337,7 +337,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
               />
             </div>
 
-            <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
+            <div className="space-y-3 border border-border bg-surface p-4">
               <h3 className="font-medium">Income bulanan {accountName("monthly")}</h3>
               <AmountInput
                 label="Perkiraan nominal per bulan"
@@ -352,7 +352,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
               />
             </div>
 
-            <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
+            <div className="space-y-4 border border-border bg-surface p-4">
               <h3 className="font-medium">Subscription</h3>
               {routines.subscriptions.map((subscription, index) => (
                 <div key={index} className="space-y-3 border-t border-border pt-3 first:border-t-0 first:pt-0">
@@ -376,7 +376,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
                             void (next.routines.subscriptions[index].expectedDay = event.target.value ? Number(event.target.value) : null),
                         )
                       }
-                      className="mt-1 block h-11 w-full rounded-lg border border-control bg-surface px-3 text-base tabular-nums"
+                      className="mt-1 block h-11 w-full border border-control bg-surface px-3 text-base tabular-nums"
                     />
                     {issue(`routines.subscriptions.${index}.expectedDay`) ? (
                       <span className="mt-1 block text-sm text-danger-fg">{issue(`routines.subscriptions.${index}.expectedDay`)}</span>
@@ -416,7 +416,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
               </button>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
+            <div className="space-y-3 border border-border bg-surface p-4">
               <h3 className="font-medium">Biaya bulanan bank {accountName("monthly")}</h3>
               <p className="text-sm text-muted">Boleh dikosongkan jika belum diketahui; FinTrack tetap mengingatkan setiap bulan.</p>
               <label className="block">
@@ -430,7 +430,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
                   onChange={(event) =>
                     update((next) => void (next.routines.bankFee.expectedDay = event.target.value ? Number(event.target.value) : null))
                   }
-                  className="mt-1 block h-11 w-full rounded-lg border border-control bg-surface px-3 text-base tabular-nums"
+                  className="mt-1 block h-11 w-full border border-control bg-surface px-3 text-base tabular-nums"
                 />
               </label>
               <AmountInput
@@ -446,7 +446,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
               />
             </div>
 
-            <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
+            <div className="space-y-3 border border-border bg-surface p-4">
               <h3 className="font-medium">Saldo minimum ditahan di {accountName("monthly")}</h3>
               <AmountInput
                 label="Saldo minimum ditahan"
@@ -461,7 +461,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
 
         {step === 4 ? (
           <Section title="Tinjau sebelum mulai" description="Setelah dikonfirmasi, saldo awal hanya dapat dikoreksi melalui snapshot pengganti.">
-            <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+            <div className="divide-y divide-border border border-border bg-surface">
               {review.accounts.map((row) => (
                 <div key={row.key} className="space-y-1 p-4">
                   <p className="font-medium">{accountName(row.key)}</p>
@@ -474,7 +474,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
                     <dd className="text-right font-medium tabular-nums">{money(row.personal)}</dd>
                   </dl>
                   {row.shortfall !== null && row.shortfall !== "0" ? (
-                    <p role="alert" className="flex gap-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
+                    <p role="alert" className="flex gap-2 bg-danger-bg px-3 py-2 text-sm text-danger-fg">
                       <AlertIcon />
                       Kekurangan dana titipan {money(row.shortfall)}: dana titipan melebihi saldo fisik.
                     </p>
@@ -490,7 +490,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
             </div>
 
             {review.boundaries ? (
-              <ul className="space-y-1 rounded-xl border border-border bg-surface p-4 text-sm">
+              <ul className="space-y-1 border border-border bg-surface p-4 text-sm">
                 <li>Waktu mulai: {formatDate(review.boundaries.cutoverDate)}</li>
                 <li>
                   Income harian {money(routines.dailyIncome.amount)} mulai {formatDate(review.boundaries.dailyIncomeStartDate)}

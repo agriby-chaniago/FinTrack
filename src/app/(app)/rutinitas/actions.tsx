@@ -136,7 +136,7 @@ export function CloseTargetButton({ targetId }: { targetId: string }) {
     );
   }
   return (
-    <div className="space-y-2 rounded-lg bg-review-bg p-3 text-review-fg">
+    <div className="space-y-2 bg-review-bg p-3 text-review-fg">
       <p className="text-sm">Target yang ditutup tidak lagi disarankan dan tidak dapat dibuka kembali. Transfer yang sudah terjadi tetap tercatat.</p>
       <div className="flex gap-2">
         <button
