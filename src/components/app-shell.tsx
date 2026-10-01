@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import "@/lib/install-prompt";
 import { applyTheme, type ThemePreference } from "@/lib/theme";
 
+import { Brand } from "./brand";
 import { Icon, type IconName } from "./ui";
 
 const destinations: { href: string; label: string; icon: IconName }[] = [
@@ -16,6 +17,9 @@ const destinations: { href: string; label: string; icon: IconName }[] = [
   { href: "/aktivitas", label: "Aktivitas", icon: "list" },
   { href: "/akun", label: "Akun", icon: "wallet" },
 ];
+
+// The plus glyph leaves a fifth of its box empty on each side; the nudge centers the drawn icon and label.
+const catatIcon = <Icon name="plus" className="-ml-1 size-4" />;
 
 const catatActions: { href: string; label: string; description: string; icon: IconName }[] = [
   { href: "/catat/pengeluaran", label: "Pengeluaran khusus", description: "Vape dan pengeluaran tidak rutin", icon: "arrowDown" },
@@ -137,9 +141,9 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
   return (
     <div className="flex min-h-full flex-1">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
-        <p className="px-3 text-lg font-semibold">FinTrack</p>
+        <Brand className="px-3 text-lg font-semibold" />
         <button type="button" onClick={() => setCatatOpen(true)} className="mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content hover:bg-primary-hover">
-          <Icon name="plus" /> Catat
+          {catatIcon} Catat
         </button>
         <nav aria-label="Navigasi utama" className="mt-5 flex-1">
           <ul className="space-y-1">
@@ -173,7 +177,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
-          <span className="font-semibold">FinTrack</span>
+          <Brand className="font-semibold" />
           <Link href="/pengaturan" className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Pengaturan">
             <Icon name="settings" className="size-5" />
           </Link>
@@ -186,7 +190,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
         onClick={() => setCatatOpen(true)}
         className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg hover:bg-primary-hover md:hidden"
       >
-        <Icon name="plus" /> Catat
+        {catatIcon} Catat
       </button>
 
       <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">

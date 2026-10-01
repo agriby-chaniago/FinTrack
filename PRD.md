@@ -1508,6 +1508,8 @@ Ditambahkan elemen yang membawa informasi, bukan ilustrasi:
 - Progress bar untuk: fulfillment target transfer, kewajiban BCA yang sudah resolved (`3/5 selesai`), dan kelayakan chart (`1/4 settlement`). Progress bar selalu disertai teks angka dan bukan chart
 - Strip tujuh hari income DANA minggu berjalan: satu penanda per hari dengan state diterima, override, paused, atau belum terjadi; setiap state memakai bentuk/icon dan label teks, bukan warna saja
 - Empty state memakai icon kecil dan satu kalimat next action
+- Mark FinTrack (ikon aplikasi) tampil sebelum nama FinTrack di sidebar, header mobile, dan kartu login
+- Pada aksi occurrence bulanan, tombol utama selebar kartu dan aksi sekunder membagi satu baris secara rata
 
 Gradient dominan, glassmorphism, glow, dan ilustrasi besar tetap tidak dipakai.
 
@@ -1561,7 +1563,7 @@ Mengganti: `Card memakai 1px border, 12px radius` pada `Typography dan density`.
 Permintaan pemilik: tile akun menampilkan ikon aplikasi BCA, DANA, dan Jago.
 
 - Provider dikenali dari `provider_name` yang dinormalisasi (huruf kecil, tanpa spasi dan tanda baca), bukan dari display name atau id: `bca`, `bankbca`, `bankcentralasia`, `mybca` → BCA; `dana` → DANA; `jago`, `bankjago`, `jagosyariah` → Jago
-- BCA memakai ikon aplikasi myBCA karena ikon tersebut full-bleed persegi; DANA dan Jago memakai ikon aplikasi masing-masing
+- BCA memakai logo BCA saja: wordmark dari logo resmi, putih di atas biru BCA `#0060AF`, bukan ikon aplikasi myBCA atau BCA mobile (permintaan pemilik). DANA dan Jago memakai ikon aplikasi masing-masing
 - Account `CASH` (Tunai) memakai glyph uang tunai FinTrack; provider lain memakai monogram P2
 - Ikon disimpan sebagai file statis di repository, tidak di-hotlink, dan ditampilkan pada tile siku 40px dengan teks alternatif kosong karena nama akun selalu tertulis di sebelahnya
 - Warna brand provider hanya muncul di dalam ikon; surface kartu, aksen, dan status tetap memakai token FinTrack
@@ -2780,7 +2782,7 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Halaman Laporan di `/aktivitas/laporan` sebagai tempat chart (v0.20) |
 | **LOCKED** | Digest pengingat Telegram harian satu arah tanpa nominal (v0.20) |
 | **LOCKED** | Geometri siku tanpa radius; radio input satu-satunya bentuk bulat (v0.20 P7, permintaan pemilik 1 Oktober 2026) |
-| **LOCKED** | Ikon aplikasi BCA (myBCA), DANA, dan Jago pada tile akun; glyph tunai untuk `CASH`; monogram untuk provider lain (v0.20 P8, permintaan pemilik 1 Oktober 2026) |
+| **LOCKED** | Logo BCA serta ikon aplikasi DANA dan Jago pada tile akun; glyph tunai untuk `CASH`; monogram untuk provider lain (v0.20 P8, permintaan pemilik 1 Oktober 2026) |
 
 ### Aturan pemeliharaan dokumen
 

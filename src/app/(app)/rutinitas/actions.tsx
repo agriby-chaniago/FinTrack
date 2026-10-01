@@ -94,24 +94,27 @@ export function OccurrenceActions(props: OccurrenceProps) {
           <AmountInput label="Nominal aktual" value={amount} onChange={setAmount} />
         </div>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+      <div className="space-y-2">
         {editing ? (
-          <button type="button" className={buttonClass.primary} disabled={resolve.pending} onClick={() => confirm(date, amount)}>
+          <button type="button" className={`${buttonClass.primary} w-full`} disabled={resolve.pending} onClick={() => confirm(date, amount)}>
             {resolve.pending ? "Menyimpan…" : props.status === "PENDING" ? "Konfirmasi" : "Konfirmasi masuk terlambat"}
           </button>
         ) : (
-          <button type="button" className={buttonClass.primary} disabled={resolve.pending} onClick={() => confirm(defaultDate, props.suggestedAmount)}>
+          <button type="button" className={`${buttonClass.primary} w-full`} disabled={resolve.pending} onClick={() => confirm(defaultDate, props.suggestedAmount)}>
             {resolve.pending ? "Menyimpan…" : props.status === "PENDING" ? `Konfirmasi sesuai saran${props.suggestedAmount ? ` · ${money(props.suggestedAmount)}` : ""}` : "Konfirmasi masuk terlambat"}
           </button>
         )}
-        <button type="button" className={buttonClass.secondary} onClick={() => setEditing(!editing)}>
-          {editing ? "Tutup detail" : "Ubah detail"}
-        </button>
-        {props.status === "PENDING" ? (
-          <button type="button" className={buttonClass.secondary} disabled={resolve.pending} onClick={markNoEvent}>
-            {noEventLabel}
+        {/* Secondary actions split the row evenly under the full-width primary action. */}
+        <div className="flex gap-2">
+          <button type="button" className={`${buttonClass.secondary} flex-1`} onClick={() => setEditing(!editing)}>
+            {editing ? "Tutup detail" : "Ubah detail"}
           </button>
-        ) : null}
+          {props.status === "PENDING" ? (
+            <button type="button" className={`${buttonClass.secondary} flex-1`} disabled={resolve.pending} onClick={markNoEvent}>
+              {noEventLabel}
+            </button>
+          ) : null}
+        </div>
       </div>
       {!editing ? <p className="text-xs text-muted">Tanggal {formatDate(defaultDate)}</p> : null}
       <FormErrors errors={resolve.error} />

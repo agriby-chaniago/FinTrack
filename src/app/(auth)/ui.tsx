@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 
+import { Brand } from "@/components/brand";
+
 export function AuthCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm border border-border bg-surface p-6">
-        <p className="text-sm text-muted">FinTrack</p>
+        <Brand className="text-sm text-muted" markClassName="size-5" />
         <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
         <div className="mt-6">{children}</div>
       </div>
