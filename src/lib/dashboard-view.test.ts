@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chartEligibility, obligationProgress, progressPercent, stripSummary, weekStrip } from "./dashboard-view";
+import { chartEligibility, obligationProgress, progressPercent, stripSummary, taskKey, weekStrip } from "./dashboard-view";
 
 const day = (date: string, extra: Partial<{ state: string; amount: bigint; overridden: boolean }> = {}) => ({ date, state: "ACTIVE", amount: 5_000_000n, overridden: false, ...extra });
 
@@ -69,5 +69,15 @@ describe("chartEligibility", () => {
       weekly: { count: 3, needed: 4, eligible: false },
       monthly: { count: 3, needed: 3, eligible: true },
     });
+  });
+});
+
+describe("taskKey", () => {
+  it("names each task by what it is about, so keys survive list changes", () => {
+    expect(taskKey({ type: "SETTLEMENT" })).toBe("settlement");
+    expect(taskKey({ type: "CONFIRM_INCOME", occurrenceId: "o1" })).toBe("occurrence:o1");
+    expect(taskKey({ type: "CONFIRM_OBLIGATION", occurrenceId: "o2" })).toBe("occurrence:o2");
+    expect(taskKey({ type: "TRANSFER", targetId: "t1" })).toBe("target:t1");
+    expect(taskKey({ type: "RECONCILE", accountId: "a1" })).toBe("reconcile:a1");
   });
 });

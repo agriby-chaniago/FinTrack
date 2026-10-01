@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
+import { AnimatedItem, AnimatedList } from "@/components/motion";
 import { Alert, Card, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
-import { markerLabel, obligationProgress, progressPercent, stripSummary, type StripDay } from "@/lib/dashboard-view";
+import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, type StripDay } from "@/lib/dashboard-view";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceTagLabel, settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal, toIdrDecimal } from "@/lib/money";
@@ -99,9 +100,9 @@ export default async function BerandaPage() {
           <SectionTitle icon="checklist">
             <span id="tasks-title">Perlu dilakukan</span>
           </SectionTitle>
-          <ul className="divide-y divide-border border border-border bg-surface">
-            {tasks.slice(0, 6).map(({ task, view }, index) => (
-              <li key={index}>
+          <AnimatedList className="divide-y divide-border border border-border bg-surface">
+            {tasks.slice(0, 6).map(({ task, view }) => (
+              <AnimatedItem key={taskKey(task)}>
                 <Link href={view.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
                   <span>
                     <span className="block font-medium">{view.title}</span>
@@ -123,9 +124,9 @@ export default async function BerandaPage() {
                 {task.type === "TRANSFER" && parseIdrDecimal(task.transferNow) < parseIdrDecimal(task.remaining) ? (
                   <p className="px-4 pb-3 text-sm text-review-fg">Saldo sumber belum cukup untuk seluruh saran.</p>
                 ) : null}
-              </li>
+              </AnimatedItem>
             ))}
-          </ul>
+          </AnimatedList>
           {tasks.length > 6 ? (
             <Link href="/rutinitas" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary">
               Lihat semua di Rutinitas ({tasks.length})

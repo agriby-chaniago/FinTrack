@@ -64,3 +64,24 @@ export function chartEligibility(input: { settlements: number; cycles: number })
     monthly: { count: input.cycles, needed: 3, eligible: input.cycles >= 3 },
   };
 }
+
+type KeyedTask =
+  | { type: "SETTLEMENT" }
+  | { type: "CONFIRM_INCOME" | "CONFIRM_OBLIGATION"; occurrenceId: string }
+  | { type: "TRANSFER"; targetId: string }
+  | { type: "RECONCILE"; accountId: string };
+
+/** Stable identity of a Perlu dilakukan task, so the right row animates when it leaves. */
+export function taskKey(task: KeyedTask): string {
+  switch (task.type) {
+    case "SETTLEMENT":
+      return "settlement";
+    case "CONFIRM_INCOME":
+    case "CONFIRM_OBLIGATION":
+      return `occurrence:${task.occurrenceId}`;
+    case "TRANSFER":
+      return `target:${task.targetId}`;
+    case "RECONCILE":
+      return `reconcile:${task.accountId}`;
+  }
+}
