@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 
+import { MotionProvider } from "@/components/motion";
 import { THEME_COOKIE, themeAttribute } from "@/lib/theme";
 
 const geistSans = Geist({
@@ -32,7 +33,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const preference = (await cookies()).get(THEME_COOKIE)?.value;
   return (
     <html lang="id" data-theme={themeAttribute(preference)} className={`${geistSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <MotionProvider>{children}</MotionProvider>
+      </body>
     </html>
   );
 }

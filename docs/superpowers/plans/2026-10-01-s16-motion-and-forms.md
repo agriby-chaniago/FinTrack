@@ -97,7 +97,7 @@ const identity = /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/;
 /** Clicks the visible + Catat button and records the sheet panel's transform every frame for 400 ms. */
 function openSheetAndSample(page: Page) {
   return page.evaluate(async () => {
-    const button = [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Catat" && b.offsetParent !== null)!;
+    const button = [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Catat" && b.checkVisibility())!;
     button.click();
     const seen: string[] = [];
     const start = performance.now();

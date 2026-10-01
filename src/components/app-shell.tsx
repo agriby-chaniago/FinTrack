@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Loaded on every app page so the browser install prompt is kept for Pengaturan.
@@ -9,6 +10,7 @@ import "@/lib/install-prompt";
 import { applyTheme, type ThemePreference } from "@/lib/theme";
 
 import { Brand } from "./brand";
+import { useSlide } from "./motion";
 import { Icon, type IconName } from "./ui";
 
 const destinations: { href: string; label: string; icon: IconName }[] = [
@@ -79,46 +81,56 @@ function ThemeToggle({ initial }: { initial: ThemePreference }) {
   );
 }
 
+/** `+ Catat` sheet: the panel slides up and fades; the dialog closes after the exit animation. */
 function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const slide = useSlide(24);
   useEffect(() => {
     const dialog = ref.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
+    if (dialog && open && !dialog.open) dialog.showModal();
   }, [open]);
   return (
     <dialog
       ref={ref}
+      onCancel={(event) => {
+        // Escape runs the exit animation first; onExitComplete then closes the dialog.
+        event.preventDefault();
+        onClose();
+      }}
       onClose={onClose}
+      data-closing={open ? undefined : ""}
       aria-labelledby="catat-title"
-      className="m-0 mt-auto w-full max-w-none bg-surface p-0 text-text shadow-xl backdrop:bg-black/40 md:m-auto md:max-w-md"
+      className="sheet m-0 mt-auto w-full max-w-none bg-transparent p-0 text-text md:m-auto md:max-w-md"
     >
-      <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id="catat-title" className="text-lg font-semibold">
-            Catat
-          </h2>
-          <button type="button" onClick={onClose} className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Tutup">
-            <Icon name="close" className="size-5" />
-          </button>
-        </div>
-        <ul className="space-y-1">
-          {catatActions.map((action) => (
-            <li key={action.href}>
-              <Link href={action.href} onClick={onClose} className="flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-surface-subtle">
-                <span className="inline-flex size-9 items-center justify-center bg-primary-soft text-primary">
-                  <Icon name={action.icon} />
-                </span>
-                <span>
-                  <span className="block font-medium">{action.label}</span>
-                  <span className="block text-sm text-muted">{action.description}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <AnimatePresence onExitComplete={() => ref.current?.close()}>
+        {open ? (
+          <m.div key="sheet" initial={{ opacity: 0, y: slide }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: slide }} className="bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 id="catat-title" className="text-lg font-semibold">
+                Catat
+              </h2>
+              <button type="button" onClick={onClose} className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Tutup">
+                <Icon name="close" className="size-5" />
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {catatActions.map((action) => (
+                <li key={action.href}>
+                  <Link href={action.href} onClick={onClose} className="flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-surface-subtle">
+                    <span className="inline-flex size-9 items-center justify-center bg-primary-soft text-primary">
+                      <Icon name={action.icon} />
+                    </span>
+                    <span>
+                      <span className="block font-medium">{action.label}</span>
+                      <span className="block text-sm text-muted">{action.description}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </m.div>
+        ) : null}
+      </AnimatePresence>
     </dialog>
   );
 }

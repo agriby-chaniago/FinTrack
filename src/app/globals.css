@@ -231,3 +231,19 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* The + Catat sheet backdrop fades with its panel (PRD v0.20 P3). */
+dialog.sheet::backdrop {
+  background: rgb(0 0 0 / 0.4);
+  transition: opacity 200ms ease-out;
+}
+
+dialog.sheet[data-closing]::backdrop {
+  opacity: 0;
+}
+
+@starting-style {
+  dialog.sheet[open]::backdrop {
+    opacity: 0;
+  }
+}
