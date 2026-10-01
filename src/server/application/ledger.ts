@@ -183,6 +183,8 @@ export type AccountBalanceView = {
   id: string;
   displayName: string;
   providerName: string;
+  /** `BANK`, `E_WALLET`, or `CASH` (account table check). */
+  accountType: string;
   purposeLabel: string;
   physical: string;
   external: string;
@@ -218,6 +220,7 @@ export async function accountBalances(
     id: string;
     display_name: string;
     provider_name: string;
+    account_type: string;
     purpose_label: string;
     cutover_at: string;
     opening_physical: string;
@@ -251,7 +254,7 @@ export async function accountBalances(
       where e.owner_id = ${ownerId} and l.owner_id = ${ownerId} ${inclusion}
       group by l.account_id
     )
-    select a.id, a.display_name, a.provider_name, a.purpose_label,
+    select a.id, a.display_name, a.provider_name, a.account_type, a.purpose_label,
            a.activation_cutover_at::text as cutover_at,
            coalesce(o.physical, 0)::text as opening_physical,
            coalesce(o.external, 0)::text as opening_external,
@@ -342,6 +345,7 @@ export async function accountBalances(
       id: row.id,
       displayName: row.display_name,
       providerName: row.provider_name,
+      accountType: row.account_type,
       purposeLabel: row.purpose_label,
       physical: toIdrDecimal(physical),
       external: toIdrDecimal(external),

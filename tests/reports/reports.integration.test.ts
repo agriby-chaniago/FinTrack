@@ -142,6 +142,7 @@ describe("locked full-month validation fixture", () => {
       monthly: { count: expect.any(Number), needed: 3, eligible: expect.any(Boolean) },
     });
     expect(body.data.chart.weekly.count).toBeGreaterThanOrEqual(1);
+    expect(body.data.accounts.map((a: { accountType: string }) => a.accountType)).toEqual(["BANK", "BANK", "E_WALLET"]);
     if (body.data.dana.week) {
       expect(body.data.dana.week.days.length).toBeGreaterThan(0);
       expect(body.data.dana.week.days.length).toBeLessThanOrEqual(7);
