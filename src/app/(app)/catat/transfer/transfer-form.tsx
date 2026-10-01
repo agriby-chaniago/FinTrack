@@ -21,10 +21,15 @@ export function TransferForm(props: {
   const { context } = props;
   const today = todayInJakarta();
   const firstOther = (id: string) => context.accounts.find((a) => a.id !== id)?.id ?? "";
-  const initialSource = props.prefill?.sourceAccountId ?? context.accounts[0]?.id ?? "";
+  // Most transfers go into the reserve, so the default source is the first other account.
+  const initialSource = props.prefill?.sourceAccountId ?? context.accounts.find((a) => a.id !== context.reserveAccountId)?.id ?? context.accounts[0]?.id ?? "";
   const [formKey, setFormKey] = useState(0);
   const [source, setSource] = useState(initialSource);
-  const [destination, setDestination] = useState(props.prefill?.destinationAccountId ?? context.reserveAccountId ?? firstOther(initialSource));
+  const [destination, setDestination] = useState(() => {
+    // The Ke list never offers the source, so state must never start equal to it.
+    const preferred = props.prefill?.destinationAccountId ?? context.reserveAccountId;
+    return preferred && preferred !== initialSource ? preferred : firstOther(initialSource);
+  });
   const [amount, setAmount] = useState<string | null>(props.prefill?.amount ?? null);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
