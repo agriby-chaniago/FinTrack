@@ -36,6 +36,10 @@ describe("Petrol & Paper tokens", () => {
     expect(systemDark).toEqual(dark);
   });
 
+  it("keeps no value of the replaced indigo palette", () => {
+    expect(css.match(/#(4f46e5|818cf8|eef2ff|1e1b4b|f7f8fa|0b0f14|111720|171e28)\b/gi) ?? []).toEqual([]);
+  });
+
   // daisyUI draws radio and checkbox borders with `var(--border)` as the width;
   // a color token of the same name made those borders invalid and invisible.
   it("leaves daisyUI's --border width to daisyUI", () => {
