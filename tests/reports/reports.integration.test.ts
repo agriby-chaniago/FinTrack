@@ -23,7 +23,8 @@ import { POST as postSpecial } from "@/app/api/v1/special-expenses/route";
 import { POST as postTransfer } from "@/app/api/v1/transfers/route";
 import { excludedTables, exportedTables } from "@/server/application/export";
 
-import { monthReport, monthReports } from "@/server/application/reports";
+import { signedDelta } from "@/lib/report-view";
+import { monthReport, monthReports, reportPage } from "@/server/application/reports";
 
 import { asOwner, closeClients, createAuthUser, resetWithConfirmedFixture, testClients, type ConfirmedOwner, type TestUser } from "../helpers/owner";
 
@@ -142,6 +143,25 @@ describe("locked full-month validation fixture", () => {
     });
     expect([...batch.keys()]).toEqual(months);
     expect(months.map((m) => batch.get(m))).toEqual(singles);
+  });
+
+  it("builds the Laporan page for a month with its previous month and trends", async () => {
+    const page = await asOwner(clients.runtime, user.id, (tx, principal) => reportPage(tx, principal.ownerId, "2021-02", new Date()));
+    expect(page.month).toBe("2021-02");
+    expect(page.previousMonth).toBe("2021-01");
+    expect(page.monthly.points.map((p) => p.month)).toEqual(["2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02"]);
+    expect(page.deltas.income).toBe(signedDelta(page.report.income.total, page.previous.income.total));
+    expect(page.weekly.points.length).toBe(4);
+    expect(page.weekly.eligibility).toEqual({ count: 4, needed: 4, eligible: true });
+    expect(page.monthly.eligibility.needed).toBe(3);
+    expect(page.weekly.summary).toContain("per hari");
+  });
+
+  it("treats the month before daily income began as empty", async () => {
+    const page = await asOwner(clients.runtime, user.id, (tx, principal) => reportPage(tx, principal.ownerId, "2021-02", new Date()));
+    expect(page.firstMonth).toBe("2021-02");
+    expect(page.deltas.outflow).toBe(page.report.outflow.actualTotal);
+    expect(page.deltas.reserve).toBe(page.report.reserve.netGrowth);
   });
 
   it("builds the dashboard in reading order with tasks and summaries", async () => {

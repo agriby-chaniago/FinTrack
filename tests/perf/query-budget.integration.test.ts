@@ -19,7 +19,8 @@ import { listRecurringRules } from "@/server/application/monthly";
 import { getOnboardingState } from "@/server/application/onboarding";
 import { recordingContext } from "@/server/application/recording-context";
 import { getSettings } from "@/server/application/settings";
-import { dashboard, settlementHistory } from "@/server/application/reports";
+import { businessDateOf, cycleKeyOf } from "@/lib/business-time";
+import { dashboard, reportPage, settlementHistory } from "@/server/application/reports";
 import { settlementRouter } from "@/server/application/settlement";
 import { listTargets, transferSuggestions } from "@/server/application/transfers";
 import { createRuntimeDb, type RuntimeDb } from "@/server/db/client";
@@ -95,6 +96,7 @@ describe("query budget per page (grows with neither weeks nor months)", () => {
     ],
     ["Akun", 24, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
     ["Aktivitas", 7, (tx, o) => listActivity(tx, o, { limit: 50 })],
+    ["Laporan", 22, (tx, o) => reportPage(tx, o, cycleKeyOf(businessDateOf(now)), now)],
     ["Catat (form context)", 19, (tx, o) => recordingContext(tx, o)],
     [
       "Pengaturan",

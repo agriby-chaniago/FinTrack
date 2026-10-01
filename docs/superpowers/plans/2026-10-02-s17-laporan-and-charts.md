@@ -299,7 +299,7 @@ Set `page0Month` to the fixture's first month with daily income (read it from th
 In `tests/perf/query-budget.integration.test.ts`, import `reportPage` and add to `pages`:
 
 ```ts
-    ["Laporan", 24, (tx, o) => reportPage(tx, o, cycleKeyOf(businessDateOf(now)), now)],
+    ["Laporan", 22, (tx, o) => reportPage(tx, o, cycleKeyOf(businessDateOf(now)), now)],
 ```
 
 (import `businessDateOf` and `cycleKeyOf` from `@/lib/business-time`). After the first green run, set the budget to the measured count rounded up to the next even number and record it in the ledger.

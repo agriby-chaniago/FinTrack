@@ -2,9 +2,10 @@
 // reporting, Dashboard hierarchy). Nothing here writes financial data.
 import { and, asc, eq, sql } from "drizzle-orm";
 
-import { businessDateOf, cycleKeyOf, isCycleKey } from "@/lib/business-time";
+import { businessDateOf, cycleKeyOf, isCycleKey, trailingCycleKeys } from "@/lib/business-time";
 import { chartEligibility, weekStrip } from "@/lib/dashboard-view";
 import { parseIdrDecimal, toIdrDecimal, type MinorUnits } from "@/lib/money";
+import { monthlySummary, signedDelta, weeklySummary } from "@/lib/report-view";
 import { ApiError } from "@/server/api/errors";
 import type { OwnerTx } from "@/server/db/owner";
 import { settlement } from "@/server/db/schema/settlement";
@@ -388,16 +389,8 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
   };
 }
 
-/** Weekly history for trends (chart eligibility needs at least four completed settlements). */
-export async function settlementHistory(tx: OwnerTx, ownerId: string) {
-  const rule = await dailyRuleFor(tx, ownerId);
-  if (!rule) return [];
-  const rows = await tx
-    .select()
-    .from(settlement)
-    .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
-    .orderBy(asc(settlement.startDate));
-  const living = await correctedLivingExpenses(tx, ownerId);
+/** One point per completed settlement, oldest first (shared by Rutinitas history and Laporan). */
+function settlementPoints(rows: (typeof settlement.$inferSelect)[], living: Map<string, MinorUnits>) {
   return rows.map((row) => {
     const livingExpense = living.get(row.id) ?? 0n;
     return {
@@ -410,3 +403,51 @@ export async function settlementHistory(tx: OwnerTx, ownerId: string) {
   });
 }
 
+/** Weekly history for trends (chart eligibility needs at least four completed settlements). */
+export async function settlementHistory(tx: OwnerTx, ownerId: string) {
+  const rule = await dailyRuleFor(tx, ownerId);
+  if (!rule) return [];
+  const rows = await tx
+    .select()
+    .from(settlement)
+    .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
+    .orderBy(asc(settlement.startDate));
+  return settlementPoints(rows, await correctedLivingExpenses(tx, ownerId));
+}
+
+/**
+ * Laporan (PRD v0.20 P5): one calendar month, its previous month for deltas,
+ * and six trailing months plus the settlement series for the trends (P4).
+ * The query count is fixed: it does not grow with weeks or months of history.
+ */
+export async function reportPage(tx: OwnerTx, ownerId: string, month: string, now: Date) {
+  const months = trailingCycleKeys(month, 6);
+  const { reports, rule, settledRows, correctedLiving } = await loadMonthReports(tx, ownerId, months, "corrected", now);
+  const cycles = await listMonthlyCycles(tx, ownerId, now);
+  const report = reports.get(month)!;
+  const previousMonth = months[months.length - 2];
+  const previous = reports.get(previousMonth)!;
+  const startMonth = rule ? cycleKeyOf(rule.effectiveStartDate) : month;
+  // Before daily income began there is nothing to compare against.
+  const before = (value: string) => (startMonth <= previousMonth ? value : null);
+  const weeklyPoints = settlementPoints(settledRows, correctedLiving ?? new Map()).slice(-12);
+  const monthlyPoints = months.map((m) => ({ month: m, reserveGrowth: reports.get(m)!.reserve.netGrowth, outflow: reports.get(m)!.outflow.actualTotal }));
+  const eligibility = chartEligibility({
+    settlements: settledRows.length,
+    cycles: cycles.filter((c) => c.state === "COMPLETE" || c.state === "CLOSED_NO_INCOME").length,
+  });
+  return {
+    month,
+    previousMonth,
+    firstMonth: startMonth < month ? startMonth : month,
+    report,
+    previous,
+    deltas: {
+      income: signedDelta(report.income.total, before(previous.income.total)),
+      outflow: signedDelta(report.outflow.actualTotal, before(previous.outflow.actualTotal)),
+      reserve: signedDelta(report.reserve.netGrowth, before(previous.reserve.netGrowth)),
+    },
+    weekly: { eligibility: eligibility.weekly, points: weeklyPoints, summary: weeklySummary(weeklyPoints) },
+    monthly: { eligibility: eligibility.monthly, points: monthlyPoints, summary: monthlySummary(monthlyPoints) },
+  };
+}
