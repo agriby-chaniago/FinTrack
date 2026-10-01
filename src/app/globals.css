@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* daisyUI is the component baseline with two custom Quiet Ledger themes
-   (PRD: Theme dan palette). No stock theme is used. */
+/* daisyUI is the component baseline with two custom Quiet Ledger themes in
+   the Petrol & Paper palette (PRD v0.20 P1). No stock theme is used. */
 @plugin "daisyui" {
   themes: false;
   logs: false;
@@ -12,14 +12,14 @@
   default: true;
   color-scheme: light;
   --color-base-100: #ffffff;
-  --color-base-200: #f7f8fa;
-  --color-base-300: #f1f3f5;
-  --color-base-content: #161b22;
-  --color-primary: #4f46e5;
+  --color-base-200: #f6f5f1;
+  --color-base-300: #eeece6;
+  --color-base-content: #1a1f22;
+  --color-primary: #0e6170;
   --color-primary-content: #ffffff;
-  --color-secondary: #eef2ff;
-  --color-secondary-content: #3730a3;
-  --color-accent: #4f46e5;
+  --color-secondary: #e3f2f3;
+  --color-secondary-content: #083e48;
+  --color-accent: #7a5aa6;
   --color-accent-content: #ffffff;
   --color-neutral: #344054;
   --color-neutral-content: #ffffff;
@@ -45,16 +45,16 @@
   name: "fintrack-dark";
   prefersdark: true;
   color-scheme: dark;
-  --color-base-100: #111720;
-  --color-base-200: #0b0f14;
-  --color-base-300: #171e28;
-  --color-base-content: #f4f7fb;
-  --color-primary: #818cf8;
-  --color-primary-content: #0b0f14;
-  --color-secondary: #1e1b4b;
-  --color-secondary-content: #c7d2fe;
-  --color-accent: #818cf8;
-  --color-accent-content: #0b0f14;
+  --color-base-100: #141b1f;
+  --color-base-200: #0d1316;
+  --color-base-300: #1b2428;
+  --color-base-content: #f2f4f3;
+  --color-primary: #4fc3cf;
+  --color-primary-content: #0d1316;
+  --color-secondary: #0f2e33;
+  --color-secondary-content: #a8e5ea;
+  --color-accent: #b9a3e0;
+  --color-accent-content: #0d1316;
   --color-neutral: #d0d5dd;
   --color-neutral-content: #0b0f14;
   --color-info: #84caff;
@@ -75,22 +75,27 @@
   --noise: 0;
 }
 
-/* Quiet Ledger tokens used by FinTrack components. `system` follows the OS;
-   an explicit choice sets data-theme on <html> before first paint. */
+/* Petrol & Paper tokens used by FinTrack components (PRD v0.20 P1). `system`
+   follows the OS; an explicit choice sets data-theme on <html> before first paint. */
 :root,
 [data-theme="fintrack-light"] {
-  --canvas: #f7f8fa;
+  --canvas: #f6f5f1;
   --surface: #ffffff;
-  --surface-subtle: #f1f3f5;
-  --border: #e2e6eb;
-  --control-boundary: #7d8998;
-  --text: #161b22;
-  --muted: #667085;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-pressed: #3730a3;
+  --surface-subtle: #eeece6;
+  --border: #e3e0d8;
+  --control-boundary: #7a8589;
+  --text: #1a1f22;
+  --muted: #5f6b70;
+  --primary: #0e6170;
+  --primary-hover: #0b4f5b;
+  --primary-pressed: #083e48;
   --primary-content: #ffffff;
-  --primary-soft: #eef2ff;
+  --primary-soft: #e3f2f3;
+  --plum: #7a5aa6;
+  --mono-1: #0e6170;
+  --mono-2: #7a5aa6;
+  --mono-3: #7d5f27;
+  --mono-4: #4d6b57;
   --confirmed-fg: #344054;
   --confirmed-bg: #f2f4f7;
   --calculated-fg: #175cd3;
@@ -107,18 +112,23 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --canvas: #0b0f14;
-    --surface: #111720;
-    --surface-subtle: #171e28;
-    --border: #273140;
-    --control-boundary: #6b7a90;
-    --text: #f4f7fb;
-    --muted: #9ba8b8;
-    --primary: #818cf8;
-    --primary-hover: #a5b4fc;
-    --primary-pressed: #c7d2fe;
-    --primary-content: #0b0f14;
-    --primary-soft: #1e1b4b;
+    --canvas: #0d1316;
+    --surface: #141b1f;
+    --surface-subtle: #1b2428;
+    --border: #2a353b;
+    --control-boundary: #6b7c84;
+    --text: #f2f4f3;
+    --muted: #9aa8ad;
+    --primary: #4fc3cf;
+    --primary-hover: #7dd6de;
+    --primary-pressed: #a8e5ea;
+    --primary-content: #0d1316;
+    --primary-soft: #0f2e33;
+    --plum: #b9a3e0;
+    --mono-1: #4fc3cf;
+    --mono-2: #b9a3e0;
+    --mono-3: #e0b872;
+    --mono-4: #9cc9a9;
     --confirmed-fg: #d0d5dd;
     --confirmed-bg: #1d2939;
     --calculated-fg: #84caff;
@@ -135,18 +145,23 @@
 }
 
 [data-theme="fintrack-dark"] {
-  --canvas: #0b0f14;
-  --surface: #111720;
-  --surface-subtle: #171e28;
-  --border: #273140;
-  --control-boundary: #6b7a90;
-  --text: #f4f7fb;
-  --muted: #9ba8b8;
-  --primary: #818cf8;
-  --primary-hover: #a5b4fc;
-  --primary-pressed: #c7d2fe;
-  --primary-content: #0b0f14;
-  --primary-soft: #1e1b4b;
+  --canvas: #0d1316;
+  --surface: #141b1f;
+  --surface-subtle: #1b2428;
+  --border: #2a353b;
+  --control-boundary: #6b7c84;
+  --text: #f2f4f3;
+  --muted: #9aa8ad;
+  --primary: #4fc3cf;
+  --primary-hover: #7dd6de;
+  --primary-pressed: #a8e5ea;
+  --primary-content: #0d1316;
+  --primary-soft: #0f2e33;
+  --plum: #b9a3e0;
+  --mono-1: #4fc3cf;
+  --mono-2: #b9a3e0;
+  --mono-3: #e0b872;
+  --mono-4: #9cc9a9;
   --confirmed-fg: #d0d5dd;
   --confirmed-bg: #1d2939;
   --calculated-fg: #84caff;
@@ -172,6 +187,11 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-pressed: var(--primary-pressed);
   --color-primary-soft: var(--primary-soft);
+  --color-plum: var(--plum);
+  --color-mono-1: var(--mono-1);
+  --color-mono-2: var(--mono-2);
+  --color-mono-3: var(--mono-3);
+  --color-mono-4: var(--mono-4);
   --color-confirmed-fg: var(--confirmed-fg);
   --color-confirmed-bg: var(--confirmed-bg);
   --color-calculated-fg: var(--calculated-fg);

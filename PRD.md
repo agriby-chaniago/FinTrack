@@ -1484,7 +1484,7 @@ Mengganti core palette pada `Theme dan palette`; konsep `Quiet Ledger`, semantic
 | **Surface** | `#FFFFFF` | `#141B1F` |
 | **Surface subtle/elevated** | `#EEECE6` | `#1B2428` |
 | **Border** | `#E3E0D8` | `#2A353B` |
-| **Interactive control boundary** | `#7F8A8F` | `#6B7C84` |
+| **Interactive control boundary** | `#7A8589` | `#6B7C84` |
 | **Text** | `#1A1F22` | `#F2F4F3` |
 | **Muted text** | `#5F6B70` | `#9AA8AD` |
 | **Primary petrol** | `#0E6170` | `#4FC3CF` |
@@ -1494,7 +1494,7 @@ Mengganti core palette pada `Theme dan palette`; konsep `Quiet Ledger`, semantic
 | **Soft primary** | `#E3F2F3` | `#0F2E33` |
 | **Secondary accent (plum)** | `#7A5AA6` | `#B9A3E0` |
 
-Kontras terhitung (WCAG): text ≥15:1, muted ≥4.65:1 pada seluruh surface, control boundary ≥3.24:1, primary content pada primary 7.09:1 (light) dan 8.95:1 (dark), primary text pada soft primary ≥6.16:1. Secondary accent hanya untuk series chart kedua dan aksen dekoratif kecil, tidak untuk teks berukuran normal di atas canvas tanpa pengecekan ulang. Disabled state dan semantic pairs tidak berubah.
+Kontras terhitung (WCAG): text ≥15:1, muted ≥4.65:1 pada seluruh surface, control boundary ≥3.2:1 termasuk di atas surface subtle, primary content pada primary 7.09:1 (light) dan 8.95:1 (dark), primary text pada soft primary ≥6.16:1. Secondary accent hanya untuk series chart kedua dan aksen dekoratif kecil, tidak untuk teks berukuran normal di atas canvas tanpa pengecekan ulang. Disabled state dan semantic pairs tidak berubah.
 
 Membuka ulang: tabel core palette pada `Theme dan palette` dan baris superseded `Custom Quiet Ledger themes dengan neutral surfaces dan indigo accent`.
 

@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Light tokens: canvas `#F6F5F1`, surface `#FFFFFF`, subtle `#EEECE6`, border `#E3E0D8`, control `#7F8A8F`, text `#1A1F22`, muted `#5F6B70`, primary `#0E6170`, hover `#0B4F5B`, pressed `#083E48`, primary content `#FFFFFF`, soft `#E3F2F3`, plum `#7A5AA6`.
+- Light tokens: canvas `#F6F5F1`, surface `#FFFFFF`, subtle `#EEECE6`, border `#E3E0D8`, control `#7A8589`, text `#1A1F22`, muted `#5F6B70`, primary `#0E6170`, hover `#0B4F5B`, pressed `#083E48`, primary content `#FFFFFF`, soft `#E3F2F3`, plum `#7A5AA6`.
 - Dark tokens: canvas `#0D1316`, surface `#141B1F`, subtle `#1B2428`, border `#2A353B`, control `#6B7C84`, text `#F2F4F3`, muted `#9AA8AD`, primary `#4FC3CF`, hover `#7DD6DE`, pressed `#A8E5EA`, primary content `#0D1316`, soft `#0F2E33`, plum `#B9A3E0`.
 - Monogram accents (light/dark): petrol `#0E6170`/`#4FC3CF`, plum `#7A5AA6`/`#B9A3E0`, ochre `#7D5F27`/`#E0B872`, sage `#4D6B57`/`#9CC9A9`. Assigned by account order, never by provider.
 - Semantic pairs (`--confirmed-*`, `--calculated-*`, `--review-*`, `--danger-*`, `--success-*`, `--outflow-*`) do not change.
@@ -78,7 +78,7 @@ function contrast(a: string, b: string): number {
 
 describe("Petrol & Paper tokens", () => {
   it("uses the PRD values", () => {
-    expect(light).toMatchObject({ canvas: "#f6f5f1", surface: "#ffffff", "surface-subtle": "#eeece6", border: "#e3e0d8", "control-boundary": "#7f8a8f", text: "#1a1f22", muted: "#5f6b70", primary: "#0e6170", "primary-hover": "#0b4f5b", "primary-pressed": "#083e48", "primary-content": "#ffffff", "primary-soft": "#e3f2f3", plum: "#7a5aa6", "mono-1": "#0e6170", "mono-2": "#7a5aa6", "mono-3": "#7d5f27", "mono-4": "#4d6b57" });
+    expect(light).toMatchObject({ canvas: "#f6f5f1", surface: "#ffffff", "surface-subtle": "#eeece6", border: "#e3e0d8", "control-boundary": "#7a8589", text: "#1a1f22", muted: "#5f6b70", primary: "#0e6170", "primary-hover": "#0b4f5b", "primary-pressed": "#083e48", "primary-content": "#ffffff", "primary-soft": "#e3f2f3", plum: "#7a5aa6", "mono-1": "#0e6170", "mono-2": "#7a5aa6", "mono-3": "#7d5f27", "mono-4": "#4d6b57" });
     expect(dark).toMatchObject({ canvas: "#0d1316", surface: "#141b1f", "surface-subtle": "#1b2428", border: "#2a353b", "control-boundary": "#6b7c84", text: "#f2f4f3", muted: "#9aa8ad", primary: "#4fc3cf", "primary-hover": "#7dd6de", "primary-pressed": "#a8e5ea", "primary-content": "#0d1316", "primary-soft": "#0f2e33", plum: "#b9a3e0", "mono-1": "#4fc3cf", "mono-2": "#b9a3e0", "mono-3": "#e0b872", "mono-4": "#9cc9a9" });
   });
 
@@ -147,7 +147,7 @@ Replace the first twelve lines of the `:root, [data-theme="fintrack-light"]` blo
   --surface: #ffffff;
   --surface-subtle: #eeece6;
   --border: #e3e0d8;
-  --control-boundary: #7f8a8f;
+  --control-boundary: #7a8589;
   --text: #1a1f22;
   --muted: #5f6b70;
   --primary: #0e6170;
