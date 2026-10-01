@@ -1,4 +1,4 @@
-import { boolean, check, pgSchema, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, pgSchema, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Financial data lives in `fintrack`, which is never exposed through the Supabase Data API.
@@ -31,4 +31,20 @@ export const keepaliveProbe = ops.table(
     label: text("label").notNull(),
   },
   (table) => [check("keepalive_probe_single_row_check", sql`${table.id} = 1`)],
+);
+
+/**
+ * One row per business date on which the Telegram digest was sent (PRD v0.20 P6:
+ * at most one per day). Operational, not financial; excluded from the export.
+ */
+export const reminderDelivery = fintrack.table(
+  "reminder_delivery",
+  {
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => appOwner.id),
+    businessDate: date("business_date", { mode: "string" }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.ownerId, table.businessDate] })],
 );

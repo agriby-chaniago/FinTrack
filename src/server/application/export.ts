@@ -48,6 +48,7 @@ export const exportedTables = [
 export const excludedTables: Record<string, string> = {
   app_owner: "Supabase Auth UUID binding; identity data never leaves the database (PRD).",
   idempotency_record: "Short-lived API replay cache; it only repeats responses already reflected in the ledger.",
+  reminder_delivery: "Operational log of the dates a Telegram digest was sent; holds no financial data.",
 };
 
 type Row = Record<string, unknown>;
