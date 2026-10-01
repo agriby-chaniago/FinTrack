@@ -23,7 +23,9 @@ import { POST as postSpecial } from "@/app/api/v1/special-expenses/route";
 import { POST as postTransfer } from "@/app/api/v1/transfers/route";
 import { excludedTables, exportedTables } from "@/server/application/export";
 
-import { closeClients, createAuthUser, resetWithConfirmedFixture, testClients, type ConfirmedOwner, type TestUser } from "../helpers/owner";
+import { monthReport, monthReports } from "@/server/application/reports";
+
+import { asOwner, closeClients, createAuthUser, resetWithConfirmedFixture, testClients, type ConfirmedOwner, type TestUser } from "../helpers/owner";
 
 const clients = testClients();
 let user: TestUser;
@@ -127,6 +129,19 @@ describe("locked full-month validation fixture", () => {
     expect(corrected.outflow).toMatchObject({ living: "910000", special: "170000", actualTotal: "1495000" });
     const asSettled = await month("as_settled");
     expect(asSettled.outflow).toMatchObject({ living: "930000", special: "150000", actualTotal: "1495000" });
+  });
+
+  it("monthReports matches monthReport for every month", async () => {
+    const months = ["2021-01", "2021-02", "2021-03"];
+    const now = new Date();
+    const [batch, singles] = await asOwner(clients.runtime, user.id, async (tx, principal) => {
+      const all = await monthReports(tx, principal.ownerId, months, "corrected", now);
+      const each = [];
+      for (const m of months) each.push(await monthReport(tx, principal.ownerId, m, "corrected", now));
+      return [all, each] as const;
+    });
+    expect([...batch.keys()]).toEqual(months);
+    expect(months.map((m) => batch.get(m))).toEqual(singles);
   });
 
   it("builds the dashboard in reading order with tasks and summaries", async () => {

@@ -24,12 +24,95 @@ export type ReportView = "corrected" | "as_settled";
 
 const amount = (value: MinorUnits) => toIdrDecimal(value);
 
+type LegRow = {
+  month: string;
+  kind: string;
+  event_class: string;
+  classification: string | null;
+  role: string | null;
+  account_id: string;
+  category_id: string | null;
+  category_name: string | null;
+  personal: string;
+  original_reserve_inflow: boolean | null;
+};
+
+function emptyLedgerTotals() {
+  return {
+    totals: {
+      monthlyIncome: 0n,
+      otherIncome: 0n,
+      giftIncome: 0n,
+      specialOutflow: 0n,
+      recurringExpense: 0n,
+      otherExpense: 0n,
+      ownershipOutflow: 0n,
+      grossSaved: 0n,
+      netReserveGrowth: 0n,
+      adjustments: 0n,
+    },
+    specialByCategory: new Map<string, { name: string; amount: MinorUnits }>(),
+    specialByAccount: new Map<string, MinorUnits>(),
+  };
+}
+
+type LedgerTotals = ReturnType<typeof emptyLedgerTotals>;
+
+/** Adds one ledger leg to its month's totals; every report classifies legs here. */
+function addLeg({ totals, specialByCategory, specialByAccount }: LedgerTotals, leg: LegRow, reserve: string) {
+  const p = BigInt(leg.personal);
+  if (leg.event_class === "ADJUSTMENT") {
+    totals.adjustments += p;
+    return; // never income, expense, or reserve growth
+  }
+  if (leg.account_id === reserve) totals.netReserveGrowth += p;
+  switch (leg.event_class) {
+    case "MONTHLY_INCOME":
+      totals.monthlyIncome += p;
+      break;
+    case "OTHER_INCOME":
+      totals.otherIncome += p;
+      break;
+    case "SPECIAL_EXPENSE": {
+      totals.specialOutflow -= p;
+      const category = specialByCategory.get(leg.category_id!) ?? { name: leg.category_name!, amount: 0n };
+      category.amount -= p;
+      specialByCategory.set(leg.category_id!, category);
+      specialByAccount.set(leg.account_id, (specialByAccount.get(leg.account_id) ?? 0n) - p);
+      break;
+    }
+    case "RECURRING_EXPENSE":
+      totals.recurringExpense -= p;
+      break;
+    case "OTHER_EXPENSE":
+      totals.otherExpense -= p;
+      break;
+    case "EXTERNAL_MOVEMENT":
+      if (leg.classification === "OTHER_GIFT_INCOME") totals.giftIncome += p;
+      if (leg.classification === "OWNERSHIP_OUTFLOW") totals.ownershipOutflow -= p;
+      break;
+    case "PERSONAL_TRANSFER": {
+      if (leg.account_id !== reserve) break;
+      // Gross saved counts personal components flowing into the reserve, net of their corrections.
+      const intoReserve =
+        leg.kind === "CORRECTION_POSTING" ? leg.original_reserve_inflow === true : leg.role === "REVERSAL" ? p < 0n : p > 0n;
+      if (intoReserve) totals.grossSaved += p;
+      break;
+    }
+  }
+}
+
+const monthBounds = (month: string) => ({ first: `${month}-01`, last: `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}` });
+
 /**
- * Recorded ledger totals for a business-date range, classified once for every
- * report (month report and the Beranda summary share this function). Living
- * expense is not here: it comes from settlements.
+ * Recorded ledger totals per calendar month, classified once for every report
+ * (month reports and the Beranda summary share this function), with one query
+ * for all requested months. Living expense is not here: it comes from settlements.
  */
-async function ledgerTotals(tx: OwnerTx, ownerId: string, first: string, last: string, reserve: string, view: ReportView) {
+async function ledgerTotalsByMonth(tx: OwnerTx, ownerId: string, months: string[], reserve: string, view: ReportView): Promise<Map<string, LedgerTotals>> {
+  const sorted = [...months].sort();
+  const { first } = monthBounds(sorted[0]);
+  const { last } = monthBounds(sorted[sorted.length - 1]);
   // As-settled: drop settled-history corrections and records added to a settled range after its settlement.
   const asSettledFilter =
     view === "as_settled"
@@ -40,18 +123,8 @@ async function ledgerTotals(tx: OwnerTx, ownerId: string, first: string, last: s
             and e.effective_business_date between s.start_date and s.end_date and e.recorded_at > s.settled_at)`
       : sql``;
 
-  const legs = await sqlRows<{
-    kind: string;
-    event_class: string;
-    classification: string | null;
-    role: string | null;
-    account_id: string;
-    category_id: string | null;
-    category_name: string | null;
-    personal: string;
-    original_reserve_inflow: boolean | null;
-  }>(tx, sql`
-    select e.kind, e.event_class, e.reporting_classification as classification, e.correction_role as role,
+  const legs = await sqlRows<LegRow>(tx, sql`
+    select to_char(e.effective_business_date, 'YYYY-MM') as month, e.kind, e.event_class, e.reporting_classification as classification, e.correction_role as role,
            l.account_id, e.category_id, c.display_name as category_name,
            (l.physical_effect_minor - l.external_effect_minor)::text as personal,
            (select sum(o.physical_effect_minor - o.external_effect_minor) > 0 from fintrack.ledger_leg o
@@ -63,74 +136,19 @@ async function ledgerTotals(tx: OwnerTx, ownerId: string, first: string, last: s
       and e.effective_business_date between ${first}::date and ${last}::date
       and e.event_class <> 'LIVING' ${asSettledFilter}`);
 
-  const totals = {
-    monthlyIncome: 0n,
-    otherIncome: 0n,
-    giftIncome: 0n,
-    specialOutflow: 0n,
-    recurringExpense: 0n,
-    otherExpense: 0n,
-    ownershipOutflow: 0n,
-    grossSaved: 0n,
-    netReserveGrowth: 0n,
-    adjustments: 0n,
-  };
-  const specialByCategory = new Map<string, { name: string; amount: MinorUnits }>();
-  const specialByAccount = new Map<string, MinorUnits>();
-
+  const byMonth = new Map(sorted.map((month) => [month, emptyLedgerTotals()] as const));
   for (const leg of legs) {
-    const p = BigInt(leg.personal);
-    if (leg.event_class === "ADJUSTMENT") {
-      totals.adjustments += p;
-      continue; // never income, expense, or reserve growth
-    }
-    if (leg.account_id === reserve) totals.netReserveGrowth += p;
-    switch (leg.event_class) {
-      case "MONTHLY_INCOME":
-        totals.monthlyIncome += p;
-        break;
-      case "OTHER_INCOME":
-        totals.otherIncome += p;
-        break;
-      case "SPECIAL_EXPENSE": {
-        totals.specialOutflow -= p;
-        const category = specialByCategory.get(leg.category_id!) ?? { name: leg.category_name!, amount: 0n };
-        category.amount -= p;
-        specialByCategory.set(leg.category_id!, category);
-        specialByAccount.set(leg.account_id, (specialByAccount.get(leg.account_id) ?? 0n) - p);
-        break;
-      }
-      case "RECURRING_EXPENSE":
-        totals.recurringExpense -= p;
-        break;
-      case "OTHER_EXPENSE":
-        totals.otherExpense -= p;
-        break;
-      case "EXTERNAL_MOVEMENT":
-        if (leg.classification === "OTHER_GIFT_INCOME") totals.giftIncome += p;
-        if (leg.classification === "OWNERSHIP_OUTFLOW") totals.ownershipOutflow -= p;
-        break;
-      case "PERSONAL_TRANSFER": {
-        if (leg.account_id !== reserve) break;
-        // Gross saved counts personal components flowing into the reserve, net of their corrections.
-        const intoReserve =
-          leg.kind === "CORRECTION_POSTING" ? leg.original_reserve_inflow === true : leg.role === "REVERSAL" ? p < 0n : p > 0n;
-        if (intoReserve) totals.grossSaved += p;
-        break;
-      }
-    }
+    const bucket = byMonth.get(leg.month);
+    if (bucket) addLeg(bucket, leg, reserve);
   }
-
-  return { totals, specialByCategory, specialByAccount };
+  return byMonth;
 }
 
 /** Beranda's month-to-date reserve and special-expense figures, without the full month report. */
 export async function monthLedgerSummary(tx: OwnerTx, ownerId: string, month: string) {
   if (!isCycleKey(month)) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
-  const first = `${month}-01`;
-  const last = `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}`;
   const reserve = await reserveAccountId(tx, ownerId);
-  const { totals } = await ledgerTotals(tx, ownerId, first, last, reserve, "corrected");
+  const { totals } = (await ledgerTotalsByMonth(tx, ownerId, [month], reserve, "corrected")).get(month)!;
   return {
     month,
     reserve: { accountId: reserve, grossSaved: amount(totals.grossSaved), netGrowth: amount(totals.netReserveGrowth) },
@@ -139,14 +157,16 @@ export async function monthLedgerSummary(tx: OwnerTx, ownerId: string, month: st
 }
 
 /**
- * Calendar-month report. Events sit on their actual business dates; DANA
- * living expense is allocated with CALENDAR_DAY_PRORATA_V1. The as-settled
- * view ignores every change made to settled history after settlement.
+ * Calendar-month reports for several months with one load of every input.
+ * Events sit on their actual business dates; DANA living expense is allocated
+ * with CALENDAR_DAY_PRORATA_V1. The as-settled view ignores every change made
+ * to settled history after settlement.
  */
-export async function monthReport(tx: OwnerTx, ownerId: string, month: string, view: ReportView, now: Date) {
-  if (!isCycleKey(month)) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
-  const first = `${month}-01`;
-  const last = `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}`;
+async function loadMonthReports(tx: OwnerTx, ownerId: string, requested: string[], view: ReportView, now: Date) {
+  if (requested.length === 0 || requested.some((m) => !isCycleKey(m))) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
+  const months = [...new Set(requested)].sort();
+  const { first } = monthBounds(months[0]);
+  const { last } = monthBounds(months[months.length - 1]);
   const today = businessDateOf(now);
   const reserve = await reserveAccountId(tx, ownerId);
   const rule = await dailyRuleFor(tx, ownerId);
@@ -159,10 +179,10 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
         .orderBy(asc(settlement.startDate))
     : [];
 
-  const { totals, specialByCategory, specialByAccount } = await ledgerTotals(tx, ownerId, first, last, reserve, view);
+  const ledger = await ledgerTotalsByMonth(tx, ownerId, months, reserve, view);
 
-  // Daily income per business date in the month.
-  let dailyIncome = 0n;
+  // Daily income per business date, added to its own month.
+  const dailyByMonth = new Map<string, MinorUnits>(months.map((m) => [m, 0n]));
   if (rule) {
     const context = await dailyRuleContext(tx, ownerId, rule.id);
     const current = dailyIncomeBetween({ amount: rule.amountMinor, startDate: rule.effectiveStartDate }, context.transitions, context.overrides, first, last < today ? last : today);
@@ -172,55 +192,81 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
         for (const day of (row.snapshot as { days: { date: string; amount: string }[] }).days) snapshotDays.set(day.date, parseIdrDecimal(day.amount));
       }
     }
-    for (const day of current.days) dailyIncome += snapshotDays.get(day.date) ?? day.amount;
+    for (const day of current.days) {
+      const month = cycleKeyOf(day.date);
+      const sum = dailyByMonth.get(month);
+      if (sum !== undefined) dailyByMonth.set(month, sum + (snapshotDays.get(day.date) ?? day.amount));
+    }
   }
 
   // Living expense: prorata of each settlement touching the month.
   const correctedLiving = view === "as_settled" ? null : await correctedLivingExpenses(tx, ownerId);
-  let living = 0n;
-  const livingParts: { settlementId: string; startDate: string; endDate: string; allocated: string }[] = [];
-  for (const row of settledRows) {
-    if (row.endDate < first || row.startDate > last) continue;
-    const total = correctedLiving ? (correctedLiving.get(row.id) ?? 0n) : row.livingExpenseMinor!;
-    const share = prorataByMonth(total, row.startDate, row.endDate).get(month) ?? 0n;
-    living += share;
-    livingParts.push({ settlementId: row.id, startDate: row.startDate, endDate: row.endDate, allocated: amount(share) });
-  }
 
-  const coverage = rule
-    ? monthCompleteness(month, rule.effectiveStartDate, settledRows.map((r) => ({ startDate: r.startDate, endDate: r.endDate })), today)
-    : null;
+  const reports = new Map(
+    months.map((month) => {
+      const bounds = monthBounds(month);
+      const { totals, specialByCategory, specialByAccount } = ledger.get(month)!;
+      let living = 0n;
+      const livingParts: { settlementId: string; startDate: string; endDate: string; allocated: string }[] = [];
+      for (const row of settledRows) {
+        if (row.endDate < bounds.first || row.startDate > bounds.last) continue;
+        const total = correctedLiving ? (correctedLiving.get(row.id) ?? 0n) : row.livingExpenseMinor!;
+        const share = prorataByMonth(total, row.startDate, row.endDate).get(month) ?? 0n;
+        living += share;
+        livingParts.push({ settlementId: row.id, startDate: row.startDate, endDate: row.endDate, allocated: amount(share) });
+      }
 
-  const totalIncome = dailyIncome + totals.monthlyIncome + totals.otherIncome + totals.giftIncome;
-  const actualTotalOutflow = living + totals.specialOutflow + totals.recurringExpense + totals.otherExpense + totals.ownershipOutflow;
+      const coverage = rule
+        ? monthCompleteness(month, rule.effectiveStartDate, settledRows.map((r) => ({ startDate: r.startDate, endDate: r.endDate })), today)
+        : null;
 
-  return {
-    month,
-    view,
-    completeness: coverage?.completeness ?? "SEMENTARA",
-    coverage,
-    income: {
-      total: amount(totalIncome),
-      daily: amount(dailyIncome),
-      monthly: amount(totals.monthlyIncome),
-      other: amount(totals.otherIncome),
-      gift: amount(totals.giftIncome),
-    },
-    outflow: {
-      actualTotal: amount(actualTotalOutflow),
-      /** Estimasi alokasi biaya hidup dari settlement mingguan (≈). */
-      living: amount(living),
-      livingAllocations: livingParts,
-      special: amount(totals.specialOutflow),
-      specialByCategory: [...specialByCategory].map(([id, c]) => ({ categoryId: id, name: c.name, amount: amount(c.amount) })),
-      specialByAccount: [...specialByAccount].map(([accountId, value]) => ({ accountId, amount: amount(value) })),
-      recurring: amount(totals.recurringExpense),
-      other: amount(totals.otherExpense),
-      ownership: amount(totals.ownershipOutflow),
-    },
-    reserve: { accountId: reserve, grossSaved: amount(totals.grossSaved), netGrowth: amount(totals.netReserveGrowth) },
-    unexplainedAdjustments: amount(totals.adjustments),
-  };
+      const dailyIncome = dailyByMonth.get(month)!;
+      const totalIncome = dailyIncome + totals.monthlyIncome + totals.otherIncome + totals.giftIncome;
+      const actualTotalOutflow = living + totals.specialOutflow + totals.recurringExpense + totals.otherExpense + totals.ownershipOutflow;
+
+      const report = {
+        month,
+        view,
+        completeness: coverage?.completeness ?? "SEMENTARA",
+        coverage,
+        income: {
+          total: amount(totalIncome),
+          daily: amount(dailyIncome),
+          monthly: amount(totals.monthlyIncome),
+          other: amount(totals.otherIncome),
+          gift: amount(totals.giftIncome),
+        },
+        outflow: {
+          actualTotal: amount(actualTotalOutflow),
+          /** Estimasi alokasi biaya hidup dari settlement mingguan (≈). */
+          living: amount(living),
+          livingAllocations: livingParts,
+          special: amount(totals.specialOutflow),
+          specialByCategory: [...specialByCategory].map(([id, c]) => ({ categoryId: id, name: c.name, amount: amount(c.amount) })),
+          specialByAccount: [...specialByAccount].map(([accountId, value]) => ({ accountId, amount: amount(value) })),
+          recurring: amount(totals.recurringExpense),
+          other: amount(totals.otherExpense),
+          ownership: amount(totals.ownershipOutflow),
+        },
+        reserve: { accountId: reserve, grossSaved: amount(totals.grossSaved), netGrowth: amount(totals.netReserveGrowth) },
+        unexplainedAdjustments: amount(totals.adjustments),
+      };
+      return [month, report] as const;
+    }),
+  );
+  return { reports, rule, settledRows, correctedLiving };
+}
+
+export type MonthReport = NonNullable<ReturnType<Awaited<ReturnType<typeof loadMonthReports>>["reports"]["get"]>>;
+
+export async function monthReports(tx: OwnerTx, ownerId: string, months: string[], view: ReportView, now: Date): Promise<Map<string, MonthReport>> {
+  return (await loadMonthReports(tx, ownerId, months, view, now)).reports;
+}
+
+/** One calendar month (the single-month form of `monthReports`). */
+export async function monthReport(tx: OwnerTx, ownerId: string, month: string, view: ReportView, now: Date): Promise<MonthReport> {
+  if (!isCycleKey(month)) throw new ApiError("VALIDATION_FAILED", { issues: ["INVALID_MONTH"] });
+  return (await monthReports(tx, ownerId, [month], view, now)).get(month)!;
 }
 
 export type DashboardTask =
