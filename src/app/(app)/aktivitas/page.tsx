@@ -7,6 +7,7 @@ import { listActivity } from "@/server/application/activity";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
 import { entryAmount, entryTitle, statusTag } from "./describe";
+import { AktivitasTabs } from "./tabs";
 
 export default async function AktivitasPage({ searchParams }: { searchParams: Promise<{ before?: string }> }) {
   const { before: cursor } = await searchParams;
@@ -22,6 +23,7 @@ export default async function AktivitasPage({ searchParams }: { searchParams: Pr
   return (
     <div>
       <PageHeader title="Aktivitas" description="Semua catatan, urut dari yang terakhir dicatat. Catatan tidak pernah dihapus; koreksi tampil sebagai catatan baru." />
+      <AktivitasTabs active="riwayat" />
       {items.length === 0 ? (
         <EmptyState title="Belum ada aktivitas" />
       ) : (
