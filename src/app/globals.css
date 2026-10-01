@@ -82,7 +82,7 @@
   --canvas: #f6f5f1;
   --surface: #ffffff;
   --surface-subtle: #eeece6;
-  --border: #e3e0d8;
+  --line: #e3e0d8;
   --control-boundary: #7a8589;
   --text: #1a1f22;
   --muted: #5f6b70;
@@ -115,7 +115,7 @@
     --canvas: #0d1316;
     --surface: #141b1f;
     --surface-subtle: #1b2428;
-    --border: #2a353b;
+    --line: #2a353b;
     --control-boundary: #6b7c84;
     --text: #f2f4f3;
     --muted: #9aa8ad;
@@ -148,7 +148,7 @@
   --canvas: #0d1316;
   --surface: #141b1f;
   --surface-subtle: #1b2428;
-  --border: #2a353b;
+  --line: #2a353b;
   --control-boundary: #6b7c84;
   --text: #f2f4f3;
   --muted: #9aa8ad;
@@ -180,7 +180,7 @@
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-surface-subtle: var(--surface-subtle);
-  --color-border: var(--border);
+  --color-border: var(--line);
   --color-control: var(--control-boundary);
   --color-text: var(--text);
   --color-muted: var(--muted);

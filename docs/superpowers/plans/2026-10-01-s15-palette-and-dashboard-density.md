@@ -78,8 +78,8 @@ function contrast(a: string, b: string): number {
 
 describe("Petrol & Paper tokens", () => {
   it("uses the PRD values", () => {
-    expect(light).toMatchObject({ canvas: "#f6f5f1", surface: "#ffffff", "surface-subtle": "#eeece6", border: "#e3e0d8", "control-boundary": "#7a8589", text: "#1a1f22", muted: "#5f6b70", primary: "#0e6170", "primary-hover": "#0b4f5b", "primary-pressed": "#083e48", "primary-content": "#ffffff", "primary-soft": "#e3f2f3", plum: "#7a5aa6", "mono-1": "#0e6170", "mono-2": "#7a5aa6", "mono-3": "#7d5f27", "mono-4": "#4d6b57" });
-    expect(dark).toMatchObject({ canvas: "#0d1316", surface: "#141b1f", "surface-subtle": "#1b2428", border: "#2a353b", "control-boundary": "#6b7c84", text: "#f2f4f3", muted: "#9aa8ad", primary: "#4fc3cf", "primary-hover": "#7dd6de", "primary-pressed": "#a8e5ea", "primary-content": "#0d1316", "primary-soft": "#0f2e33", plum: "#b9a3e0", "mono-1": "#4fc3cf", "mono-2": "#b9a3e0", "mono-3": "#e0b872", "mono-4": "#9cc9a9" });
+    expect(light).toMatchObject({ canvas: "#f6f5f1", surface: "#ffffff", "surface-subtle": "#eeece6", line: "#e3e0d8", "control-boundary": "#7a8589", text: "#1a1f22", muted: "#5f6b70", primary: "#0e6170", "primary-hover": "#0b4f5b", "primary-pressed": "#083e48", "primary-content": "#ffffff", "primary-soft": "#e3f2f3", plum: "#7a5aa6", "mono-1": "#0e6170", "mono-2": "#7a5aa6", "mono-3": "#7d5f27", "mono-4": "#4d6b57" });
+    expect(dark).toMatchObject({ canvas: "#0d1316", surface: "#141b1f", "surface-subtle": "#1b2428", line: "#2a353b", "control-boundary": "#6b7c84", text: "#f2f4f3", muted: "#9aa8ad", primary: "#4fc3cf", "primary-hover": "#7dd6de", "primary-pressed": "#a8e5ea", "primary-content": "#0d1316", "primary-soft": "#0f2e33", plum: "#b9a3e0", "mono-1": "#4fc3cf", "mono-2": "#b9a3e0", "mono-3": "#e0b872", "mono-4": "#9cc9a9" });
   });
 
   it("keeps the system-dark block identical to the explicit dark theme", () => {
