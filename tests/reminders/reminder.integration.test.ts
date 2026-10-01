@@ -2,6 +2,7 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { deliverDailyDigest } from "@/server/application/reminders";
 import { sqlRows } from "@/server/db/rows";
 
 import { closeClients, createAuthUser, resetWithConfirmedFixture, testClients, type TestUser } from "../helpers/owner";
@@ -35,5 +36,45 @@ describe("reminder owner lookup and delivery log", () => {
   it("keeps delivery rows invisible without owner claims", async () => {
     const rows = await sqlRows<{ n: string }>(clients.runtime, sql`select count(*)::text as n from fintrack.reminder_delivery`);
     expect(rows[0].n).toBe("0");
+  });
+});
+
+describe("deliverDailyDigest", () => {
+  const origin = "https://fintrack.example";
+  const now = new Date();
+
+  it("sends today's tasks once and records the business date", async () => {
+    const sent: string[] = [];
+    expect(await deliverDailyDigest(clients.runtime, now, origin, async (text) => void sent.push(text))).toBe("SENT");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain("Konfirmasi income bulanan");
+    expect(sent[0]).not.toContain("Rp");
+  });
+
+  it("a second run the same day sends nothing", async () => {
+    const sent: string[] = [];
+    expect(await deliverDailyDigest(clients.runtime, now, origin, async (text) => void sent.push(text))).toBe("ALREADY_SENT");
+    expect(sent).toHaveLength(0);
+  });
+
+  it("a failed send leaves no record", async () => {
+    const tomorrow = new Date(now.getTime() + 86_400_000);
+    await expect(
+      deliverDailyDigest(clients.runtime, tomorrow, origin, async () => {
+        throw new Error("telegram down");
+      }),
+    ).rejects.toThrow("telegram down");
+    const sent: string[] = [];
+    expect(await deliverDailyDigest(clients.runtime, tomorrow, origin, async (text) => void sent.push(text))).toBe("SENT");
+    expect(sent).toHaveLength(1);
+  });
+
+  it("no bound owner", async () => {
+    await clients.admin`update fintrack.app_owner set auth_user_id = null`;
+    try {
+      expect(await deliverDailyDigest(clients.runtime, now, origin, async () => {})).toBe("NO_OWNER");
+    } finally {
+      await clients.admin`update fintrack.app_owner set auth_user_id = ${user.id}`;
+    }
   });
 });
