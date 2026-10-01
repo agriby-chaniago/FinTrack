@@ -1536,6 +1536,7 @@ Membuka ulang: `Tidak ada top-level page terpisah untuk report` pada `Informatio
 - Status completeness bulan ditampilkan seperti pada laporan bulanan yang sudah ada
 - Bagian tren memuat chart P4: line average daily living cost per settlement dan bar reserve growth/outflow per bulan
 - Halaman hanya membaca dan masuk query budget dengan jumlah query yang tidak tumbuh terhadap panjang history
+- Pelaksanaan S17: bulan dipilih lewat `?bulan=YYYY-MM` (default dan maksimum bulan berjalan; nilai tidak valid kembali ke bulan berjalan); delta dibanding bulan sebelumnya dianggap nol sebelum income harian dimulai; batang bulanan memakai enam bulan sampai bulan terpilih; grafik memakai font Geist dan warna token theme
 
 #### P6 — Pengingat Telegram
 
@@ -2797,4 +2798,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.20 · Production active · Slices 0–16 implemented_
+_FinTrack PRD v0.20 · Production active · Slices 0–17 implemented_

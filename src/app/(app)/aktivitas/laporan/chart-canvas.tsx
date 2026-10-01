@@ -14,6 +14,8 @@ const compact = new Intl.NumberFormat("id-ID", { style: "currency", currency: "I
 const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 function config({ kind, labels, series, unit }: TrendChartProps): ChartConfiguration {
+  // Geist is the only typeface (PRD: Typography), on the canvas too.
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
   const colors = [token("--primary"), token("--plum")];
   const muted = token("--muted");
   const line = token("--line");
