@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
 import { Checkbox, DateField, FormErrors, SubmitBar, SubmitButton } from "@/components/form";
-import { Swap } from "@/components/motion";
+import { Reveal, Swap } from "@/components/motion";
 import { Alert, buttonClass, Card, Money, SectionTitle } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 import { formatDate, formatDateTime, jakartaInputValue, jakartaIso } from "@/lib/format";
@@ -233,18 +233,20 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
       </Card>
 
       {draft.preview ? (
-        <Card>
-          <SectionTitle>Hasil rekonstruksi</SectionTitle>
-          <div className="space-y-2">
-            {draft.warnings.map((code) => (
-              <Alert key={code} tone="review" title={settlementWarning[code]?.title ?? code}>
-                {settlementWarning[code]?.body}
-              </Alert>
-            ))}
-          </div>
-          <ReconstructionList values={draft.preview} />
-          <p className="mt-3 text-sm text-muted">Setelah diselesaikan, settlement tidak dapat diubah. Koreksi berikutnya tampil sebagai nilai setelah koreksi.</p>
-        </Card>
+        <Reveal revealKey={String(draft.version)}>
+          <Card>
+            <SectionTitle>Hasil rekonstruksi</SectionTitle>
+            <div className="space-y-2">
+              {draft.warnings.map((code) => (
+                <Alert key={code} tone="review" title={settlementWarning[code]?.title ?? code}>
+                  {settlementWarning[code]?.body}
+                </Alert>
+              ))}
+            </div>
+            <ReconstructionList values={draft.preview} />
+            <p className="mt-3 text-sm text-muted">Setelah diselesaikan, settlement tidak dapat diubah. Koreksi berikutnya tampil sebagai nilai setelah koreksi.</p>
+          </Card>
+        </Reveal>
       ) : null}
 
       <FormErrors errors={settle.error ?? remove.error} />
