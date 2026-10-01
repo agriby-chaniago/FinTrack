@@ -155,6 +155,12 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S12 | UI | S11 | App shell; dashboard; theme; aksesibilitas; mutation menunggu server | — |
 | S13 | Portability + operations | S11 | Export ZIP; manifest PWA; backup R2 + restore drill; keepalive aktif | Akun Cloudflare R2, SMTP, project production |
 | S14 | Uang tunai dalam settlement pool | S7, S8 | Aktivasi dari settlement; dompet dihitung tiap settlement; transfer internal pool netral; target reserve dari DANA saja; koreksi settled dan replacement dompet; e2e UI | — |
+| S15 | Palette `Petrol & Paper` + kepadatan Beranda | S12 | Token baru lolos kontras; monogram, progress bar, strip tujuh hari, kartu kelayakan chart; query budget Beranda tidak naik | PRD v0.20 P1, P2, P4 |
+| S16 | Motion + perapian form | S15 | `LazyMotion` pada surface P3; reduced-motion; form memakai satu pola submit | PRD v0.20 P3 |
+| S17 | Halaman Laporan + Chart.js | S15 | `/aktivitas/laporan`; chart lazy hanya ≥ `md` dan setelah threshold; text summary; query budget | PRD v0.20 P4, P5 |
+| S18 | Pengingat Telegram | S12 | Digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | PRD v0.20 P6; token bot dan chat id dari pemilik |
+
+Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`.
 
 Slice boleh dimulai hanya ketika seluruh item pada kolom "Diblokir oleh" sudah berupa keputusan LOCKED di PRD.
 

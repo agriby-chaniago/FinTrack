@@ -8,8 +8,8 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | --- | --- |
 | **Pemilik produk** | Agriby Chaniago |
 | **Status** | Draft / discovery |
-| **Versi dokumen** | 0.18 |
-| **Terakhir diperbarui** | 30 September 2026 (v0.19) |
+| **Versi dokumen** | 0.20 |
+| **Terakhir diperbarui** | 1 Oktober 2026 (v0.20) |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
 | **Target berikutnya** | Aplikasi mobile dengan backend yang sama |
@@ -1480,6 +1480,84 @@ Line chart dipakai untuk average daily living cost; bar chart untuk reserve grow
 - Discrepancy, negative personal, dan shortfall selalu memakai icon, explicit text, serta signed amount—bukan warna saja
 - Theme, chart, disabled, loading, skeleton, focus, dan semantic states mempunyai token yang valid pada light dan dark mode
 
+### Visual refresh dan fitur pasca-MVP (v0.20)
+
+Status: **PROPOSED** (1 Oktober 2026), menunggu persetujuan pemilik. Setelah MVP dipakai, pemilik menilai UI terlalu kosong dan palette terlalu datar, belum ada animasi, dan belum ada pengingat. Bagian ini membuka ulang beberapa keputusan **LOCKED**; setiap keputusan yang dibuka ulang disebut eksplisit. Sampai disetujui, keputusan LOCKED lama tetap berlaku.
+
+#### P1 — Palette `Petrol & Paper`
+
+Mengganti core palette pada `Theme dan palette`; konsep `Quiet Ledger`, semantic color, dan aturan non-warna tetap sama. Canvas kertas hangat menggantikan abu-abu dingin, dan primary petrol menggantikan indigo. Petrol dipilih karena cukup berbeda dari hijau income, biru calculated, kuning review, merah discrepancy, dan oranye outflow.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| **Canvas** | `#F6F5F1` | `#0D1316` |
+| **Surface** | `#FFFFFF` | `#141B1F` |
+| **Surface subtle/elevated** | `#EEECE6` | `#1B2428` |
+| **Border** | `#E3E0D8` | `#2A353B` |
+| **Interactive control boundary** | `#7F8A8F` | `#6B7C84` |
+| **Text** | `#1A1F22` | `#F2F4F3` |
+| **Muted text** | `#5F6B70` | `#9AA8AD` |
+| **Primary petrol** | `#0E6170` | `#4FC3CF` |
+| **Primary hover** | `#0B4F5B` | `#7DD6DE` |
+| **Primary pressed** | `#083E48` | `#A8E5EA` |
+| **Primary content** | `#FFFFFF` | `#0D1316` |
+| **Soft primary** | `#E3F2F3` | `#0F2E33` |
+| **Secondary accent (plum)** | `#7A5AA6` | `#B9A3E0` |
+
+Kontras terhitung (WCAG): text ≥15:1, muted ≥4.65:1 pada seluruh surface, control boundary ≥3.24:1, primary content pada primary 7.09:1 (light) dan 8.95:1 (dark), primary text pada soft primary ≥6.16:1. Secondary accent hanya untuk series chart kedua dan aksen dekoratif kecil, tidak untuk teks berukuran normal di atas canvas tanpa pengecekan ulang. Disabled state dan semantic pairs tidak berubah.
+
+Membuka ulang: tabel core palette pada `Theme dan palette` dan baris superseded `Custom Quiet Ledger themes dengan neutral surfaces dan indigo accent`.
+
+#### P2 — Kepadatan visual tanpa dekorasi
+
+Ditambahkan elemen yang membawa informasi, bukan ilustrasi:
+
+- Headline `Personal cash tercatat` berada pada panel soft primary
+- Setiap account card memiliki tile monogram (huruf awal display name) dengan warna aksen. Warnanya diambil berurutan dari palette aksen FinTrack berdasarkan urutan account, bukan dari brand provider. Palette aksen: petrol, plum, ochre `#7D5F27`/`#E0B872`, dan sage `#4D6B57`/`#9CC9A9` (light/dark)
+- Setiap section title memiliki icon
+- Progress bar untuk: fulfillment target transfer, kewajiban BCA yang sudah resolved (`3/5 selesai`), dan kelayakan chart (`1/4 settlement`). Progress bar selalu disertai teks angka dan bukan chart
+- Strip tujuh hari income DANA minggu berjalan: satu penanda per hari dengan state diterima, override, paused, atau belum terjadi; setiap state memakai bentuk/icon dan label teks, bukan warna saja
+- Empty state memakai icon kecil dan satu kalimat next action
+
+Gradient dominan, glassmorphism, glow, dan ilustrasi besar tetap tidak dipakai.
+
+#### P3 — Motion diadopsi
+
+Motion (sudah PREFERRED) dipasang memakai `LazyMotion` + `domAnimation` dan hanya untuk surface berikut: item `Perlu dilakukan` keluar setelah selesai dan sisa daftar bergeser (layout), transisi langkah onboarding dan settlement, sheet/popover `+ Catat`, expand/collapse detail, dan toast sukses. Hover/pressed, progress bar, dan munculnya konten setelah skeleton memakai CSS transition. Durasi dan larangan pada `Motion` tetap berlaku, termasuk larangan count-up balance dan aturan `prefers-reduced-motion`.
+
+#### P4 — Chart dengan teaser kelayakan
+
+Threshold chart tetap (empat settlement DANA atau tiga BCA cycle). Perubahan:
+
+- Sebelum threshold, tampil kartu kelayakan berisi progress `n/4` atau `n/3` dan kalimat kapan chart muncul. Chart.js tidak dimuat
+- Pada layar di bawah breakpoint `md`, chart tidak dirender dan Chart.js tidak dimuat; yang tampil adalah accessible text summary/data list yang memang wajib ada
+- Chart berada di halaman Laporan (P5), bukan di Beranda. Beranda tetap tanpa chart
+
+#### P5 — Halaman Laporan
+
+Membuka ulang: `Tidak ada top-level page terpisah untuk report` pada `Information architecture` dan `Separate reports page` pada `Tidak termasuk MVP`.
+
+- Route `/aktivitas/laporan`, dibuka melalui segmented control `Riwayat | Laporan` di Aktivitas. Empat primary destinations tidak berubah
+- Isi per calendar month (default bulan berjalan, dapat dipilih): income, living expense dengan `CALENDAR_DAY_PRORATA_V1`, pengeluaran khusus per kategori, pertumbuhan reserve, dan selisih terhadap bulan sebelumnya dalam signed amount
+- Status completeness bulan ditampilkan seperti pada laporan bulanan yang sudah ada
+- Bagian tren memuat chart P4: line average daily living cost per settlement dan bar reserve growth/outflow per bulan
+- Halaman hanya membaca dan masuk query budget dengan jumlah query yang tidak tumbuh terhadap panjang history
+
+#### P6 — Pengingat Telegram
+
+Membuka ulang: `Push/email reminders dan background notifications` pada `Tidak termasuk MVP`.
+
+- Satu bot Telegram satu arah. Bot tidak memproses pesan masuk dan tidak memiliki webhook
+- Pesan hanya dikirim ke satu `TELEGRAM_CHAT_ID` milik pemilik. Token bot dan chat id disimpan sebagai secret environment, tidak pernah di repository atau log
+- Digest harian pukul 08:00 `Asia/Jakarta`, dipicu GitHub Actions ke internal route bertoken seperti keepalive
+- Pesan hanya dikirim jika ada task `Perlu dilakukan`; isinya judul task dan link ke FinTrack, tanpa nominal, saldo, atau nama dana titipan
+- Maksimal satu digest per tanggal bisnis
+- Kegagalan Telegram tidak memengaruhi aplikasi dan tercatat sebagai failure di workflow
+
+#### Tetap ditunda
+
+Forecasting dan investasi tetap **DEFERRED**. Pengingat tidak menjadi notification center.
+
 ## ⚙️ Arsitektur teknis
 
 ### Baseline yang dipilih
@@ -2675,6 +2753,12 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Uang fisik dilacak sebagai account `Tunai` (`CASH`) yang di-settle bersama DANA dalam satu settlement pool; diaktifkan dari settlement, saldo dompet diisi setiap settlement, dan target reserve tetap dari DANA saja (30 September 2026) |
 | **LOCKED** | Production berjalan tanpa daily R2 backup atas keputusan pemilik; bila data hilang, pemilik melakukan setup ulang. Pipeline backup tetap tersedia dan nonaktif (30 September 2026) |
 | **DEFERRED** | Custom SMTP; owner production dibuat langsung di Supabase Dashboard dengan Auto Confirm (30 September 2026) |
+| **PROPOSED** | Palette `Petrol & Paper` menggantikan core palette indigo/abu-abu; semantic color tetap (v0.20, 1 Oktober 2026) |
+| **PROPOSED** | Kepadatan visual informatif: panel headline, monogram account, icon section, progress bar, strip tujuh hari DANA (v0.20) |
+| **PROPOSED** | Motion dipasang dengan `LazyMotion` untuk task list, langkah flow, sheet, expand/collapse, dan toast (v0.20) |
+| **PROPOSED** | Kartu kelayakan chart sebelum threshold; chart tidak dirender di bawah `md` (v0.20) |
+| **PROPOSED** | Halaman Laporan di `/aktivitas/laporan` sebagai tempat chart (v0.20) |
+| **PROPOSED** | Digest pengingat Telegram harian satu arah tanpa nominal (v0.20) |
 
 ### Aturan pemeliharaan dokumen
 
@@ -2687,4 +2771,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.19 · Production active · Slices 0–13 implemented; Slice 14 (Tunai) in progress_
+_FinTrack PRD v0.20 · Production active · Slices 0–14 implemented; v0.20 visual refresh PROPOSED_
