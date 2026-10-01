@@ -51,3 +51,15 @@ For every change that reaches production:
 - Vercel logs show no 5xx for the requests above. Each error response carries an `X-Request-Id`.
 
 Do not record test transactions in production. If a smoke step fails, roll back the deployment in Vercel; migrations are additive, so the previous version keeps working.
+
+## 4. Telegram digest
+
+The daily digest (PRD v0.20 P6) sends the owner the titles of `Perlu dilakukan` at 08:00 `Asia/Jakarta`, at most once per business date, with no amounts. GitHub Actions calls `POST /api/internal/reminders`; the route reads the tasks as the bound owner and records the date before sending.
+
+One-time setup, after migration `0013` is applied to production:
+
+1. **Vercel Production** (all Sensitive): `TELEGRAM_BOT_TOKEN` (from @BotFather), `TELEGRAM_CHAT_ID` (from `getUpdates` after the owner sends `/start` to the bot), and `REMINDER_TOKEN` (a random 32+ character secret). Redeploy so the route sees them.
+2. **GitHub**: secret `FINTRACK_REMINDER_TOKEN` (same value as `REMINDER_TOKEN`), variable `FINTRACK_REMINDER_URL` = `https://<origin>/api/internal/reminders`, then variable `FINTRACK_REMINDER_ENABLED` = `true`.
+3. Run the `Telegram reminder` workflow once by hand. It must end with HTTP 200 and status `SENT` (or `NOTHING_DUE` when nothing is pending). A second manual run the same day answers `ALREADY_SENT`.
+
+To stop the digest, set `FINTRACK_REMINDER_ENABLED` to anything other than `true`. To change the bot or chat, update the Vercel values and redeploy. A failed run (HTTP 502) leaves no record, so the next scheduled run tries again.

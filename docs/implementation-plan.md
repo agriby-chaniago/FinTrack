@@ -158,7 +158,7 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S15 | Palette `Petrol & Paper`, geometri siku, ikon provider, kepadatan Beranda | S12 | Selesai; token baru lolos kontras; radius 0 kecuali radio; ikon BCA (myBCA), DANA, dan Jago; progress bar, strip tujuh hari, kartu kelayakan chart; query budget Beranda tidak naik | — |
 | S16 | Motion + perapian form | S15 | Selesai; `LazyMotion` pada surface P3; reduced-motion; form memakai satu pola submit | — |
 | S17 | Halaman Laporan + Chart.js | S15 | Selesai; `/aktivitas/laporan`; chart lazy hanya ≥ `md` dan setelah threshold; text summary; query budget | — |
-| S18 | Pengingat Telegram | S12 | Digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | Chat id pemilik (pemilik mengirim `/start` ke bot) |
+| S18 | Pengingat Telegram | S12 | Selesai di kode; aktif setelah migration 0013 di production dan secret terpasang; digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | Chat id pemilik (pemilik mengirim `/start` ke bot) |
 
 Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`.
 

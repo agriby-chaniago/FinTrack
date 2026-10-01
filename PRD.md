@@ -1548,6 +1548,7 @@ Membuka ulang: `Push/email reminders dan background notifications` pada `Tidak t
 - Pesan hanya dikirim jika ada task `Perlu dilakukan`; isinya judul task dan link ke FinTrack, tanpa nominal, saldo, atau nama dana titipan
 - Maksimal satu digest per tanggal bisnis
 - Kegagalan Telegram tidak memengaruhi aplikasi dan tercatat sebagai failure di workflow
+- Pelaksanaan S18: route tanpa sesi membuka owner transaction biasa lewat fungsi `fintrack.reminder_owner_auth_user_id()` (SECURITY DEFINER, hanya untuk `fintrack_app`), tanpa `BYPASSRLS`; tanggal kirim dicatat di `fintrack.reminder_delivery` sebelum mengirim, sehingga pengiriman gagal di-rollback dan dicoba lagi pada run berikutnya
 
 #### P7 — Geometri siku (`extra crispy`)
 
@@ -2798,4 +2799,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.20 · Production active · Slices 0–17 implemented_
+_FinTrack PRD v0.20 · Production active · Slices 0–17 implemented; S18 (Telegram digest) ready, waiting for the production migration_
