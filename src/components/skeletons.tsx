@@ -63,7 +63,7 @@ function FieldBlock() {
 export function BerandaSkeleton() {
   return (
     <Loading>
-      <div className="space-y-3">
+      <div className="space-y-3 bg-primary-soft p-5 md:p-6">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-10 w-56" />
         <Skeleton className="h-4 w-72 max-w-full" />

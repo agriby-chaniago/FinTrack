@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AccountTile } from "@/components/account-tile";
 import { Card, LinkButton, Money, PageHeader, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { accountsOverview } from "@/server/application/accounts-overview";
@@ -29,15 +30,18 @@ export default async function AkunPage() {
 
       <section aria-label="Daftar akun">
         <ul className="space-y-3">
-          {overview.accounts.map((account) => (
+          {overview.accounts.map((account, index) => (
             <li key={account.id}>
               <Link href={`/akun/${account.id}`} className="block border border-border bg-surface p-4 hover:border-control md:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{account.displayName}</p>
-                    <p className="text-xs text-muted">
-                      {account.providerName} · {account.purposeLabel}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <AccountTile account={account} index={index} />
+                    <div>
+                      <p className="font-medium">{account.displayName}</p>
+                      <p className="text-xs text-muted">
+                        {account.providerName} · {account.purposeLabel}
+                      </p>
+                    </div>
                   </div>
                   <StatusBadge status={account.status} />
                 </div>

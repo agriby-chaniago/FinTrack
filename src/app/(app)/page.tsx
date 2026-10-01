@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Alert, Card, EmptyState, Icon, Money, Row, SectionTitle, StatusBadge, Tag } from "@/components/ui";
+import { AccountTile } from "@/components/account-tile";
+import { Alert, Card, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
+import { markerLabel, obligationProgress, progressPercent, stripSummary, type StripDay } from "@/lib/dashboard-view";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceTagLabel, settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal, toIdrDecimal } from "@/lib/money";
@@ -25,6 +27,38 @@ function taskView(task: DashboardTask, accountName: (id: string) => string): { h
   }
 }
 
+const markerStyle: Record<StripDay["marker"], string> = {
+  RECEIVED: "bg-primary text-primary-content",
+  ADJUSTED: "border-2 border-plum text-plum",
+  MISSED: "border-2 border-danger-fg text-danger-fg",
+  INACTIVE: "bg-surface-subtle text-muted",
+  UPCOMING: "border-2 border-dashed border-control",
+};
+
+const markerIcon: Partial<Record<StripDay["marker"], IconName>> = { RECEIVED: "check", ADJUSTED: "swap", MISSED: "close", INACTIVE: "minus" };
+
+/** Square day markers for the open DANA period (PRD v0.20 P2); each kind is named, not only colored. */
+function WeekStrip({ days }: { days: StripDay[] }) {
+  return (
+    <div className="space-y-2">
+      <ul aria-label="Income harian minggu berjalan" className="flex justify-between gap-1">
+        {days.map((day) => {
+          const icon = markerIcon[day.marker];
+          return (
+            <li key={day.date} aria-label={`${day.weekday} ${markerLabel[day.marker]}`} className="flex flex-1 flex-col items-center gap-1.5">
+              <span className={`flex size-8 items-center justify-center ${markerStyle[day.marker]}`}>{icon ? <Icon name={icon} className="size-3.5" /> : null}</span>
+              <span aria-hidden="true" className="text-xs text-muted">
+                {day.weekday}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-muted">{stripSummary(days)}</p>
+    </div>
+  );
+}
+
 export default async function BerandaPage() {
   const result = await runAsPageOwner((tx, principal) => dashboard(tx, principal.ownerId, new Date()));
   if (result.status !== "OWNER") redirect("/login");
@@ -34,12 +68,14 @@ export default async function BerandaPage() {
   const dana = data.dana as {
     accountId: string;
     openWeek: { periodStart: string; recognizedIncomeToDate: string } | null;
+    week: { periodStart: string; normalEnd: string; days: StripDay[] } | null;
     latestCompleted: { settlementId: string; startDate: string; endDate: string; livingExpense: string; averagePerDay: string; hasCorrections: boolean } | null;
   } | null;
+  const obligations = data.bca.currentCycle ? obligationProgress(data.bca.currentCycle.obligations) : null;
 
   return (
     <div className="space-y-8">
-      <section aria-labelledby="headline" className="space-y-3">
+      <section aria-labelledby="headline" className="space-y-3 bg-primary-soft p-5 md:p-6">
         <p id="headline" className="text-sm text-muted">
           Personal cash tercatat
         </p>
@@ -60,7 +96,7 @@ export default async function BerandaPage() {
 
       {tasks.length > 0 ? (
         <section aria-labelledby="tasks-title">
-          <SectionTitle>
+          <SectionTitle icon="checklist">
             <span id="tasks-title">Perlu dilakukan</span>
           </SectionTitle>
           <ul className="divide-y divide-border border border-border bg-surface">
@@ -76,6 +112,14 @@ export default async function BerandaPage() {
                     <Icon name="chevron" className="size-4 text-muted" />
                   </span>
                 </Link>
+                {task.type === "TRANSFER" ? (
+                  <div className="space-y-1 px-4 pb-3">
+                    <ProgressBar percent={progressPercent(task.linked, task.amount)} label={`Progres ${view.title}`} />
+                    <p className="text-xs text-muted tabular">
+                      <Money value={task.linked} /> dari <Money value={task.amount} /> · {progressPercent(task.linked, task.amount)}% terpenuhi
+                    </p>
+                  </div>
+                ) : null}
                 {task.type === "TRANSFER" && parseIdrDecimal(task.transferNow) < parseIdrDecimal(task.remaining) ? (
                   <p className="px-4 pb-3 text-sm text-review-fg">Saldo sumber belum cukup untuk seluruh saran.</p>
                 ) : null}
@@ -91,17 +135,18 @@ export default async function BerandaPage() {
       ) : null}
 
       <section aria-labelledby="accounts-title">
-        <SectionTitle>
+        <SectionTitle icon="wallet">
           <span id="accounts-title">Akun</span>
         </SectionTitle>
         <div className="grid gap-3 md:grid-cols-3">
-          {data.accounts.map((account) => {
+          {data.accounts.map((account, index) => {
             const recordedChanges = parseIdrDecimal(account.personal) - parseIdrDecimal(account.confirmedPersonal);
             return (
               <Link key={account.id} href={`/akun/${account.id}`} className="block border border-border bg-surface p-4 hover:border-control md:p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{account.displayName}</p>
+                <div className="flex items-center gap-3">
+                  <AccountTile account={account} index={index} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{account.displayName}</p>
                     <p className="text-xs text-muted">{account.purposeLabel}</p>
                   </div>
                   <StatusBadge status={account.status} />
@@ -138,7 +183,12 @@ export default async function BerandaPage() {
       <div className="grid gap-4 md:grid-cols-2">
         {dana ? (
           <Card>
-            <SectionTitle>DANA mingguan</SectionTitle>
+            <SectionTitle icon="calendar">DANA mingguan</SectionTitle>
+            {dana.week ? (
+              <div className="mb-3">
+                <WeekStrip days={dana.week.days} />
+              </div>
+            ) : null}
             {dana.openWeek ? (
               <dl>
                 <Row label={`Minggu berjalan sejak ${formatDate(dana.openWeek.periodStart)}`}>
@@ -170,22 +220,35 @@ export default async function BerandaPage() {
         ) : null}
 
         <Card>
-          <SectionTitle>BCA bulanan</SectionTitle>
+          <SectionTitle icon="bars">BCA bulanan</SectionTitle>
           {data.bca.currentCycle ? (
-            <dl>
-              <Row label={formatCycle(data.bca.currentCycle.cycleKey)}>
-                <Tag tone={data.bca.currentCycle.state === "COMPLETE" ? "success" : "info"}>{cycleStateLabel[data.bca.currentCycle.state]}</Tag>
-              </Row>
-              {data.bca.currentCycle.income ? (
-                <Row label="Income">{data.bca.currentCycle.income.actual ? <Money value={data.bca.currentCycle.income.actual.amount} /> : "Menunggu"}</Row>
+            <>
+              {obligations && obligations.total > 0 ? (
+                <div className="mb-3 space-y-1.5">
+                  <p className="flex justify-between text-xs text-muted">
+                    <span>Kewajiban {formatCycle(data.bca.currentCycle.cycleKey)}</span>
+                    <span className="tabular">
+                      {obligations.resolved}/{obligations.total} selesai
+                    </span>
+                  </p>
+                  <SegmentBar done={obligations.resolved} total={obligations.total} label="Kewajiban bulan ini yang selesai" />
+                </div>
               ) : null}
-              {data.bca.currentCycle.obligations.map((o) => (
-                <Row key={o.occurrenceId} label={o.name}>
-                  {o.actual ? <Money value={o.actual.amount} /> : o.status === "NOT_CHARGED" ? "Tidak ditagih" : "Menunggu"}
+              <dl>
+                <Row label={formatCycle(data.bca.currentCycle.cycleKey)}>
+                  <Tag tone={data.bca.currentCycle.state === "COMPLETE" ? "success" : "info"}>{cycleStateLabel[data.bca.currentCycle.state]}</Tag>
                 </Row>
-              ))}
-              {data.bca.currentCycle.state !== "COMPLETE" ? <p className="text-xs text-muted">Belum final</p> : null}
-            </dl>
+                {data.bca.currentCycle.income ? (
+                  <Row label="Income">{data.bca.currentCycle.income.actual ? <Money value={data.bca.currentCycle.income.actual.amount} /> : "Menunggu"}</Row>
+                ) : null}
+                {data.bca.currentCycle.obligations.map((o) => (
+                  <Row key={o.occurrenceId} label={o.name}>
+                    {o.actual ? <Money value={o.actual.amount} /> : o.status === "NOT_CHARGED" ? "Tidak ditagih" : "Menunggu"}
+                  </Row>
+                ))}
+                {data.bca.currentCycle.state !== "COMPLETE" ? <p className="text-xs text-muted">Belum final</p> : null}
+              </dl>
+            </>
           ) : (
             <p className="text-sm text-muted">Belum ada siklus bulan ini.</p>
           )}
@@ -204,7 +267,7 @@ export default async function BerandaPage() {
         </Card>
 
         <Card>
-          <SectionTitle>Reserve dan pengeluaran khusus</SectionTitle>
+          <SectionTitle icon="arrowUp">Reserve dan pengeluaran khusus</SectionTitle>
           <dl>
             <Row label={`Pertumbuhan bersih reserve · ${formatCycle(data.reserve.month)}`} emphasis>
               <Money value={data.reserve.monthToDate.netGrowth} signed />
@@ -220,7 +283,7 @@ export default async function BerandaPage() {
 
         {data.external.length > 0 ? (
           <Card>
-            <SectionTitle>Dana titipan</SectionTitle>
+            <SectionTitle icon="user">Dana titipan</SectionTitle>
             <dl>
               {data.external.map((subject) => (
                 <Row key={subject.id} label={<Link href={`/akun/dana-titipan/${subject.id}`} className="text-primary">{subject.displayName}</Link>}>
@@ -230,9 +293,33 @@ export default async function BerandaPage() {
             </dl>
           </Card>
         ) : null}
+
+        {!data.chart.weekly.eligible ? (
+          <section aria-labelledby="trend-title" className="flex gap-3 border border-dashed border-control p-4 md:col-span-2 md:p-5">
+            <span className="flex size-9 shrink-0 items-center justify-center bg-primary-soft text-primary">
+              <Icon name="trend" className="size-4.5" />
+            </span>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div>
+                <h2 id="trend-title" className="font-medium">
+                  Tren mingguan
+                </h2>
+                <p className="text-sm text-muted">Muncul di Laporan setelah {data.chart.weekly.needed} settlement selesai.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <ProgressBar percent={Math.floor((data.chart.weekly.count * 100) / data.chart.weekly.needed)} label="Kelayakan tren mingguan" />
+                </div>
+                <span className="text-xs text-muted tabular">
+                  {data.chart.weekly.count}/{data.chart.weekly.needed} settlement
+                </span>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
 
-      {data.accounts.length === 0 ? <EmptyState title="Belum ada akun aktif" /> : null}
+      {data.accounts.length === 0 ? <EmptyState icon="wallet" title="Belum ada akun aktif" /> : null}
     </div>
   );
 }

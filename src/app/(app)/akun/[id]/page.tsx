@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { AccountTile } from "@/components/account-tile";
 import { Alert, Card, LinkButton, Money, PageHeader, Row, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { formatDateTime, jakartaInputValue } from "@/lib/format";
 import { isUuid } from "@/server/api/responses";
@@ -31,7 +32,12 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-5">
-      <PageHeader title={account.displayName} description={`${account.providerName} · ${account.purposeLabel}`} action={<LinkButton href="/akun">Kembali</LinkButton>} />
+      <PageHeader
+        leading={<AccountTile account={account} index={overview.accounts.indexOf(account)} />}
+        title={account.displayName}
+        description={`${account.providerName} · ${account.purposeLabel}`}
+        action={<LinkButton href="/akun">Kembali</LinkButton>}
+      />
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-2">
