@@ -24,6 +24,12 @@ const paths: Record<string, string> = {
   user: "M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0H3Z",
   chevron: "m7 4 6 6-6 6-1.4-1.4 4.6-4.6-4.6-4.6L7 4Z",
   close: "m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z",
+  calendar: "M6 2h2v2h4V2h2v2h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V2ZM5 8v8h10V8H5Z",
+  trend: "M2 14.6 7.5 9l3.5 3.5L15.6 8H13V6h6v6h-2V9.4l-6 6-3.5-3.5L3.4 16 2 14.6Z",
+  bars: "M3 17h14v2H3v-2Zm1-6h3v5H4v-5Zm5-6h3v11H9V5Zm5 3h3v8h-3V8Z",
+  checklist: "M2 4.5 3.4 3 5 4.6 8 1.6 9.4 3 5 7.4 2 4.5ZM11 4h7v2h-7V4Zm-9 7.5L3.4 10 5 11.6 8 8.6 9.4 10 5 14.4l-3-2.9ZM11 11h7v2h-7v-2Zm-8 5h4v2H3v-2Zm8 0h7v2h-7v-2Z",
+  minus: "M4 9h12v2H4V9Z",
+  cash: "M1 5h18v10H1V5Zm2 2v6h14V7H3Zm5 1h4v4H8V8Z",
 };
 
 export type IconName = keyof typeof paths;
@@ -100,24 +106,66 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   return <section className={`border border-border bg-surface p-4 md:p-5 ${className}`}>{children}</section>;
 }
 
-export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
+export function PageHeader({ title, description, action, leading }: { title: string; description?: string; action?: ReactNode; leading?: ReactNode }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+      <div className="flex items-center gap-3">
+        {leading}
+        <div>
+          <h1 className="text-2xl font-semibold">{title}</h1>
+          {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+        </div>
       </div>
       {action}
     </header>
   );
 }
 
-export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
+export function SectionTitle({ children, action, icon }: { children: ReactNode; action?: ReactNode; icon?: IconName }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-base font-semibold">{children}</h2>
+      <h2 className="flex items-center gap-2 text-base font-semibold">
+        {icon ? <Icon name={icon} className="size-4.5 text-primary" /> : null}
+        {children}
+      </h2>
       {action}
     </div>
+  );
+}
+
+/** A labelled bar; the caller always shows the numbers as text too (PRD v0.20 P2). */
+export function ProgressBar({ percent, label }: { percent: number; label: string }) {
+  return (
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className="h-1.5 bg-surface-subtle">
+      <div className="h-1.5 bg-primary transition-[width] duration-200 ease-out" style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
+
+/** One segment per item, for counts such as resolved obligations. */
+export function SegmentBar({ done, total, label }: { done: number; total: number; label: string }) {
+  return (
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} className="flex gap-1">
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={`h-1.5 flex-1 ${i < done ? "bg-primary" : "bg-surface-subtle"}`} />
+      ))}
+    </div>
+  );
+}
+
+const monoClass: Record<1 | 2 | 3 | 4, string> = {
+  1: "bg-mono-1/15 text-mono-1",
+  2: "bg-mono-2/15 text-mono-2",
+  3: "bg-mono-3/15 text-mono-3",
+  4: "bg-mono-4/15 text-mono-4",
+};
+
+/** Account monogram; color comes from account order, never from the provider brand. */
+export function Monogram({ letter, tone }: { letter: string; tone: 1 | 2 | 3 | 4 }) {
+  return (
+    <span aria-hidden="true" className={`flex size-10 shrink-0 items-center justify-center text-base font-semibold ${monoClass[tone]}`}>
+      {letter}
+    </span>
   );
 }
 
@@ -130,9 +178,10 @@ export function Row({ label, children, emphasis }: { label: ReactNode; children:
   );
 }
 
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+export function EmptyState({ title, children, icon }: { title: string; children?: ReactNode; icon?: IconName }) {
   return (
-    <div className="border border-dashed border-border px-4 py-6 text-center">
+    <div className="border border-dashed border-control px-4 py-6 text-center">
+      {icon ? <Icon name={icon} className="mx-auto mb-2 size-6 text-primary" /> : null}
       <p className="font-medium">{title}</p>
       {children ? <div className="mt-1 text-sm text-muted">{children}</div> : null}
     </div>
