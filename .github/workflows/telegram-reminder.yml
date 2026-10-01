@@ -1,0 +1,46 @@
+# Daily Telegram digest (PRD v0.20 P6) at 08:00 Asia/Jakarta (01:00 UTC).
+# Enable with variable FINTRACK_REMINDER_ENABLED=true after setting variable
+# FINTRACK_REMINDER_URL and secret FINTRACK_REMINDER_TOKEN (same value as Vercel REMINDER_TOKEN).
+# No retries: the route records the date before sending, so a rerun never sends twice.
+name: Telegram reminder
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  remind:
+    if: vars.FINTRACK_REMINDER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ask FinTrack to send today's digest
+        shell: bash
+        env:
+          FINTRACK_REMINDER_URL: ${{ vars.FINTRACK_REMINDER_URL }}
+          FINTRACK_REMINDER_TOKEN: ${{ secrets.FINTRACK_REMINDER_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${FINTRACK_REMINDER_URL}" || -z "${FINTRACK_REMINDER_TOKEN}" ]]; then
+            echo "::error::Reminder URL or token is missing"
+            exit 1
+          fi
+
+          if [[ "${FINTRACK_REMINDER_URL}" != https://*/api/internal/reminders ]]; then
+            echo "::error::Reminder URL must be the HTTPS reminder endpoint"
+            exit 1
+          fi
+
+          status="$(curl --proto '=https' --silent --show-error --output reminder.json --write-out '%{http_code}' \
+            --connect-timeout 5 --max-time 30 --request POST \
+            --header "Authorization: Bearer ${FINTRACK_REMINDER_TOKEN}" "${FINTRACK_REMINDER_URL}")"
+          echo "HTTP ${status}: $(cat reminder.json)"
+
+          if [[ "${status}" != "200" ]]; then
+            echo "::error::Reminder failed with HTTP ${status}"
+            exit 1
+          fi

@@ -1,8 +1,8 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-
 import { Pool } from "pg";
 
 import { databaseSsl } from "@/server/db/supabase-ca";
+
+import { tokensMatch } from "./token";
 
 export type KeepaliveDeps = {
   /** Deployment environment, e.g. Vercel's VERCEL_ENV. */
@@ -16,13 +16,6 @@ const noStore = { "Cache-Control": "no-store" } as const;
 
 function errorResponse(status: number, code: string): Response {
   return Response.json({ error: { code } }, { status, headers: noStore });
-}
-
-function tokensMatch(provided: string, expected: string): boolean {
-  // Hash both values so the comparison is constant-time regardless of length.
-  const a = createHash("sha256").update(provided).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
 }
 
 export async function handleKeepalive(request: Request, deps: KeepaliveDeps): Promise<Response> {
