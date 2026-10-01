@@ -1517,6 +1517,8 @@ Gradient dominan, glassmorphism, glow, dan ilustrasi besar tetap tidak dipakai.
 
 Motion (sudah PREFERRED) dipasang memakai `LazyMotion` + `domAnimation` dan hanya untuk surface berikut: item `Perlu dilakukan` keluar setelah selesai dan sisa daftar bergeser (layout), transisi langkah onboarding dan settlement, sheet/popover `+ Catat`, expand/collapse detail, dan toast sukses. Hover/pressed, progress bar, dan munculnya konten setelah skeleton memakai CSS transition. Durasi dan larangan pada `Motion` tetap berlaku, termasuk larangan count-up balance dan aturan `prefers-reduced-motion`.
 
+Pelaksanaan S16: `<details>` bawaan di server component dianimasikan dengan CSS `::details-content`, bukan Motion; hasil pencatatan yang sudah diakui server muncul dengan fade; toast hanya mengonfirmasi aksi Rutinitas yang berubah di tempat (konfirmasi occurrence, tandai tidak diterima/ditagih, tutup target). Dengan `prefers-reduced-motion`, slide langsung berada di posisi akhir dan lipatan menjadi fade, sehingga tidak ada elemen yang bergeser atau melompat. Ketiga form pencatatan (pengeluaran khusus, transfer, dana titipan) memakai satu komponen submit yang sama.
+
 #### P4 — Chart dengan teaser kelayakan
 
 Threshold chart tetap (empat settlement DANA atau tiga BCA cycle). Perubahan:
@@ -2795,4 +2797,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.20 · Production active · Slices 0–15 implemented_
+_FinTrack PRD v0.20 · Production active · Slices 0–16 implemented_

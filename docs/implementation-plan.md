@@ -156,7 +156,7 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S13 | Portability + operations | S11 | Export ZIP; manifest PWA; backup R2 + restore drill; keepalive aktif | Akun Cloudflare R2, SMTP, project production |
 | S14 | Uang tunai dalam settlement pool | S7, S8 | Aktivasi dari settlement; dompet dihitung tiap settlement; transfer internal pool netral; target reserve dari DANA saja; koreksi settled dan replacement dompet; e2e UI | — |
 | S15 | Palette `Petrol & Paper`, geometri siku, ikon provider, kepadatan Beranda | S12 | Selesai; token baru lolos kontras; radius 0 kecuali radio; ikon BCA (myBCA), DANA, dan Jago; progress bar, strip tujuh hari, kartu kelayakan chart; query budget Beranda tidak naik | — |
-| S16 | Motion + perapian form | S15 | `LazyMotion` pada surface P3; reduced-motion; form memakai satu pola submit | — |
+| S16 | Motion + perapian form | S15 | Selesai; `LazyMotion` pada surface P3; reduced-motion; form memakai satu pola submit | — |
 | S17 | Halaman Laporan + Chart.js | S15 | `/aktivitas/laporan`; chart lazy hanya ≥ `md` dan setelah threshold; text summary; query budget | — |
 | S18 | Pengingat Telegram | S12 | Digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | Chat id pemilik (pemilik mengirim `/start` ke bot) |
 
