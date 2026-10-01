@@ -1,5 +1,6 @@
 // Beranda view helpers (PRD v0.20 P2, P4). Pure: no IO, and money stays bigint or decimal string.
 import { addDays } from "@/lib/business-time";
+import { settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal } from "@/lib/money";
 
 export type DayMarker = "RECEIVED" | "ADJUSTED" | "MISSED" | "INACTIVE" | "UPCOMING";
@@ -83,5 +84,27 @@ export function taskKey(task: KeyedTask): string {
       return `target:${task.targetId}`;
     case "RECONCILE":
       return `reconcile:${task.accountId}`;
+  }
+}
+
+type TitledTask =
+  | { type: "SETTLEMENT"; mode: string }
+  | { type: "CONFIRM_INCOME" | "CONFIRM_OBLIGATION"; name: string }
+  | { type: "TRANSFER"; route: string }
+  | { type: "RECONCILE"; accountId: string };
+
+/** The one title of a Perlu dilakukan task, for Beranda and the Telegram digest. */
+export function taskTitle(task: TitledTask, accountName: (id: string) => string): string {
+  switch (task.type) {
+    case "SETTLEMENT":
+      return settlementModeLabel[task.mode] ?? "Settlement DANA";
+    case "CONFIRM_INCOME":
+      return `Konfirmasi ${task.name.toLowerCase()}`;
+    case "CONFIRM_OBLIGATION":
+      return `Konfirmasi ${task.name}`;
+    case "TRANSFER":
+      return `Transfer ${task.route}`;
+    case "RECONCILE":
+      return `Periksa saldo ${accountName(task.accountId)}`;
   }
 }

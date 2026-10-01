@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 import { AccountTile } from "@/components/account-tile";
 import { AnimatedItem, AnimatedList } from "@/components/motion";
 import { Alert, Card, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
-import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, type StripDay } from "@/lib/dashboard-view";
+import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
-import { cycleNoteLabel, cycleStateLabel, occurrenceTagLabel, settlementModeLabel } from "@/lib/labels";
+import { cycleNoteLabel, cycleStateLabel, occurrenceTagLabel } from "@/lib/labels";
 import { parseIdrDecimal, toIdrDecimal } from "@/lib/money";
 import { dashboard, type DashboardTask } from "@/server/application/reports";
 import { runAsPageOwner } from "@/server/auth/page-owner";
@@ -16,15 +16,15 @@ type Dashboard = Awaited<ReturnType<typeof dashboard>>;
 function taskView(task: DashboardTask, accountName: (id: string) => string): { href: string; title: string; detail: string; tag?: string } {
   switch (task.type) {
     case "SETTLEMENT":
-      return { href: "/rutinitas/settlement", title: settlementModeLabel[task.mode] ?? "Settlement DANA", detail: `${formatDate(task.periodStart)} – ${formatDate(task.normalEnd)}`, tag: task.mode === "OVERDUE" ? "Terlambat" : undefined };
+      return { href: "/rutinitas/settlement", title: taskTitle(task, accountName), detail: `${formatDate(task.periodStart)} – ${formatDate(task.normalEnd)}`, tag: task.mode === "OVERDUE" ? "Terlambat" : undefined };
     case "CONFIRM_INCOME":
-      return { href: `/rutinitas#siklus-${task.cycleKey}`, title: `Konfirmasi ${task.name.toLowerCase()}`, detail: `${formatCycle(task.cycleKey)} · perkiraan ${money(task.expectedAmount)}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
+      return { href: `/rutinitas#siklus-${task.cycleKey}`, title: taskTitle(task, accountName), detail: `${formatCycle(task.cycleKey)} · perkiraan ${money(task.expectedAmount)}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
     case "CONFIRM_OBLIGATION":
-      return { href: `/rutinitas#siklus-${task.cycleKey}`, title: `Konfirmasi ${task.name}`, detail: `${formatCycle(task.cycleKey)}${task.expectedDate ? ` · perkiraan ${formatDate(task.expectedDate)}` : ""}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
+      return { href: `/rutinitas#siklus-${task.cycleKey}`, title: taskTitle(task, accountName), detail: `${formatCycle(task.cycleKey)}${task.expectedDate ? ` · perkiraan ${formatDate(task.expectedDate)}` : ""}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
     case "TRANSFER":
-      return { href: `/catat/transfer?target=${task.targetId}`, title: `Transfer ${task.route}`, detail: `Sisa saran ${money(task.remaining)} · bisa ditransfer sekarang ${money(task.transferNow)}` };
+      return { href: `/catat/transfer?target=${task.targetId}`, title: taskTitle(task, accountName), detail: `Sisa saran ${money(task.remaining)} · bisa ditransfer sekarang ${money(task.transferNow)}` };
     case "RECONCILE":
-      return { href: `/akun/${task.accountId}#rekonsiliasi`, title: `Periksa saldo ${accountName(task.accountId)}`, detail: "Konfirmasi saldo sesuai aplikasi bank" };
+      return { href: `/akun/${task.accountId}#rekonsiliasi`, title: taskTitle(task, accountName), detail: "Konfirmasi saldo sesuai aplikasi bank" };
   }
 }
 

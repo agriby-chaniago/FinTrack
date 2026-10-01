@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chartEligibility, obligationProgress, progressPercent, stripSummary, taskKey, weekStrip } from "./dashboard-view";
+import { chartEligibility, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, weekStrip } from "./dashboard-view";
 
 const day = (date: string, extra: Partial<{ state: string; amount: bigint; overridden: boolean }> = {}) => ({ date, state: "ACTIVE", amount: 5_000_000n, overridden: false, ...extra });
 
@@ -79,5 +79,17 @@ describe("taskKey", () => {
     expect(taskKey({ type: "CONFIRM_OBLIGATION", occurrenceId: "o2" })).toBe("occurrence:o2");
     expect(taskKey({ type: "TRANSFER", targetId: "t1" })).toBe("target:t1");
     expect(taskKey({ type: "RECONCILE", accountId: "a1" })).toBe("reconcile:a1");
+  });
+});
+
+describe("taskTitle", () => {
+  const name = (id: string) => ({ a1: "BCA" })[id] ?? "akun";
+  it("names each task the way Beranda does", () => {
+    expect(taskTitle({ type: "SETTLEMENT", mode: "NORMAL" }, name)).toBe("Settlement minggu ini siap diselesaikan");
+    expect(taskTitle({ type: "SETTLEMENT", mode: "UNKNOWN" }, name)).toBe("Settlement DANA");
+    expect(taskTitle({ type: "CONFIRM_INCOME", name: "Income bulanan" }, name)).toBe("Konfirmasi income bulanan");
+    expect(taskTitle({ type: "CONFIRM_OBLIGATION", name: "Langganan" }, name)).toBe("Konfirmasi Langganan");
+    expect(taskTitle({ type: "TRANSFER", route: "BCA → Jago" }, name)).toBe("Transfer BCA → Jago");
+    expect(taskTitle({ type: "RECONCILE", accountId: "a1" }, name)).toBe("Periksa saldo BCA");
   });
 });
