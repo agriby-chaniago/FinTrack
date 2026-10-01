@@ -3,10 +3,10 @@
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
-import { Checkbox, CutoverDayQuestion, DateField, FormErrors, SelectField, SubmitBar, SubmitButton, TextArea } from "@/components/form";
-import { Recorded, type PostResult } from "@/components/recorded";
+import { Checkbox, DateField, SelectField, TextArea } from "@/components/form";
+import { RecordingForm } from "@/components/recording-form";
 import { Alert, buttonClass, Money } from "@/components/ui";
-import { todayInJakarta, useMutation } from "@/lib/api-client";
+import { todayInJakarta } from "@/lib/api-client";
 import { money } from "@/lib/format";
 import type { RecordingContext } from "@/server/application/recording-context";
 
@@ -23,7 +23,6 @@ export function TransferForm(props: {
   const firstOther = (id: string) => context.accounts.find((a) => a.id !== id)?.id ?? "";
   // Most transfers go into the reserve, so the default source is the first other account.
   const initialSource = props.prefill?.sourceAccountId ?? context.accounts.find((a) => a.id !== context.reserveAccountId)?.id ?? context.accounts[0]?.id ?? "";
-  const [formKey, setFormKey] = useState(0);
   const [source, setSource] = useState(initialSource);
   const [destination, setDestination] = useState(() => {
     // The Ke list never offers the source, so state must never start equal to it.
@@ -35,57 +34,34 @@ export function TransferForm(props: {
   const [note, setNote] = useState("");
   const [includesExternal, setIncludesExternal] = useState(false);
   const [components, setComponents] = useState<Component[]>([]);
-  const [done, setDone] = useState<PostResult | null>(null);
-  const save = useMutation<Record<string, unknown>, PostResult>("/api/v1/transfers");
 
   const heldHere = context.subjects.filter((s) => s.positions.some((p) => p.accountId === source));
   const hint = props.routeHints.find((h) => h.sourceAccountId === source && h.destinationAccountId === destination);
 
-  async function submit(cutoverDayAnswer?: string) {
-    const issues: string[] = [];
-    if (!amount) issues.push("Isi nominal transfer.");
-    if (source === destination) issues.push("Akun asal dan tujuan harus berbeda.");
-    const external = includesExternal ? components.filter((c) => c.subjectId) : [];
-    if (external.some((c) => !c.amount)) issues.push("Isi nominal setiap bagian dana titipan.");
-    if (issues.length) {
-      save.setError(issues);
-      return;
-    }
-    const result = await save.submit({
-      sourceAccountId: source,
-      destinationAccountId: destination,
-      amount,
-      externalComponents: external.map((c) => ({ subjectId: c.subjectId, amount: c.amount })),
-      businessDate: date,
-      note: note.trim() || undefined,
-      ...(cutoverDayAnswer ? { cutoverDayAnswer } : {}),
-    });
-    if (result.ok) setDone(result.data);
-  }
-
-  if (done) {
-    return (
-      <Recorded
-        result={done}
-        onAgain={() => {
-          setDone(null);
-          setAmount(null);
-          setNote("");
-          setComponents([]);
-          setIncludesExternal(false);
-          setFormKey((key) => key + 1);
-        }}
-      />
-    );
-  }
+  const external = includesExternal ? components.filter((c) => c.subjectId) : [];
 
   return (
-    <form
-      key={formKey}
-      className="max-w-xl space-y-4"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        await submit();
+    <RecordingForm
+      path="/api/v1/transfers"
+      submitLabel="Simpan transfer"
+      validate={() => [
+        ...(amount ? [] : ["Isi nominal transfer."]),
+        ...(source === destination ? ["Akun asal dan tujuan harus berbeda."] : []),
+        ...(external.some((c) => !c.amount) ? ["Isi nominal setiap bagian dana titipan."] : []),
+      ]}
+      body={() => ({
+        sourceAccountId: source,
+        destinationAccountId: destination,
+        amount,
+        externalComponents: external.map((c) => ({ subjectId: c.subjectId, amount: c.amount })),
+        businessDate: date,
+        note: note.trim() || undefined,
+      })}
+      onReset={() => {
+        setAmount(null);
+        setNote("");
+        setComponents([]);
+        setIncludesExternal(false);
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -148,11 +124,6 @@ export function TransferForm(props: {
       ) : null}
 
       <TextArea label="Catatan (opsional)" value={note} onChange={setNote} />
-      {save.needsCutoverAnswer ? <CutoverDayQuestion pending={save.pending} onAnswer={(answer) => submit(answer)} /> : null}
-      <FormErrors errors={save.error} />
-      <SubmitBar>
-        <SubmitButton pending={save.pending}>Simpan transfer</SubmitButton>
-      </SubmitBar>
-    </form>
+    </RecordingForm>
   );
 }

@@ -3,9 +3,9 @@
 import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
-import { CutoverDayQuestion, DateField, FormErrors, SelectField, SubmitBar, SubmitButton, TextArea, TextField } from "@/components/form";
-import { Recorded, type PostResult } from "@/components/recorded";
-import { todayInJakarta, useMutation } from "@/lib/api-client";
+import { DateField, SelectField, TextArea, TextField } from "@/components/form";
+import { RecordingForm } from "@/components/recording-form";
+import { todayInJakarta } from "@/lib/api-client";
 import { money } from "@/lib/format";
 import { movementTypeLabel } from "@/lib/labels";
 import type { RecordingContext } from "@/server/application/recording-context";
@@ -36,12 +36,9 @@ export function ExternalMovementForm(props: { context: RecordingContext; types: 
   const held = context.subjects.find((s) => s.id === subject)?.positions ?? [];
   const [account, setAccount] = useState(held[0]?.accountId ?? context.accounts[0]?.id ?? "");
   const [toAccount, setToAccount] = useState(context.accounts.find((a) => a.id !== account)?.id ?? "");
-  const [formKey, setFormKey] = useState(0);
   const [amount, setAmount] = useState<string | null>(null);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
-  const [done, setDone] = useState<PostResult | null>(null);
-  const save = useMutation<Record<string, unknown>, PostResult>("/api/v1/external-movements");
 
   const accountOptions = (creates ? context.accounts : context.accounts.filter((a) => held.some((p) => p.accountId === a.id))).map((a) => {
     const position = held.find((p) => p.accountId === a.id);
@@ -60,52 +57,26 @@ export function ExternalMovementForm(props: { context: RecordingContext; types: 
     if (!creates && positions[0]) setAccount(positions[0].accountId);
   }
 
-  async function submit(cutoverDayAnswer?: string) {
-    const issues: string[] = [];
-    if (!amount) issues.push("Isi nominal.");
-    if (subject === NEW_SUBJECT && !subjectName.trim()) issues.push("Isi nama pemilik dana.");
-    if (type === "INTERNAL_TRANSFER" && account === toAccount) issues.push("Akun asal dan tujuan harus berbeda.");
-    if (issues.length) {
-      save.setError(issues);
-      return;
-    }
-    const subjectRef = subject === NEW_SUBJECT ? { subjectName: subjectName.trim() } : { subjectId: subject };
-    const accounts = type === "INTERNAL_TRANSFER" ? { fromAccountId: account, toAccountId: toAccount } : { accountId: account };
-    const result = await save.submit({
-      type,
-      ...accounts,
-      ...subjectRef,
-      amount,
-      businessDate: date,
-      note: note.trim() || undefined,
-      ...(cutoverDayAnswer ? { cutoverDayAnswer } : {}),
-    });
-    if (result.ok) {
-      setDone(result.data);
-    }
-  }
-
-  if (done) {
-    return (
-      <Recorded
-        result={done}
-        onAgain={() => {
-          setDone(null);
-          setAmount(null);
-          setNote("");
-          setFormKey((key) => key + 1);
-        }}
-      />
-    );
-  }
-
   return (
-    <form
-      key={formKey}
-      className="max-w-xl space-y-4"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        await submit();
+    <RecordingForm
+      path="/api/v1/external-movements"
+      submitLabel="Simpan"
+      validate={() => [
+        ...(amount ? [] : ["Isi nominal."]),
+        ...(subject === NEW_SUBJECT && !subjectName.trim() ? ["Isi nama pemilik dana."] : []),
+        ...(type === "INTERNAL_TRANSFER" && account === toAccount ? ["Akun asal dan tujuan harus berbeda."] : []),
+      ]}
+      body={() => ({
+        type,
+        ...(type === "INTERNAL_TRANSFER" ? { fromAccountId: account, toAccountId: toAccount } : { accountId: account }),
+        ...(subject === NEW_SUBJECT ? { subjectName: subjectName.trim() } : { subjectId: subject }),
+        amount,
+        businessDate: date,
+        note: note.trim() || undefined,
+      })}
+      onReset={() => {
+        setAmount(null);
+        setNote("");
       }}
     >
       {props.types.length > 1 ? (
@@ -148,11 +119,6 @@ export function ExternalMovementForm(props: { context: RecordingContext; types: 
       <AmountInput label="Nominal" value={amount} onChange={setAmount} />
       <DateField label="Tanggal" value={date} min={context.cutoverDate} max={today} onChange={setDate} />
       <TextArea label="Catatan (opsional)" value={note} onChange={setNote} />
-      {save.needsCutoverAnswer ? <CutoverDayQuestion pending={save.pending} onAnswer={(answer) => submit(answer)} /> : null}
-      <FormErrors errors={save.error} />
-      <SubmitBar>
-        <SubmitButton pending={save.pending}>Simpan</SubmitButton>
-      </SubmitBar>
-    </form>
+    </RecordingForm>
   );
 }
