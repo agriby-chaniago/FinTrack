@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
 import { DateField, FormErrors } from "@/components/form";
+import { Collapse, Swap } from "@/components/motion";
 import { buttonClass } from "@/components/ui";
 import { todayInJakarta, useMutation } from "@/lib/api-client";
 import { formatDate, money } from "@/lib/format";
@@ -56,44 +57,42 @@ export function OccurrenceActions(props: OccurrenceProps) {
     await resolve.submit({ outcome: noEvent });
   }
 
-  if (props.status === "CONFIRMED") {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {revisionOffer !== null ? (
-          <button
-            type="button"
-            className={buttonClass.secondary}
-            disabled={revise.pending}
-            onClick={async () => {
-              // Schedule changes are explicit and prospective: next month at the earliest.
-              const result = await revise.submit({ effectiveFromCycle: nextMonth(today), expectedDay: revisionOffer, expectedAmount: props.suggestedAmount });
-              if (result.ok) setRevisionOffer(null);
-            }}
-          >
-            Ubah perkiraan menjadi tanggal {revisionOffer} mulai bulan depan
-          </button>
-        ) : null}
-        <button type="button" className={buttonClass.link} disabled={resolve.pending} onClick={markNoEvent}>
-          Tandai {noEventLabel.toLowerCase()}
+  const confirmed = (
+    <div className="flex flex-wrap gap-2">
+      {revisionOffer !== null ? (
+        <button
+          type="button"
+          className={buttonClass.secondary}
+          disabled={revise.pending}
+          onClick={async () => {
+            // Schedule changes are explicit and prospective: next month at the earliest.
+            const result = await revise.submit({ effectiveFromCycle: nextMonth(today), expectedDay: revisionOffer, expectedAmount: props.suggestedAmount });
+            if (result.ok) setRevisionOffer(null);
+          }}
+        >
+          Ubah perkiraan menjadi tanggal {revisionOffer} mulai bulan depan
         </button>
-        {props.confirmedEntryId ? (
-          <a className={buttonClass.link} href={`/aktivitas/${props.confirmedEntryId}`}>
-            Koreksi nominal/tanggal
-          </a>
-        ) : null}
-        <FormErrors errors={resolve.error ?? revise.error} />
-      </div>
-    );
-  }
+      ) : null}
+      <button type="button" className={buttonClass.link} disabled={resolve.pending} onClick={markNoEvent}>
+        Tandai {noEventLabel.toLowerCase()}
+      </button>
+      {props.confirmedEntryId ? (
+        <a className={buttonClass.link} href={`/aktivitas/${props.confirmedEntryId}`}>
+          Koreksi nominal/tanggal
+        </a>
+      ) : null}
+      <FormErrors errors={resolve.error ?? revise.error} />
+    </div>
+  );
 
-  return (
+  const pending = (
     <div className="space-y-3">
-      {editing ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+      <Collapse open={editing}>
+        <div className="grid gap-3 pb-1 sm:grid-cols-2">
           <DateField label="Tanggal aktual" value={date} max={today} onChange={setDate} />
           <AmountInput label="Nominal aktual" value={amount} onChange={setAmount} />
         </div>
-      ) : null}
+      </Collapse>
       <div className="space-y-2">
         {editing ? (
           <button type="button" className={`${buttonClass.primary} w-full`} disabled={resolve.pending} onClick={() => confirm(date, amount)}>
@@ -106,7 +105,7 @@ export function OccurrenceActions(props: OccurrenceProps) {
         )}
         {/* Secondary actions split the row evenly under the full-width primary action. */}
         <div className="flex gap-2">
-          <button type="button" className={`${buttonClass.secondary} flex-1`} onClick={() => setEditing(!editing)}>
+          <button type="button" className={`${buttonClass.secondary} flex-1`} aria-expanded={editing} onClick={() => setEditing(!editing)}>
             {editing ? "Tutup detail" : "Ubah detail"}
           </button>
           {props.status === "PENDING" ? (
@@ -120,6 +119,8 @@ export function OccurrenceActions(props: OccurrenceProps) {
       <FormErrors errors={resolve.error} />
     </div>
   );
+
+  return <Swap swapKey={props.status}>{props.status === "CONFIRMED" ? confirmed : pending}</Swap>;
 }
 
 function nextMonth(today: string): string {
@@ -131,33 +132,34 @@ function nextMonth(today: string): string {
 export function CloseTargetButton({ targetId }: { targetId: string }) {
   const [confirming, setConfirming] = useState(false);
   const close = useMutation(`/api/v1/transfer-targets/${targetId}/close`);
-  if (!confirming) {
-    return (
-      <button type="button" className={buttonClass.link} onClick={() => setConfirming(true)}>
-        Tutup target
-      </button>
-    );
-  }
   return (
-    <div className="space-y-2 bg-review-bg p-3 text-review-fg">
-      <p className="text-sm">Target yang ditutup tidak lagi disarankan dan tidak dapat dibuka kembali. Transfer yang sudah terjadi tetap tercatat.</p>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className={buttonClass.danger}
-          disabled={close.pending}
-          onClick={async () => {
-            await close.submit({});
-          }}
-        >
-          Ya, tutup target
+    <Swap swapKey={confirming ? "confirm" : "idle"}>
+      {confirming ? (
+        <div className="space-y-2 bg-review-bg p-3 text-review-fg">
+          <p className="text-sm">Target yang ditutup tidak lagi disarankan dan tidak dapat dibuka kembali. Transfer yang sudah terjadi tetap tercatat.</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={buttonClass.danger}
+              disabled={close.pending}
+              onClick={async () => {
+                await close.submit({});
+              }}
+            >
+              Ya, tutup target
+            </button>
+            <button type="button" className={buttonClass.secondary} onClick={() => setConfirming(false)}>
+              Batal
+            </button>
+          </div>
+          <FormErrors errors={close.error} />
+        </div>
+      ) : (
+        <button type="button" className={buttonClass.link} onClick={() => setConfirming(true)}>
+          Tutup target
         </button>
-        <button type="button" className={buttonClass.secondary} onClick={() => setConfirming(false)}>
-          Batal
-        </button>
-      </div>
-      <FormErrors errors={close.error} />
-    </div>
+      )}
+    </Swap>
   );
 }
 

@@ -247,3 +247,21 @@ dialog.sheet[data-closing]::backdrop {
     opacity: 0;
   }
 }
+
+/* Native <details> open and close smoothly (PRD v0.20 P3); the global
+   reduced-motion rule makes this instant. Browsers without ::details-content toggle. */
+:root {
+  interpolate-size: allow-keywords;
+}
+
+details::details-content {
+  block-size: 0;
+  overflow-y: clip;
+  transition:
+    block-size 180ms ease-out,
+    content-visibility 180ms allow-discrete;
+}
+
+details[open]::details-content {
+  block-size: auto;
+}

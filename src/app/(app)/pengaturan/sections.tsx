@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
 import { Checkbox, DateField, FormErrors, NumberField, SelectField, TextField } from "@/components/form";
+import { Swap } from "@/components/motion";
 import { buttonClass, Money, Tag } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 import { formatCycle, formatDate } from "@/lib/format";
@@ -110,36 +111,37 @@ export function EndRuleForm({ path, currentCycle, label }: { path: string; curre
   const [open, setOpen] = useState(false);
   const [lastCycle, setLastCycle] = useState(currentCycle);
   const end = useMutation<{ lastCycle: string }>(path, "PATCH");
-  if (!open) {
-    return (
-      <button type="button" className={buttonClass.link} onClick={() => setOpen(true)}>
-        {label}
-      </button>
-    );
-  }
   return (
-    <form
-      className="space-y-3"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        const result = await end.submit({ lastCycle });
-        if (result.ok) {
-          setOpen(false);
-        }
-      }}
-    >
-      <DateField type="month" label="Bulan terakhir" value={lastCycle} min={currentCycle} onChange={setLastCycle} />
-      <p className="text-sm text-muted">Tidak ada perkiraan setelah {formatCycle(lastCycle)}. Riwayat tetap tersimpan.</p>
-      <FormErrors errors={end.error} />
-      <div className="flex gap-2">
-        <button type="submit" className={buttonClass.danger} disabled={end.pending}>
-          Akhiri
+    <Swap swapKey={open ? "form" : "button"}>
+      {open ? (
+        <form
+          className="space-y-3"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const result = await end.submit({ lastCycle });
+            if (result.ok) {
+              setOpen(false);
+            }
+          }}
+        >
+          <DateField type="month" label="Bulan terakhir" value={lastCycle} min={currentCycle} onChange={setLastCycle} />
+          <p className="text-sm text-muted">Tidak ada perkiraan setelah {formatCycle(lastCycle)}. Riwayat tetap tersimpan.</p>
+          <FormErrors errors={end.error} />
+          <div className="flex gap-2">
+            <button type="submit" className={buttonClass.danger} disabled={end.pending}>
+              Akhiri
+            </button>
+            <button type="button" className={buttonClass.secondary} onClick={() => setOpen(false)}>
+              Batal
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className={buttonClass.link} onClick={() => setOpen(true)}>
+          {label}
         </button>
-        <button type="button" className={buttonClass.secondary} onClick={() => setOpen(false)}>
-          Batal
-        </button>
-      </div>
-    </form>
+      )}
+    </Swap>
   );
 }
 
@@ -150,41 +152,42 @@ export function RevisionForm(props: { ruleId: string; currentCycle: string; expe
   const [amount, setAmount] = useState<string | null>(props.expectedAmount);
   const [saved, setSaved] = useState(false);
   const revise = useMutation<Record<string, unknown>>(`/api/v1/recurring-expense-rules/${props.ruleId}/revisions`);
-  if (!open) {
-    return (
-      <button type="button" className={buttonClass.link} onClick={() => setOpen(true)}>
-        Ubah perkiraan
-      </button>
-    );
-  }
   return (
-    <form
-      className="space-y-3"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        const result = await revise.submit({ effectiveFromCycle: cycle, expectedDay: day, expectedAmount: amount });
-        setSaved(result.ok);
-        if (result.ok) {
-          setOpen(false);
-        }
-      }}
-    >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <DateField type="month" label="Berlaku mulai" value={cycle} min={nextCycle(props.currentCycle)} onChange={setCycle} />
-        <NumberField label={props.subscription ? "Tanggal tagihan" : "Tanggal (opsional)"} value={day} min={1} max={31} onChange={setDay} />
-        <AmountInput label={props.subscription ? "Nominal" : "Nominal (opsional)"} value={amount} onChange={setAmount} />
-      </div>
-      <FormErrors errors={revise.error} />
-      <Saved show={saved} />
-      <div className="flex gap-2">
-        <button type="submit" className={buttonClass.primary} disabled={revise.pending}>
-          Simpan perubahan
+    <Swap swapKey={open ? "form" : "button"}>
+      {open ? (
+        <form
+          className="space-y-3"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const result = await revise.submit({ effectiveFromCycle: cycle, expectedDay: day, expectedAmount: amount });
+            setSaved(result.ok);
+            if (result.ok) {
+              setOpen(false);
+            }
+          }}
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <DateField type="month" label="Berlaku mulai" value={cycle} min={nextCycle(props.currentCycle)} onChange={setCycle} />
+            <NumberField label={props.subscription ? "Tanggal tagihan" : "Tanggal (opsional)"} value={day} min={1} max={31} onChange={setDay} />
+            <AmountInput label={props.subscription ? "Nominal" : "Nominal (opsional)"} value={amount} onChange={setAmount} />
+          </div>
+          <FormErrors errors={revise.error} />
+          <Saved show={saved} />
+          <div className="flex gap-2">
+            <button type="submit" className={buttonClass.primary} disabled={revise.pending}>
+              Simpan perubahan
+            </button>
+            <button type="button" className={buttonClass.secondary} onClick={() => setOpen(false)}>
+              Batal
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className={buttonClass.link} onClick={() => setOpen(true)}>
+          Ubah perkiraan
         </button>
-        <button type="button" className={buttonClass.secondary} onClick={() => setOpen(false)}>
-          Batal
-        </button>
-      </div>
-    </form>
+      )}
+    </Swap>
   );
 }
 
@@ -299,37 +302,39 @@ export function CategoryRow({ id, name, archived }: { id: string; name: string; 
 
   return (
     <li className="py-2">
-      {editing ? (
-        <form
-          className="flex flex-wrap items-end gap-2"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            await patch({ displayName: value });
-          }}
-        >
-          <TextField label="Nama kategori" value={value} maxLength={60} onChange={setValue} />
-          <button type="submit" className={buttonClass.primary} disabled={update.pending}>
-            Simpan
-          </button>
-          <button type="button" className={buttonClass.secondary} onClick={() => setEditing(false)}>
-            Batal
-          </button>
-        </form>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={archived ? "text-muted" : ""}>
-            {name} {archived ? <Tag tone="neutral">Diarsipkan</Tag> : null}
-          </span>
-          <span className="flex gap-3">
-            <button type="button" className={buttonClass.link} onClick={() => setEditing(true)}>
-              Ganti nama
+      <Swap swapKey={editing ? "edit" : "view"}>
+        {editing ? (
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              await patch({ displayName: value });
+            }}
+          >
+            <TextField label="Nama kategori" value={value} maxLength={60} onChange={setValue} />
+            <button type="submit" className={buttonClass.primary} disabled={update.pending}>
+              Simpan
             </button>
-            <button type="button" className={buttonClass.link} disabled={update.pending} onClick={() => patch({ isArchived: !archived })}>
-              {archived ? "Aktifkan" : "Arsipkan"}
+            <button type="button" className={buttonClass.secondary} onClick={() => setEditing(false)}>
+              Batal
             </button>
-          </span>
-        </div>
-      )}
+          </form>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={archived ? "text-muted" : ""}>
+              {name} {archived ? <Tag tone="neutral">Diarsipkan</Tag> : null}
+            </span>
+            <span className="flex gap-3">
+              <button type="button" className={buttonClass.link} onClick={() => setEditing(true)}>
+                Ganti nama
+              </button>
+              <button type="button" className={buttonClass.link} disabled={update.pending} onClick={() => patch({ isArchived: !archived })}>
+                {archived ? "Aktifkan" : "Arsipkan"}
+              </button>
+            </span>
+          </div>
+        )}
+      </Swap>
       <FormErrors errors={update.error} />
     </li>
   );

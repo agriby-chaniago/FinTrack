@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AmountInput } from "@/components/amount-input";
 import { Checkbox, DateField, FormErrors, SubmitBar, SubmitButton } from "@/components/form";
+import { Swap } from "@/components/motion";
 import { Alert, buttonClass, Card, Money, SectionTitle } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 import { formatDate, formatDateTime, jakartaInputValue, jakartaIso } from "@/lib/format";
@@ -186,47 +187,49 @@ export function SettlementDraft({ draft, nowInput }: { draft: SettlementView; no
         >
           Saldo penutupan
         </SectionTitle>
-        {editing ? (
-          <form
-            className="space-y-4"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              const wallet = cashBody(draft.cash, cash);
-              const issues = [...(amount ? [] : ["Isi saldo DANA saat penutupan."]), ...wallet.issues];
-              if (issues.length) {
-                update.setError(issues);
-                return;
-              }
-              const result = await update.submit({ closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body }, { ifMatch: draft.version });
-              if (result.ok) {
-                setEditing(false);
-              }
-            }}
-          >
-            <ClosingFields endDate={draft.endDate} nowInput={nowInput} amount={amount} onAmount={setAmount} closing={closing} onClosing={setClosing} />
-            <CashFields state={draft.cash} values={cash} onChange={setCash} />
-            <FormErrors errors={update.error} />
-            <button type="submit" className={buttonClass.primary} disabled={update.pending}>
-              {update.pending ? "Menghitung…" : "Hitung ulang"}
-            </button>
-          </form>
-        ) : (
-          <div className="space-y-1 text-sm">
-            <p>
-              DANA <Money value={draft.closingPhysicalBalance} /> · dilihat {formatDateTime(draft.closingAt)}
-            </p>
-            {draft.cash.tracked ? (
+        <Swap swapKey={editing ? "edit" : "summary"}>
+          {editing ? (
+            <form
+              className="space-y-4"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                const wallet = cashBody(draft.cash, cash);
+                const issues = [...(amount ? [] : ["Isi saldo DANA saat penutupan."]), ...wallet.issues];
+                if (issues.length) {
+                  update.setError(issues);
+                  return;
+                }
+                const result = await update.submit({ closingPhysicalBalance: amount, closingAt: jakartaIso(closing), ...wallet.body }, { ifMatch: draft.version });
+                if (result.ok) {
+                  setEditing(false);
+                }
+              }}
+            >
+              <ClosingFields endDate={draft.endDate} nowInput={nowInput} amount={amount} onAmount={setAmount} closing={closing} onClosing={setClosing} />
+              <CashFields state={draft.cash} values={cash} onChange={setCash} />
+              <FormErrors errors={update.error} />
+              <button type="submit" className={buttonClass.primary} disabled={update.pending}>
+                {update.pending ? "Menghitung…" : "Hitung ulang"}
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-1 text-sm">
               <p>
-                Tunai di dompet <Money value={draft.cash.closingPhysicalBalance} />
+                DANA <Money value={draft.closingPhysicalBalance} /> · dilihat {formatDateTime(draft.closingAt)}
               </p>
-            ) : null}
-            {draft.cash.startTracking !== null ? (
-              <p className="text-calculated-fg">
-                Tunai mulai dilacak dengan <Money value={draft.cash.startTracking} /> setelah settlement ini. Setelah diselesaikan, nilai awal ini tidak dapat diubah.
-              </p>
-            ) : null}
-          </div>
-        )}
+              {draft.cash.tracked ? (
+                <p>
+                  Tunai di dompet <Money value={draft.cash.closingPhysicalBalance} />
+                </p>
+              ) : null}
+              {draft.cash.startTracking !== null ? (
+                <p className="text-calculated-fg">
+                  Tunai mulai dilacak dengan <Money value={draft.cash.startTracking} /> setelah settlement ini. Setelah diselesaikan, nilai awal ini tidak dapat diubah.
+                </p>
+              ) : null}
+            </div>
+          )}
+        </Swap>
       </Card>
 
       {draft.preview ? (

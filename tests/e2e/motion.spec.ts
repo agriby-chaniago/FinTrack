@@ -83,3 +83,30 @@ test("reduced motion keeps the sheet still", async ({ page }) => {
   expect(transforms.length).toBeGreaterThan(0);
   expect(transforms.every((t) => identity.test(t))).toBe(true);
 });
+
+test("Ubah detail reveals the actual fields and Tutup detail removes them", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/rutinitas");
+  await page.getByRole("button", { name: "Ubah detail" }).first().click();
+  await expect(page.getByLabel("Tanggal aktual")).toBeVisible();
+  const heights = await page.getByLabel("Tanggal aktual").evaluate(async (input) => {
+    const region = input.closest("[style]") as HTMLElement;
+    const seen: number[] = [];
+    (document.querySelector("button[aria-expanded='true']") as HTMLButtonElement | null)?.click();
+    const start = performance.now();
+    while (performance.now() - start < 300) {
+      await new Promise(requestAnimationFrame);
+      seen.push(region.getBoundingClientRect().height);
+    }
+    return seen;
+  });
+  expect(new Set(heights.map(Math.round)).size).toBeGreaterThan(2);
+  await expect(page.getByLabel("Tanggal aktual")).toHaveCount(0);
+});
+
+test("native disclosures open and close smoothly", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/rutinitas");
+  const duration = await page.locator("details").first().evaluate((el) => getComputedStyle(el, "::details-content").transitionDuration);
+  expect(duration).toContain("0.18s");
+});
