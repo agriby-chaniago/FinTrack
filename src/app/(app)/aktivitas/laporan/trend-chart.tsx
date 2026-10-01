@@ -1,0 +1,45 @@
+"use client";
+
+// Trend chart wrapper (PRD v0.20 P4). Below md nothing renders and Chart.js is
+// never imported; at md and wider, chart-canvas loads on demand without SSR.
+import dynamic from "next/dynamic";
+import { useSyncExternalStore } from "react";
+
+import { Skeleton } from "@/components/skeletons";
+
+export type TrendChartProps = {
+  kind: "line" | "bar";
+  labels: string[];
+  series: { label: string; values: string[]; style: "solid" | "outline" }[];
+  summary: string;
+  unit: string;
+};
+
+const ChartCanvas = dynamic(() => import("./chart-canvas"), { ssr: false, loading: () => <Skeleton className="h-64" /> });
+
+const wide = "(min-width: 48rem)";
+function subscribe(onChange: () => void) {
+  const query = matchMedia(wide);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+export function TrendChart(props: TrendChartProps) {
+  const isWide = useSyncExternalStore(subscribe, () => matchMedia(wide).matches, () => false);
+  if (!isWide) return null;
+  return (
+    <div className="space-y-2">
+      <ChartCanvas {...props} />
+      {props.series.length > 1 ? (
+        <ul aria-hidden="true" className="flex flex-wrap gap-4 text-xs text-muted">
+          {props.series.map((s, i) => (
+            <li key={s.label} className="flex items-center gap-1.5">
+              <span className={`size-3 ${s.style === "solid" ? (i === 0 ? "bg-primary" : "bg-plum") : `border-2 ${i === 0 ? "border-primary" : "border-plum"}`}`} />
+              {s.label}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}

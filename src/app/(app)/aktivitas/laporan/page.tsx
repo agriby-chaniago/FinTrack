@@ -10,6 +10,7 @@ import { reportPage } from "@/server/application/reports";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
 import { AktivitasTabs } from "../tabs";
+import { TrendChart } from "./trend-chart";
 
 function Stat({ label, value, delta, previousMonth, signed }: { label: string; value: string; delta: string; previousMonth: string; signed?: boolean }) {
   return (
@@ -157,6 +158,13 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
               {weekly.eligibility.eligible ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted">{weekly.summary}</p>
+                  <TrendChart
+                    kind="line"
+                    labels={weekly.points.map((point) => formatDate(point.endDate))}
+                    series={[{ label: "Rata-rata biaya hidup per hari", values: weekly.points.map((point) => point.averagePerDay), style: "solid" }]}
+                    summary={weekly.summary}
+                    unit="Rupiah per hari"
+                  />
                   <ul aria-label="Data tren mingguan" className="divide-y divide-border text-sm">
                     {weekly.points.map((point) => (
                       <li key={point.settlementId} className="flex justify-between gap-3 py-1.5">
@@ -185,6 +193,16 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
               {monthly.eligibility.eligible ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted">{monthly.summary}</p>
+                  <TrendChart
+                    kind="bar"
+                    labels={monthly.points.map((point) => formatCycle(point.month))}
+                    series={[
+                      { label: "Pertumbuhan reserve", values: monthly.points.map((point) => point.reserveGrowth), style: "solid" },
+                      { label: "Pengeluaran", values: monthly.points.map((point) => point.outflow), style: "outline" },
+                    ]}
+                    summary={monthly.summary}
+                    unit="Rupiah"
+                  />
                   <ul aria-label="Data tren bulanan" className="divide-y divide-border text-sm">
                     {monthly.points.map((point) => (
                       <li key={point.month} className="flex flex-wrap justify-between gap-x-3 py-1.5">

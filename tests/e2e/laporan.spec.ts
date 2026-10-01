@@ -80,3 +80,46 @@ test.describe("a new owner", () => {
     await expect(page.getByRole("heading", { name: previousMonthLabel() })).toBeVisible();
   });
 });
+
+/** The Sunday at least `weeks` full weeks before today (Asia/Jakarta). */
+function sundayWeeksAgo(weeks: number): string {
+  const date = new Date(new Date(`${todayJakarta()}T00:00:00Z`).getTime() - weeks * 7 * 86_400_000);
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  return date.toISOString().slice(0, 10);
+}
+const addDaysIso = (date: string, days: number) => new Date(new Date(`${date}T00:00:00Z`).getTime() + days * 86_400_000).toISOString().slice(0, 10);
+
+test.describe("with four settled weeks", () => {
+  let user: User;
+  test.beforeAll(async ({ playwright }) => {
+    user = await createAuthUser(clients.authAdmin, "e2e-laporan-trend");
+    const cutover = sundayWeeksAgo(5);
+    await resetWithConfirmedFixture(clients, user.id, `${cutover}T20:00:00+07:00`);
+    const api = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3000" });
+    const headers = (ifMatch?: number) => ({ authorization: `Bearer ${user.accessToken}`, "idempotency-key": crypto.randomUUID(), ...(ifMatch === undefined ? {} : { "if-match": `"${ifMatch}"` }) });
+    for (let week = 1; week <= 4; week++) {
+      const endDate = addDaysIso(cutover, week * 7);
+      const created = (await (await api.post("/api/v1/settlements", { headers: headers(), data: { endDate } })).json()).data;
+      const patched = (await (await api.patch(`/api/v1/settlements/${created.id}`, { headers: headers(created.version), data: { closingPhysicalBalance: "100000", closingAt: `${endDate}T21:00:00+07:00` } })).json()).data;
+      const settled = await api.post(`/api/v1/settlements/${created.id}/settle`, { headers: headers(patched.version), data: {} });
+      expect(settled.ok()).toBe(true);
+    }
+    await api.dispose();
+  });
+  test.afterAll(async () => {
+    await clients.authAdmin.auth.admin.deleteUser(user.id);
+  });
+
+  test("desktop shows charts only when eligible, mobile shows the data list", async ({ page }) => {
+    await signInAs(page, user);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/aktivitas/laporan");
+    // Weekly is eligible after four settlements; monthly needs three completed BCA cycles.
+    await expect(page.locator("canvas[role='img']")).toHaveCount(1);
+    await expect(page.locator("canvas[role='img']")).toHaveAttribute("aria-label", /per hari/);
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.reload();
+    await expect(page.getByRole("list", { name: "Data tren mingguan" })).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(0);
+  });
+});
