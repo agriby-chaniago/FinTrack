@@ -265,3 +265,15 @@ details::details-content {
 details[open]::details-content {
   block-size: auto;
 }
+
+/* Content and skeletons fade in as they replace each other (PRD v0.20 P3).
+   Opacity only; the global reduced-motion rule makes it instant. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+main > * {
+  animation: fade-in 150ms ease-out;
+}

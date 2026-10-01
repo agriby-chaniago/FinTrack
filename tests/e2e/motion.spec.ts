@@ -120,3 +120,9 @@ test("confirming an occurrence shows a toast and the confirmed state", async ({ 
   await expect(page.getByRole("button", { name: "Tandai tidak diterima" })).toBeVisible();
   await expect(toast).toBeHidden({ timeout: 6000 });
 });
+
+test("page content fades in when it replaces the skeleton", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/akun");
+  expect(await page.locator("main > *").first().evaluate((el) => getComputedStyle(el).animationName)).toBe("fade-in");
+});
