@@ -1,15 +1,15 @@
 # Visual refresh and post-MVP roadmap (S15–S18)
 
-**Spec:** `PRD.md` → `Visual refresh dan fitur pasca-MVP (v0.20)` (P1–P6, all PROPOSED on 1 October 2026).
+**Spec:** `PRD.md` → `Visual refresh dan fitur pasca-MVP (v0.20)` (P1–P8, all LOCKED on 1 October 2026).
 **Preview:** https://claude.ai/artifact/Q4bY3aNEMPsuNpKtmq7Pyg (palette tokens, contrast, Beranda light/dark against the current UI).
 
-No slice starts until the owner approves the PRD items it depends on and they are relabelled **LOCKED**. Each slice has its own detailed plan, written when the slice starts, so it reflects the code as it stands then.
+Each slice has its own detailed plan, written when the slice starts, so it reflects the code as it stands then.
 
 ## Slices
 
 | Slice | PRD | Builds | Plan |
 | --- | --- | --- | --- |
-| S15 | P1, P2, P4 (teaser only) | `Petrol & Paper` tokens; headline panel, account monograms, section icons, transfer and obligation progress bars, seven-day DANA strip, chart-eligibility card on Beranda | `2026-10-01-s15-palette-and-dashboard-density.md` |
+| S15 | P1, P2, P4 (teaser only), P7, P8 | `Petrol & Paper` tokens; square geometry; BCA/DANA/Jago app icons; headline panel, section icons, transfer and obligation progress bars, seven-day DANA strip, chart-eligibility card on Beranda | `2026-10-01-s15-palette-and-dashboard-density.md` |
 | S16 | P3 | Motion with `LazyMotion` + `domAnimation`; task-list exit/layout, flow step transitions, `+ Catat` sheet, expand/collapse, toast; one shared form submit pattern | Written when S16 starts |
 | S17 | P4, P5 | `/aktivitas/laporan` with `Riwayat \| Laporan` segmented control; month report; Chart.js loaded lazily only at `md` and up and only after the threshold | Written when S17 starts |
 | S18 | P6 | One-way Telegram digest at 08:00 `Asia/Jakarta`; GitHub Actions → `/api/internal/reminders`; at most one per business date; no amounts | Written when S18 starts |
@@ -25,6 +25,5 @@ Order: S15 → S16 → S17. S18 depends only on S12 and can run in parallel once
 
 ## Owner actions
 
-1. Approve or amend PRD v0.20 P1–P6.
-2. Revoke the bot token that was pasted into chat on 1 October 2026 (@BotFather → `/revoke`), then generate a new one.
-3. Before S18: put the new token and the owner chat id in Vercel production env as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`, and add the GitHub Actions secret for the reminder route token.
+1. Before S18: send `/start` to the bot (@FinTrack_LoKi_Bot) so its chat id can be read.
+2. Before S18: put the bot token and the chat id in Vercel production env as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`, and add the GitHub Actions secret for the reminder route token.

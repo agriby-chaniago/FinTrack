@@ -1277,7 +1277,7 @@ FinTrack memakai empat primary destinations dan satu secondary area:
 
 `Rutinitas` dipakai sebagai navigation label karena lebih luas dan lebih mudah dipahami daripada `Settlement`: area ini menampung DANA settlement, BCA cycle, dan reconciliation. `Settlement` tetap menjadi istilah domain internal.
 
-Tidak ada top-level page terpisah untuk report, transfer, special expense, external funds, correction, investment, atau goal pada MVP. Fitur tersebut hadir pada destination, detail, filter, atau action yang sesuai.
+Tidak ada top-level page terpisah untuk report, transfer, special expense, external funds, correction, investment, atau goal pada MVP. Fitur tersebut hadir pada destination, detail, filter, atau action yang sesuai. Sejak v0.20, Laporan hadir sebagai sub-view Aktivitas (`/aktivitas/laporan`, P5), bukan destination kelima.
 
 System auth routes `/login`, `/forgot-password`, `/auth/callback`, dan `/reset-password` berada di luar authenticated app shell dan bukan primary destination.
 
@@ -1371,19 +1371,9 @@ Status: **LOCKED**.
 
 daisyUI memakai dua custom themes, `fintrack-light` dan `fintrack-dark`; stock theme tidak digunakan tanpa penyesuaian.
 
-| Token | Light | Dark |
-| --- | --- | --- |
-| **Canvas** | `#F7F8FA` | `#0B0F14` |
-| **Surface** | `#FFFFFF` | `#111720` |
-| **Surface subtle/elevated** | `#F1F3F5` | `#171E28` |
-| **Border** | `#E2E6EB` | `#273140` |
-| **Interactive control boundary** | `#7D8998` | `#6B7A90` |
-| **Text** | `#161B22` | `#F4F7FB` |
-| **Muted text** | `#667085` | `#9BA8B8` |
-| **Primary indigo** | `#4F46E5` | `#818CF8` |
-| **Soft primary** | `#EEF2FF` | `#1E1B4B` |
+Core palette adalah `Petrol & Paper`; tabel token lengkap berada di `Visual refresh dan fitur pasca-MVP (v0.20)` → P1. Palette indigo/abu-abu sebelumnya sudah diganti.
 
-Dark mode memakai navy-charcoal, bukan pure black. Surface bersifat flat dengan border tipis. Token `Border` adalah divider/surface separation non-esensial; ia tidak boleh menjadi satu-satunya boundary control. Input dan control tanpa filled shape memakai `Interactive control boundary`, yang memiliki rasio minimal 3:1 terhadap surface. Shadow hanya dipakai untuk overlay, floating action, dialog, dan bottom sheet. Gradient dominan, glassmorphism, glow, decorative illustration besar, nested card berlebihan, dan provider-brand color tidak menjadi visual language FinTrack.
+Dark mode memakai navy-charcoal, bukan pure black. Surface bersifat flat dengan border tipis. Token `Border` adalah divider/surface separation non-esensial; ia tidak boleh menjadi satu-satunya boundary control. Input dan control tanpa filled shape memakai `Interactive control boundary`, yang memiliki rasio minimal 3:1 terhadap surface. Shadow hanya dipakai untuk overlay, floating action, dialog, dan bottom sheet. Gradient dominan, glassmorphism, glow, decorative illustration besar, nested card berlebihan, dan provider-brand color tidak menjadi visual language FinTrack. Satu-satunya tempat warna brand provider muncul adalah ikon aplikasi provider pada tile akun (v0.20 P8).
 
 Theme preference memiliki nilai `system`, `light`, atau `dark`. First visit memakai `system`; quick toggle membuat explicit override; `Ikuti sistem` tetap tersedia di Pengaturan. Theme harus diselesaikan sebelum first paint dan tidak memakai global full-page transition yang menyebabkan flash.
 
@@ -1404,11 +1394,11 @@ Foreground/background semantic pairs di atas memenuhi minimal 4.5:1 untuk normal
 
 | State | Light | Dark |
 | --- | --- | --- |
-| **Default** | `#FFFFFF` on `#4F46E5` | `#0B0F14` on `#818CF8` |
-| **Hover** | `#FFFFFF` on `#4338CA` | `#0B0F14` on `#A5B4FC` |
-| **Pressed** | `#FFFFFF` on `#3730A3` | `#0B0F14` on `#C7D2FE` |
+| **Default** | `#FFFFFF` on `#0E6170` | `#0D1316` on `#4FC3CF` |
+| **Hover** | `#FFFFFF` on `#0B4F5B` | `#0D1316` on `#7DD6DE` |
+| **Pressed** | `#FFFFFF` on `#083E48` | `#0D1316` on `#A8E5EA` |
 | **Disabled** | `#475467` on `#EAECF0` | `#D0D5DD` on `#273140` |
-| **Focus ring** | `#4F46E5` | `#818CF8` |
+| **Focus ring** | `#0E6170` | `#4FC3CF` |
 
 Warna tidak pernah menjadi satu-satunya pembawa arti. Final implementation token dan setiap state tetap harus diuji terhadap pasangan surface aktual; token tidak boleh diubah hanya karena terlihat serupa.
 
@@ -1422,7 +1412,7 @@ Warna tidak pernah menjadi satu-satunya pembawa arti. Final implementation token
 - Sentence case digunakan; bold dan uppercase tidak dipakai berlebihan
 - Layout memakai 4px base grid dengan common spacing `8/12/16/24/32`
 - Page padding 16px pada mobile dan 24–32px pada desktop
-- Card memakai 1px border, 12px radius, padding 16px mobile dan 20–24px desktop
+- Card memakai 1px border, sudut siku tanpa radius (v0.20 P7), padding 16px mobile dan 20–24px desktop
 - Touch target minimum 44×44px; primary mobile action idealnya 48px
 - MVP memiliki satu comfortable density dan tidak menyediakan density setting
 
@@ -1482,7 +1472,7 @@ Line chart dipakai untuk average daily living cost; bar chart untuk reserve grow
 
 ### Visual refresh dan fitur pasca-MVP (v0.20)
 
-Status: **PROPOSED** (1 Oktober 2026), menunggu persetujuan pemilik. Setelah MVP dipakai, pemilik menilai UI terlalu kosong dan palette terlalu datar, belum ada animasi, dan belum ada pengingat. Bagian ini membuka ulang beberapa keputusan **LOCKED**; setiap keputusan yang dibuka ulang disebut eksplisit. Sampai disetujui, keputusan LOCKED lama tetap berlaku.
+Status: **LOCKED** (1 Oktober 2026, disetujui pemilik setelah meninjau preview; P7 dan P8 ditambahkan atas permintaan pemilik). Setelah MVP dipakai, pemilik menilai UI terlalu kosong dan palette terlalu datar, belum ada animasi, dan belum ada pengingat. Bagian ini mengganti beberapa keputusan **LOCKED** sebelumnya; setiap keputusan yang diganti disebut eksplisit dan dicatat pada tabel superseded.
 
 #### P1 — Palette `Petrol & Paper`
 
@@ -1513,7 +1503,7 @@ Membuka ulang: tabel core palette pada `Theme dan palette` dan baris superseded 
 Ditambahkan elemen yang membawa informasi, bukan ilustrasi:
 
 - Headline `Personal cash tercatat` berada pada panel soft primary
-- Setiap account card memiliki tile monogram (huruf awal display name) dengan warna aksen. Warnanya diambil berurutan dari palette aksen FinTrack berdasarkan urutan account, bukan dari brand provider. Palette aksen: petrol, plum, ochre `#7D5F27`/`#E0B872`, dan sage `#4D6B57`/`#9CC9A9` (light/dark)
+- Setiap account card memiliki tile akun: ikon aplikasi provider bila provider dikenali (P8), glyph uang tunai untuk account `CASH`, dan selain itu monogram (huruf awal display name). Warna monogram diambil berurutan dari palette aksen FinTrack berdasarkan urutan account, bukan dari brand provider. Palette aksen: petrol, plum, ochre `#7D5F27`/`#E0B872`, dan sage `#4D6B57`/`#9CC9A9` (light/dark)
 - Setiap section title memiliki icon
 - Progress bar untuk: fulfillment target transfer, kewajiban BCA yang sudah resolved (`3/5 selesai`), dan kelayakan chart (`1/4 settlement`). Progress bar selalu disertai teks angka dan bukan chart
 - Strip tujuh hari income DANA minggu berjalan: satu penanda per hari dengan state diterima, override, paused, atau belum terjadi; setiap state memakai bentuk/icon dan label teks, bukan warna saja
@@ -1553,6 +1543,31 @@ Membuka ulang: `Push/email reminders dan background notifications` pada `Tidak t
 - Pesan hanya dikirim jika ada task `Perlu dilakukan`; isinya judul task dan link ke FinTrack, tanpa nominal, saldo, atau nama dana titipan
 - Maksimal satu digest per tanggal bisnis
 - Kegagalan Telegram tidak memengaruhi aplikasi dan tercatat sebagai failure di workflow
+
+#### P7 — Geometri siku (`extra crispy`)
+
+Permintaan pemilik: tampilan tegas dan kotak, tanpa sudut membulat dan tanpa bentuk lingkaran.
+
+- Seluruh card, panel, list, input, select, button, tag/badge, progress bar, penanda strip harian, tile akun, floating `+ Catat`, popover, dialog, sheet, toast, dan skeleton memakai sudut siku (radius 0). Tidak ada bentuk pill atau lingkaran pada elemen UI FinTrack
+- Radius daisyUI (`--radius-selector`, `--radius-field`, `--radius-box`) bernilai 0 pada kedua theme
+- Pengecualian tunggal: radio input tetap bulat. Radio dan checkbox yang sama-sama kotak membuat pilihan tunggal dan pilihan ganda tidak dapat dibedakan sebelum dipilih
+- Glyph icon dan ikon aplikasi provider tidak diubah bentuknya
+- Garis tetap 1px; ketegasan berasal dari sudut siku dan kontras token, bukan border tebal
+
+Mengganti: `Card memakai 1px border, 12px radius` pada `Typography dan density`.
+
+#### P8 — Ikon aplikasi provider
+
+Permintaan pemilik: tile akun menampilkan ikon aplikasi BCA, DANA, dan Jago.
+
+- Provider dikenali dari `provider_name` yang dinormalisasi (huruf kecil, tanpa spasi dan tanda baca), bukan dari display name atau id: `bca`, `bankbca`, `bankcentralasia`, `mybca` → BCA; `dana` → DANA; `jago`, `bankjago`, `jagosyariah` → Jago
+- BCA memakai ikon aplikasi myBCA karena ikon tersebut full-bleed persegi; DANA dan Jago memakai ikon aplikasi masing-masing
+- Account `CASH` (Tunai) memakai glyph uang tunai FinTrack; provider lain memakai monogram P2
+- Ikon disimpan sebagai file statis di repository, tidak di-hotlink, dan ditampilkan pada tile siku 40px dengan teks alternatif kosong karena nama akun selalu tertulis di sebelahnya
+- Warna brand provider hanya muncul di dalam ikon; surface kartu, aksen, dan status tetap memakai token FinTrack
+- Tile akun muncul pada account card Beranda, daftar Akun, dan header detail Akun
+
+Mengganti sebagian: `provider-brand color tidak menjadi visual language FinTrack` pada `Theme dan palette`, khusus untuk ikon. `Provider-branded card colors` pada `Tidak termasuk MVP` tetap berlaku.
 
 #### Tetap ditunda
 
@@ -2144,13 +2159,13 @@ Baseline teknis:
 - WhatsApp bot
 - Forecasting/prediction
 - Advanced analytics
-- Separate reports page dan customizable dashboard widgets
+- Separate reports page dan customizable dashboard widgets (Laporan pasca-MVP hadir sebagai sub-view Aktivitas, v0.20 P5)
 - Global search dan notification center
 - Dashboard carousel atau chart yang belum memiliki cukup history/use case
 - Anime.js atau Embla dependency tanpa concrete MVP use case
 - Decorative animation, count-up balance, parallax, confetti, glow, glassmorphism, dan provider-branded card colors
 - Gamification
-- Push/email reminders dan background notifications; in-app pending prompt tetap termasuk MVP
+- Push/email reminders dan background notifications; in-app pending prompt tetap termasuk MVP (pasca-MVP: digest Telegram satu arah, v0.20 P6)
 - Multiple queued future daily-income transitions atau planned pause range dalam satu aksi
 - Automatic learning/perubahan expected subscription date dari actual charge history
 - Automatic special-expense categorization
@@ -2598,6 +2613,11 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | Lima equal top-level areas termasuk Settings | Empat primary destinations dengan `Pengaturan` sebagai secondary area |
 | Semua quick actions ditampilkan bersama | Global `+ Catat`, contextual tasks, dan detail actions dipisahkan berdasarkan konteks |
 | Stock daisyUI theme atau provider-colored cards | Custom Quiet Ledger themes dengan neutral surfaces dan indigo accent |
+| Quiet Ledger dengan neutral surfaces dan indigo accent | Quiet Ledger dengan palette `Petrol & Paper` (v0.20 P1) |
+| Card dengan radius 12px dan badge berbentuk pill | Geometri siku tanpa radius; radio input satu-satunya bentuk bulat (v0.20 P7) |
+| Tidak ada warna brand provider sama sekali | Warna brand hanya di ikon aplikasi provider pada tile akun (v0.20 P8) |
+| Tidak ada halaman laporan | Laporan sebagai sub-view Aktivitas di `/aktivitas/laporan` (v0.20 P5) |
+| Tidak ada pengingat di luar aplikasi | Digest Telegram harian satu arah tanpa nominal (v0.20 P6) |
 | Semua preferred animation/carousel library dipasang sejak awal | Motion dipakai selektif; Anime.js dan Embla ditunda sampai ada concrete use case |
 | Target DANA yang tidak terpenuhi hanya mendapat liquidity warning | Liquidity warning tetap ada, ditambah aksi eksplisit `Tutup target` dengan reason `LIQUIDITY_WRITE_OFF` |
 | Retained floor dipilih ketika BCA remainder suggestion diaktifkan | Retained floor wajib dipilih saat financial onboarding |
@@ -2753,12 +2773,14 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Uang fisik dilacak sebagai account `Tunai` (`CASH`) yang di-settle bersama DANA dalam satu settlement pool; diaktifkan dari settlement, saldo dompet diisi setiap settlement, dan target reserve tetap dari DANA saja (30 September 2026) |
 | **LOCKED** | Production berjalan tanpa daily R2 backup atas keputusan pemilik; bila data hilang, pemilik melakukan setup ulang. Pipeline backup tetap tersedia dan nonaktif (30 September 2026) |
 | **DEFERRED** | Custom SMTP; owner production dibuat langsung di Supabase Dashboard dengan Auto Confirm (30 September 2026) |
-| **PROPOSED** | Palette `Petrol & Paper` menggantikan core palette indigo/abu-abu; semantic color tetap (v0.20, 1 Oktober 2026) |
-| **PROPOSED** | Kepadatan visual informatif: panel headline, monogram account, icon section, progress bar, strip tujuh hari DANA (v0.20) |
-| **PROPOSED** | Motion dipasang dengan `LazyMotion` untuk task list, langkah flow, sheet, expand/collapse, dan toast (v0.20) |
-| **PROPOSED** | Kartu kelayakan chart sebelum threshold; chart tidak dirender di bawah `md` (v0.20) |
-| **PROPOSED** | Halaman Laporan di `/aktivitas/laporan` sebagai tempat chart (v0.20) |
-| **PROPOSED** | Digest pengingat Telegram harian satu arah tanpa nominal (v0.20) |
+| **LOCKED** | Palette `Petrol & Paper` menggantikan core palette indigo/abu-abu; semantic color tetap (v0.20, 1 Oktober 2026) |
+| **LOCKED** | Kepadatan visual informatif: panel headline, monogram account, icon section, progress bar, strip tujuh hari DANA (v0.20) |
+| **LOCKED** | Motion dipasang dengan `LazyMotion` untuk task list, langkah flow, sheet, expand/collapse, dan toast (v0.20) |
+| **LOCKED** | Kartu kelayakan chart sebelum threshold; chart tidak dirender di bawah `md` (v0.20) |
+| **LOCKED** | Halaman Laporan di `/aktivitas/laporan` sebagai tempat chart (v0.20) |
+| **LOCKED** | Digest pengingat Telegram harian satu arah tanpa nominal (v0.20) |
+| **LOCKED** | Geometri siku tanpa radius; radio input satu-satunya bentuk bulat (v0.20 P7, permintaan pemilik 1 Oktober 2026) |
+| **LOCKED** | Ikon aplikasi BCA (myBCA), DANA, dan Jago pada tile akun; glyph tunai untuk `CASH`; monogram untuk provider lain (v0.20 P8, permintaan pemilik 1 Oktober 2026) |
 
 ### Aturan pemeliharaan dokumen
 
@@ -2771,4 +2793,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.20 · Production active · Slices 0–14 implemented; v0.20 visual refresh PROPOSED_
+_FinTrack PRD v0.20 · Production active · Slices 0–14 implemented; v0.20 visual refresh LOCKED, S15 in progress_
