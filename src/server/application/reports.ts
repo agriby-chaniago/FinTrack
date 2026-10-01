@@ -3,6 +3,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import { businessDateOf, cycleKeyOf, isCycleKey } from "@/lib/business-time";
+import { chartEligibility, weekStrip } from "@/lib/dashboard-view";
 import { parseIdrDecimal, toIdrDecimal, type MinorUnits } from "@/lib/money";
 import { ApiError } from "@/server/api/errors";
 import type { OwnerTx } from "@/server/db/owner";
@@ -225,19 +226,21 @@ export async function monthReport(tx: OwnerTx, ownerId: string, month: string, v
 export type DashboardTask =
   | { type: "SETTLEMENT"; mode: string; periodStart: string; normalEnd: string; draftId: string | null }
   | { type: "CONFIRM_INCOME" | "CONFIRM_OBLIGATION"; cycleKey: string; occurrenceId: string; name: string; label: string | null; expectedAmount: string | null; expectedDate: string | null }
-  | { type: "TRANSFER"; targetId: string; route: string; remaining: string; transferNow: string; contextKey: string }
+  | { type: "TRANSFER"; targetId: string; route: string; amount: string; linked: string; remaining: string; transferNow: string; contextKey: string }
   | { type: "RECONCILE"; accountId: string; reason: string };
 
 /** DANA card: the open week shows known values only; living cost waits for settlement. */
 async function danaCard(tx: OwnerTx, ownerId: string, router: Awaited<ReturnType<typeof settlementRouter>>, today: string) {
   const rule = await dailyRuleFor(tx, ownerId);
   if (!rule) return null;
-  const [completed] = await tx
-    .select()
+  // The window count rides on the latest-settlement query, so chart eligibility costs no extra round trip.
+  const [latestRow] = await tx
+    .select({ row: settlement, total: sql<number>`count(*) over ()`.mapWith(Number) })
     .from(settlement)
     .where(and(eq(settlement.ownerId, ownerId), eq(settlement.accountId, rule.accountId), eq(settlement.status, "SETTLED")))
     .orderBy(sql`${settlement.endDate} desc`)
     .limit(1);
+  const completed = latestRow?.row;
   const openFrom = router.mode === "NO_WEEKLY_ACCOUNT" ? null : router.periodStart;
   const incomeToDate = openFrom && openFrom <= today ? await recognizedIncomeFor(tx, ownerId, rule.accountId, openFrom, today, rule) : null;
   let latest = null;
@@ -254,10 +257,14 @@ async function danaCard(tx: OwnerTx, ownerId: string, router: Awaited<ReturnType
       hasCorrections: completed.livingExpenseMinor !== livingExpense,
     };
   }
+  const normalEnd = router.mode === "NO_WEEKLY_ACCOUNT" ? null : router.normalEnd;
+  const open = openFrom !== null && openFrom <= today;
   return {
     accountId: rule.accountId,
-    openWeek: openFrom && openFrom <= today ? { periodStart: openFrom, recognizedIncomeToDate: amount(incomeToDate?.recognized ?? 0n), livingExpense: null } : null,
+    openWeek: open ? { periodStart: openFrom, recognizedIncomeToDate: amount(incomeToDate?.recognized ?? 0n), livingExpense: null } : null,
+    week: open && normalEnd ? { periodStart: openFrom, normalEnd, days: weekStrip({ periodStart: openFrom, normalEnd, today, days: incomeToDate?.days ?? [] }) } : null,
     latestCompleted: latest,
+    completedCount: latestRow?.total ?? 0,
   };
 }
 
@@ -303,6 +310,8 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
         type: "TRANSFER",
         targetId: target.id,
         route: `${target.route.sourceName} → ${target.route.destinationName}`,
+        amount: target.version.amount,
+        linked: target.linked,
         remaining: target.remaining,
         transferNow: suggestion?.transferNow ?? "0",
         contextKey: target.contextKey,
@@ -326,6 +335,10 @@ export async function dashboard(tx: OwnerTx, ownerId: string, now: Date) {
     bca: { currentCycle, latestCompletedCycle },
     reserve: { monthToDate: month.reserve, specialOutflowMonthToDate: month.specialOutflow, month: month.month },
     external,
+    chart: chartEligibility({
+      settlements: dana?.completedCount ?? 0,
+      cycles: cycles.filter((c) => c.state === "COMPLETE" || c.state === "CLOSED_NO_INCOME").length,
+    }),
   };
 }
 

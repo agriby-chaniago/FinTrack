@@ -137,6 +137,19 @@ describe("locked full-month validation fixture", () => {
     expect(body.data.bca.latestCompletedCycle).toMatchObject({ cycleKey: "2021-02", state: "COMPLETE" });
     expect(body.data.dana.latestCompleted).toBeTruthy();
     expect(body.data.external).toEqual([expect.objectContaining({ displayName: "Dosen", total: "431999.93" })]);
+    expect(body.data.chart).toEqual({
+      weekly: { count: expect.any(Number), needed: 4, eligible: expect.any(Boolean) },
+      monthly: { count: expect.any(Number), needed: 3, eligible: expect.any(Boolean) },
+    });
+    expect(body.data.chart.weekly.count).toBeGreaterThanOrEqual(1);
+    if (body.data.dana.week) {
+      expect(body.data.dana.week.days.length).toBeGreaterThan(0);
+      expect(body.data.dana.week.days.length).toBeLessThanOrEqual(7);
+      expect(body.data.dana.week.days[0]).toEqual({ date: body.data.dana.week.periodStart, weekday: expect.any(String), marker: expect.any(String) });
+    }
+    for (const task of body.data.tasks.filter((t: { type: string }) => t.type === "TRANSFER")) {
+      expect(task).toMatchObject({ amount: expect.any(String), linked: expect.any(String) });
+    }
   });
 });
 
