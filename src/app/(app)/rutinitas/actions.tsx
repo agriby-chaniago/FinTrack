@@ -5,12 +5,15 @@ import { useState } from "react";
 import { AmountInput } from "@/components/amount-input";
 import { DateField, FormErrors } from "@/components/form";
 import { Collapse, Swap } from "@/components/motion";
+import { useToast } from "@/components/toast";
 import { buttonClass } from "@/components/ui";
 import { todayInJakarta, useMutation } from "@/lib/api-client";
 import { formatDate, money } from "@/lib/format";
 
 type OccurrenceProps = {
   type: "monthly-income" | "recurring-expense";
+  /** What the toast names, e.g. "Income bulanan" or the subscription name. */
+  name: string;
   occurrenceId: string;
   ruleId?: string;
   cycleKey: string;
@@ -36,6 +39,7 @@ export function OccurrenceActions(props: OccurrenceProps) {
   const revise = useMutation<Record<string, unknown>>(`/api/v1/recurring-expense-rules/${props.ruleId}/revisions`);
   const noEvent = props.type === "monthly-income" ? "NOT_RECEIVED" : "NOT_CHARGED";
   const noEventLabel = props.type === "monthly-income" ? "Tidak diterima" : "Tidak ditagih";
+  const toast = useToast();
 
   async function confirm(actualDate: string, actualAmount: string | null) {
     if (!actualAmount) {
@@ -45,6 +49,7 @@ export function OccurrenceActions(props: OccurrenceProps) {
     }
     const result = await resolve.submit({ outcome: "CONFIRMED", actualDate, actualAmount });
     if (result.ok) {
+      toast(`${props.name} dikonfirmasi`);
       const day = Number(actualDate.slice(8, 10));
       if (props.type === "recurring-expense" && props.ruleId && props.expectedDay !== null && day !== props.expectedDay && actualDate.startsWith(props.cycleKey)) {
         setRevisionOffer(day);
@@ -54,7 +59,8 @@ export function OccurrenceActions(props: OccurrenceProps) {
   }
 
   async function markNoEvent() {
-    await resolve.submit({ outcome: noEvent });
+    const result = await resolve.submit({ outcome: noEvent });
+    if (result.ok) toast(`${props.name} ditandai ${noEventLabel.toLowerCase()}`);
   }
 
   const confirmed = (
@@ -132,6 +138,7 @@ function nextMonth(today: string): string {
 export function CloseTargetButton({ targetId }: { targetId: string }) {
   const [confirming, setConfirming] = useState(false);
   const close = useMutation(`/api/v1/transfer-targets/${targetId}/close`);
+  const toast = useToast();
   return (
     <Swap swapKey={confirming ? "confirm" : "idle"}>
       {confirming ? (
@@ -143,7 +150,8 @@ export function CloseTargetButton({ targetId }: { targetId: string }) {
               className={buttonClass.danger}
               disabled={close.pending}
               onClick={async () => {
-                await close.submit({});
+                const result = await close.submit({});
+            if (result.ok) toast("Target ditutup");
               }}
             >
               Ya, tutup target

@@ -245,6 +245,7 @@ export default async function RutinitasPage() {
                     <div className="mt-3">
                       <OccurrenceActions
                         type="monthly-income"
+                        name="Income bulanan"
                         occurrenceId={cycle.income.occurrenceId}
                         cycleKey={cycle.cycleKey}
                         status={cycle.income.status}
@@ -285,6 +286,7 @@ export default async function RutinitasPage() {
                     <div className="mt-3">
                       <OccurrenceActions
                         type="recurring-expense"
+                        name={o.name}
                         occurrenceId={o.occurrenceId}
                         ruleId={o.ruleId}
                         cycleKey={cycle.cycleKey}

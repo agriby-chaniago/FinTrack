@@ -110,3 +110,13 @@ test("native disclosures open and close smoothly", async ({ page }) => {
   const duration = await page.locator("details").first().evaluate((el) => getComputedStyle(el, "::details-content").transitionDuration);
   expect(duration).toContain("0.18s");
 });
+
+test("confirming an occurrence shows a toast and the confirmed state", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/rutinitas");
+  await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp750\.000/ }).click();
+  const toast = page.getByRole("status").filter({ hasText: "Income bulanan dikonfirmasi" });
+  await expect(toast).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tandai tidak diterima" })).toBeVisible();
+  await expect(toast).toBeHidden({ timeout: 6000 });
+});

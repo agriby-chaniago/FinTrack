@@ -11,6 +11,7 @@ import { applyTheme, type ThemePreference } from "@/lib/theme";
 
 import { Brand } from "./brand";
 import { useSlide } from "./motion";
+import { ToastProvider } from "./toast";
 import { Icon, type IconName } from "./ui";
 
 const destinations: { href: string; label: string; icon: IconName }[] = [
@@ -151,21 +152,70 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
   const warm = useWarmedUp();
 
   return (
-    <div className="flex min-h-full flex-1">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
-        <Brand className="px-3 text-lg font-semibold" />
-        <button type="button" onClick={() => setCatatOpen(true)} className="mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content hover:bg-primary-hover">
+    <ToastProvider>
+      <div className="flex min-h-full flex-1">
+        <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
+          <Brand className="px-3 text-lg font-semibold" />
+          <button type="button" onClick={() => setCatatOpen(true)} className="mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content hover:bg-primary-hover">
+            {catatIcon} Catat
+          </button>
+          <nav aria-label="Navigasi utama" className="mt-5 flex-1">
+            <ul className="space-y-1">
+              {destinations.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    prefetch={warm}
+                    aria-current={isActive(pathname, item.href) ? "page" : undefined}
+                    className="flex min-h-11 items-center gap-3 px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
+                  >
+                    <Icon name={item.icon} className="size-5" />
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="space-y-1 border-t border-border pt-3">
+            <Link
+              href="/pengaturan"
+              aria-current={pathname.startsWith("/pengaturan") ? "page" : undefined}
+              className="flex min-h-11 items-center gap-3 px-3 text-sm text-muted hover:bg-surface-subtle aria-[current=page]:text-primary"
+            >
+              <Icon name="settings" className="size-5" />
+              Pengaturan
+            </Link>
+            <ThemeToggle initial={theme} />
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
+            <Brand className="font-semibold" />
+            <Link href="/pengaturan" className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Pengaturan">
+              <Icon name="settings" className="size-5" />
+            </Link>
+          </header>
+          <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-32 pt-6 md:px-8 md:pb-12">{children}</main>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setCatatOpen(true)}
+          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg hover:bg-primary-hover md:hidden"
+        >
           {catatIcon} Catat
         </button>
-        <nav aria-label="Navigasi utama" className="mt-5 flex-1">
-          <ul className="space-y-1">
+
+        <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+          <ul className="grid grid-cols-4">
             {destinations.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   prefetch={warm}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                  className="flex min-h-11 items-center gap-3 px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
+                  className="flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-primary"
                 >
                   <Icon name={item.icon} className="size-5" />
                   {item.label}
@@ -174,56 +224,9 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
             ))}
           </ul>
         </nav>
-        <div className="space-y-1 border-t border-border pt-3">
-          <Link
-            href="/pengaturan"
-            aria-current={pathname.startsWith("/pengaturan") ? "page" : undefined}
-            className="flex min-h-11 items-center gap-3 px-3 text-sm text-muted hover:bg-surface-subtle aria-[current=page]:text-primary"
-          >
-            <Icon name="settings" className="size-5" />
-            Pengaturan
-          </Link>
-          <ThemeToggle initial={theme} />
-        </div>
-      </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
-          <Brand className="font-semibold" />
-          <Link href="/pengaturan" className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Pengaturan">
-            <Icon name="settings" className="size-5" />
-          </Link>
-        </header>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-32 pt-6 md:px-8 md:pb-12">{children}</main>
+        <CatatSheet open={catatOpen} onClose={() => setCatatOpen(false)} />
       </div>
-
-      <button
-        type="button"
-        onClick={() => setCatatOpen(true)}
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg hover:bg-primary-hover md:hidden"
-      >
-        {catatIcon} Catat
-      </button>
-
-      <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
-        <ul className="grid grid-cols-4">
-          {destinations.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                prefetch={warm}
-                aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                className="flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-primary"
-              >
-                <Icon name={item.icon} className="size-5" />
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <CatatSheet open={catatOpen} onClose={() => setCatatOpen(false)} />
-    </div>
+    </ToastProvider>
   );
 }
