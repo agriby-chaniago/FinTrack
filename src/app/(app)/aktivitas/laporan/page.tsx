@@ -79,7 +79,7 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
           <Tag tone={report.completeness === "LENGKAP" ? "success" : "info"}>{completenessLabel[report.completeness] ?? report.completeness}</Tag>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="cascade grid gap-3 md:grid-cols-3">
           <Stat label="Pemasukan" value={report.income.total} delta={deltas.income} previousMonth={previousMonth} />
           <Stat label="Pengeluaran" value={report.outflow.actualTotal} delta={deltas.outflow} previousMonth={previousMonth} />
           <Stat label="Pertumbuhan reserve" value={report.reserve.netGrowth} delta={deltas.reserve} previousMonth={previousMonth} signed />
@@ -130,7 +130,7 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
             {shares.length > 0 ? (
               <div className="mt-4 space-y-3 border-t border-border pt-4">
                 <p className="text-sm font-medium">Pengeluaran khusus per kategori</p>
-                <ul className="space-y-3">
+                <ul className="cascade space-y-3">
                   {shares.map((share) => (
                     <li key={share.name} className="space-y-1">
                       <p className="flex justify-between text-sm">

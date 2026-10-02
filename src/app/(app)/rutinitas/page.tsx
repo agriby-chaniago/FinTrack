@@ -147,7 +147,7 @@ export default async function RutinitasPage() {
         {openTargets.length === 0 ? (
           <EmptyState title="Tidak ada transfer yang menunggu" />
         ) : (
-          <ul className="space-y-3">
+          <ul className="cascade space-y-3">
             {openTargets.map((target) => (
               <li key={target.id}>
                 <Card>
@@ -221,7 +221,7 @@ export default async function RutinitasPage() {
               </div>
               {cycle.note ? <p className="mt-1 text-sm text-muted">{cycleNoteLabel[cycle.note]}</p> : null}
 
-              <ul className="mt-3 space-y-4">
+              <ul className="cascade mt-3 space-y-4">
                 {cycle.income ? (
                   <li className="bg-surface-subtle p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">

@@ -146,7 +146,7 @@ export function SectionTitle({ children, action, icon }: { children: ReactNode; 
 export function ProgressBar({ percent, label }: { percent: number; label: string }) {
   return (
     <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className="h-1.5 bg-surface-subtle">
-      <div className="fill-in h-1.5 bg-primary transition-[width] duration-200 ease-out" style={{ width: `${percent}%` }} />
+      <div className="fill-in shine h-1.5 bg-primary transition-[width] duration-200 ease-out" style={{ width: `${percent}%` }} />
     </div>
   );
 }
@@ -156,7 +156,7 @@ export function SegmentBar({ done, total, label }: { done: number; total: number
   return (
     <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} className="flex gap-1">
       {Array.from({ length: total }, (_, i) => (
-        <span key={i} className={`h-1.5 flex-1 ${i < done ? "fill-in bg-primary" : "bg-surface-subtle"}`} style={i < done ? { animationDelay: `${250 + i * 40}ms` } : undefined} />
+        <span key={i} className={`h-1.5 flex-1 ${i < done ? "fill-in bg-primary" : "bg-surface-subtle"}`} style={i < done ? { animationDelay: `calc(var(--stagger-delay, 0ms) + ${250 + i * 40}ms)` } : undefined} />
       ))}
     </div>
   );

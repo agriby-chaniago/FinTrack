@@ -29,7 +29,7 @@ export default async function AkunPage() {
       />
 
       <section aria-label="Daftar akun">
-        <ul className="space-y-3">
+        <ul className="cascade space-y-3">
           {overview.accounts.map((account, index) => (
             <li key={account.id}>
               <Link href={`/akun/${account.id}`} className={cardLinkClass}>
@@ -89,7 +89,7 @@ export default async function AkunPage() {
         {open.length === 0 ? (
           <p className="text-sm text-muted">Tidak ada dana titipan yang sedang dipegang.</p>
         ) : (
-          <ul className="divide-y divide-border border border-border bg-surface">
+          <ul className="cascade divide-y divide-border border border-border bg-surface">
             {open.map((subject) => (
               <li key={subject.id}>
                 <Link href={`/akun/dana-titipan/${subject.id}`} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
@@ -106,7 +106,7 @@ export default async function AkunPage() {
         {cleared.length > 0 ? (
           <details className="mt-3">
             <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-primary">Sudah lunas ({cleared.length})</summary>
-            <ul className="divide-y divide-border border border-border bg-surface">
+            <ul className="cascade divide-y divide-border border border-border bg-surface">
               {cleared.map((subject) => (
                 <li key={subject.id}>
                   <Link href={`/akun/dana-titipan/${subject.id}`} className="flex min-h-11 items-center justify-between gap-3 px-4 py-2 text-sm hover:bg-surface-subtle">

@@ -255,3 +255,24 @@ test("screen readers get the exact headline, never a counting value", async ({ p
   const spoken = page.locator("p:has(> [data-count-up]) > .sr-only");
   expect((await spoken.textContent())!.replace(/\D/g, "")).toBe(await exactDigits(page));
 });
+
+// Meriah motion (PRD v0.22 P10).
+
+test("cards and rows arrive one by one after their section", async ({ page }) => {
+  await signIn(page);
+  // Beranda: the task list, then the account cards.
+  const cards = page.locator("main .cascade").nth(1).locator("> *");
+  const timing = await cards.evaluateAll((els) => els.map((el) => [getComputedStyle(el).animationName, parseFloat(getComputedStyle(el).animationDelay)] as const));
+  expect(timing.length).toBeGreaterThan(1);
+  expect(timing.every(([name]) => name === "rise-small")).toBe(true);
+  expect(Math.round((timing[1][1] - timing[0][1]) * 1000)).toBe(90);
+});
+
+test("today pulses once, progress shines, and the headline line sweeps", async ({ page }) => {
+  await signIn(page);
+  const today = page.getByRole("list", { name: "Income harian minggu berjalan" }).locator("li[aria-label$='hari ini'] > span:first-child");
+  expect(await today.evaluate((el) => getComputedStyle(el, "::after").animationName)).toBe("ping");
+  const bar = page.getByRole("progressbar", { name: "Kelayakan tren mingguan" }).locator("div");
+  expect(await bar.evaluate((el) => getComputedStyle(el, "::after").animationName)).toBe("shine-pass");
+  expect(await page.locator("[data-count-up]").evaluate((el) => getComputedStyle(el, "::after").animationName)).toBe("sweep-line");
+});

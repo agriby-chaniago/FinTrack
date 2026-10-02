@@ -1,12 +1,12 @@
 // Loading skeletons shown instantly on navigation (loading.tsx) while the
-// server streams the page. `Skeleton` follows shadcn/ui's primitive — a pulsing
-// block — styled with the Quiet Ledger tokens so it matches both themes.
+// server streams the page. `Skeleton` follows shadcn/ui's primitive — a block that
+// shimmers (PRD v0.22 P10) — styled with the Quiet Ledger tokens so it matches both themes.
 import type { ComponentProps } from "react";
 
 import { PageHeader } from "./ui";
 
 export function Skeleton({ className = "", ...props }: ComponentProps<"div">) {
-  return <div data-slot="skeleton" aria-hidden="true" className={`animate-pulse bg-border ${className}`} {...props} />;
+  return <div data-slot="skeleton" aria-hidden="true" className={`shimmer bg-border ${className}`} {...props} />;
 }
 
 /** Announces loading once to assistive technology; the blocks themselves are hidden. */

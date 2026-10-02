@@ -6,6 +6,7 @@ import { CountUpMoney } from "@/components/count-up-money";
 import { AnimatedItem, AnimatedList } from "@/components/motion";
 import { Alert, Card, cardLinkClass, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
 import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
+import { businessDateOf } from "@/lib/business-time";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceTagLabel } from "@/lib/labels";
 import { parseIdrDecimal, toIdrDecimal } from "@/lib/money";
@@ -40,15 +41,20 @@ const markerStyle: Record<StripDay["marker"], string> = {
 const markerIcon: Partial<Record<StripDay["marker"], IconName>> = { RECEIVED: "check", ADJUSTED: "swap", MISSED: "close", INACTIVE: "minus" };
 
 /** Square day markers for the open DANA period (PRD v0.20 P2); each kind is named, not only colored. */
-function WeekStrip({ days }: { days: StripDay[] }) {
+function WeekStrip({ days, today }: { days: StripDay[]; today: string }) {
   return (
     <div className="space-y-2">
       <ul aria-label="Income harian minggu berjalan" className="flex justify-between gap-1">
         {days.map((day, index) => {
           const icon = markerIcon[day.marker];
+          const isToday = day.date === today;
           return (
-            <li key={day.date} aria-label={`${day.weekday} ${markerLabel[day.marker]}`} className="flex flex-1 flex-col items-center gap-1.5">
-              <span className={`pop-in flex size-8 items-center justify-center ${markerStyle[day.marker]}`} style={{ animationDelay: `${300 + index * 40}ms` }}>
+            <li key={day.date} aria-label={`${day.weekday} ${markerLabel[day.marker]}${isToday ? ", hari ini" : ""}`} className="flex flex-1 flex-col items-center gap-1.5">
+              {/* Today is outlined and pulses once (PRD v0.22 P10); markers pop in after their section. */}
+              <span
+                className={`pop-in flex size-8 items-center justify-center ${markerStyle[day.marker]} ${isToday ? "today-ping outline-2 outline-offset-2 outline-primary" : ""}`}
+                style={{ animationDelay: `calc(var(--stagger-delay, 0ms) + ${300 + index * 40}ms)` }}
+              >
                 {icon ? <Icon name={icon} className="size-3.5" /> : null}
               </span>
               <span aria-hidden="true" className="text-xs text-muted">
@@ -103,7 +109,7 @@ export default async function BerandaPage() {
           <SectionTitle icon="checklist">
             <span id="tasks-title">Perlu dilakukan</span>
           </SectionTitle>
-          <AnimatedList className="divide-y divide-border border border-border bg-surface">
+          <AnimatedList className="cascade divide-y divide-border border border-border bg-surface">
             {tasks.slice(0, 6).map(({ task, view }) => (
               <AnimatedItem key={taskKey(task)}>
                 <Link href={view.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
@@ -142,7 +148,7 @@ export default async function BerandaPage() {
         <SectionTitle icon="wallet">
           <span id="accounts-title">Akun</span>
         </SectionTitle>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="cascade grid gap-3 md:grid-cols-3">
           {data.accounts.map((account, index) => {
             const recordedChanges = parseIdrDecimal(account.personal) - parseIdrDecimal(account.confirmedPersonal);
             return (
@@ -194,7 +200,7 @@ export default async function BerandaPage() {
             <SectionTitle icon="calendar">DANA mingguan</SectionTitle>
             {dana.week ? (
               <div className="mb-3">
-                <WeekStrip days={dana.week.days} />
+                <WeekStrip days={dana.week.days} today={businessDateOf(new Date())} />
               </div>
             ) : null}
             {dana.openWeek ? (

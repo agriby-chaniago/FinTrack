@@ -18,7 +18,7 @@ export function CountUpMoney({ value }: { value: string }) {
   return (
     <>
       <span className="sr-only">{money(value)}</span>
-      <span id={id} ref={ref} aria-hidden="true" data-count-up={parseIdrDecimal(value).toString()} suppressHydrationWarning className="tabular whitespace-nowrap">
+      <span id={id} ref={ref} aria-hidden="true" data-count-up={parseIdrDecimal(value).toString()} suppressHydrationWarning className="sweep-line tabular whitespace-nowrap">
         {money(value)}
       </span>
       <InlineScript html={`(${runCountUp})(document.getElementById(${JSON.stringify(id)}),${countUpText},${COUNT_UP_MS})`} />
