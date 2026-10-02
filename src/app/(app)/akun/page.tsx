@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AccountTile } from "@/components/account-tile";
 import { Card, cardLinkClass, LinkButton, Money, PageHeader, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { TabPage } from "@/components/tab-page";
+import { RollingMoney } from "@/components/rolling-money";
 import { formatDateTime } from "@/lib/format";
 import { accountsOverview } from "@/server/application/accounts-overview";
 import { listExternalSubjects } from "@/server/application/external-funds";
@@ -50,7 +51,7 @@ export default async function AkunPage() {
                   <div>
                     <dt className="text-xs text-muted">Uang pribadi</dt>
                     <dd className="font-semibold">
-                      <Money value={account.personal} />
+                      <RollingMoney value={account.personal} memoryKey={`account:${account.id}`} />
                     </dd>
                   </div>
                   <div>

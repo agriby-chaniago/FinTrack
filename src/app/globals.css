@@ -677,11 +677,16 @@ main > * {
 }
 
 /* Rolling digits: the exact text stays in place for layout and screen readers, and an
-   aria-hidden overlay of digit columns rolls over it. */
+   aria-hidden overlay of digit columns rolls over it. The overlay draws its glyphs with
+   generated content, so the amount's DOM text never changes. */
 .odo-overlay {
   position: absolute;
   inset: 0;
   white-space: nowrap;
+}
+
+.odo-overlay [data-char]::before {
+  content: attr(data-char);
 }
 
 .odo {
@@ -691,13 +696,13 @@ main > * {
   vertical-align: top;
 }
 
-.odo > span,
-.odo > span > span {
+.odo > span {
   display: block;
 }
 
-.odo > span > span {
-  height: 1lh;
+.odo > span::before {
+  content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9";
+  white-space: pre;
 }
 
 /* Tab transitions (P10): the old page leaves, the new one arrives from the tab's side. */

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
 import { Alert, Card, LinkButton, Money, PageHeader, Row, SectionTitle, StatusBadge, Tag } from "@/components/ui";
+import { RollingMoney } from "@/components/rolling-money";
 import { formatDateTime, jakartaInputValue } from "@/lib/format";
 import { isUuid } from "@/server/api/responses";
 import { accountsOverview } from "@/server/application/accounts-overview";
@@ -44,7 +45,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
           <div>
             <p className="text-sm text-muted">Uang pribadi tercatat</p>
             <p className="text-2xl font-semibold">
-              <Money value={account.personal} />
+              <RollingMoney value={account.personal} memoryKey={`account:${account.id}`} />
             </p>
           </div>
           <StatusBadge status={account.status} />

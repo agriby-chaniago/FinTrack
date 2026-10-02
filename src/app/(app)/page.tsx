@@ -6,6 +6,7 @@ import { CountUpMoney } from "@/components/count-up-money";
 import { AnimatedItem, AnimatedList } from "@/components/motion";
 import { Alert, Card, cardLinkClass, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
 import { TabPage } from "@/components/tab-page";
+import { RollingMoney } from "@/components/rolling-money";
 import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
 import { businessDateOf } from "@/lib/business-time";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
@@ -167,7 +168,7 @@ export default async function BerandaPage() {
                   </div>
                 </div>
                 <p className="mt-3 text-xl font-semibold md:text-2xl">
-                  <Money value={account.personal} />
+                  <RollingMoney value={account.personal} memoryKey={`account:${account.id}`} />
                 </p>
                 <p className="mt-1 text-xs text-muted">
                   Terkonfirmasi <Money value={account.confirmedPersonal} /> · {formatDateTime(account.lastConfirmedAt)}
