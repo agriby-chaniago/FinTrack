@@ -31,7 +31,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
   const nowInput = jakartaInputValue(now.toISOString());
 
   return (
-    <div className="space-y-5">
+    <div className="stagger space-y-5">
       <PageHeader
         leading={<AccountTile account={account} index={overview.accounts.indexOf(account)} />}
         title={account.displayName}

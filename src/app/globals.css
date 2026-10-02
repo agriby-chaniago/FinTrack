@@ -228,7 +228,13 @@ body {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
+
+  .toast-timer {
+    display: none;
   }
 }
 
@@ -276,4 +282,96 @@ details[open]::details-content {
 
 main > * {
   animation: fade-in 150ms ease-out;
+}
+
+/* Expressive-calm motion (PRD v0.21 P9). Each entrance runs once when its element
+   mounts and fills backwards, so server HTML is already final at rest. */
+:root {
+  --ease-calm: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes drain {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Page sections rise one after another, once per page open. */
+.stagger > * {
+  animation: rise 260ms var(--ease-calm) backwards;
+}
+
+.stagger > :nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.stagger > :nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.stagger > :nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.stagger > :nth-child(5) {
+  animation-delay: 200ms;
+}
+
+.stagger > :nth-child(6) {
+  animation-delay: 250ms;
+}
+
+.stagger > :nth-child(n + 7) {
+  animation-delay: 300ms;
+}
+
+/* Progress fills from empty; callers may override the delay inline. */
+.fill-in {
+  transform-origin: left;
+  animation: fill 600ms var(--ease-calm) 250ms backwards;
+}
+
+/* Markers pop in; callers set the delay inline so they arrive in order. */
+.pop-in {
+  animation: pop 220ms var(--ease-calm) backwards;
+}
+
+/* A success check draws itself (its path uses pathLength="1"). */
+.draw-check {
+  stroke-dasharray: 1 2;
+  animation: draw 400ms var(--ease-calm) 120ms backwards;
+}
+
+/* The toast countdown drains over the toast lifetime (duration set inline). */
+.toast-timer {
+  transform-origin: left;
+  animation-name: drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }

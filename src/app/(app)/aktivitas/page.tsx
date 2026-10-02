@@ -21,7 +21,7 @@ export default async function AktivitasPage({ searchParams }: { searchParams: Pr
   const { items, nextCursor } = result.value;
 
   return (
-    <div>
+    <div className="stagger">
       <PageHeader title="Aktivitas" description="Semua catatan, urut dari yang terakhir dicatat. Catatan tidak pernah dihapus; koreksi tampil sebagai catatan baru." />
       <AktivitasTabs active="riwayat" />
       {items.length === 0 ? (

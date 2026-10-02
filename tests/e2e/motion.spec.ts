@@ -128,3 +128,21 @@ test("page content fades in when it replaces the skeleton", async ({ page }) => 
   await expect(page.getByRole("heading", { level: 1, name: "Akun" })).toBeVisible();
   await expect.poll(() => page.locator("main > *").first().evaluate((el) => getComputedStyle(el).animationName)).toBe("fade-in");
 });
+
+// Expressive-calm motion (PRD v0.21 P9).
+
+test("page sections rise in one after another", async ({ page }) => {
+  await signIn(page);
+  const sections = page.locator("main .stagger > *");
+  await expect.poll(() => sections.nth(1).evaluate((el) => getComputedStyle(el).animationName)).toBe("rise");
+  const delays = await sections.evaluateAll((els) => els.slice(0, 3).map((el) => getComputedStyle(el).animationDelay));
+  expect(delays).toEqual(["0s", "0.05s", "0.1s"]);
+});
+
+test("reduced motion drops every animation delay", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signIn(page);
+  const delays = await page.locator("main .stagger > *").evaluateAll((els) => els.map((el) => getComputedStyle(el).animationDelay));
+  expect(delays.length).toBeGreaterThan(2);
+  expect(new Set(delays)).toEqual(new Set(["0s"]));
+});

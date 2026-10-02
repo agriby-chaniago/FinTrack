@@ -45,7 +45,7 @@ export default async function RutinitasPage() {
   const maxLiving = recent.reduce((max, row) => (parseIdrDecimal(row.livingExpense) > max ? parseIdrDecimal(row.livingExpense) : max), 1n);
 
   return (
-    <div className="space-y-8">
+    <div className="stagger space-y-8">
       <PageHeader title="Rutinitas" description="Settlement mingguan, konfirmasi bulanan, dan transfer ke reserve." />
 
       {router.mode !== "NO_WEEKLY_ACCOUNT" ? (

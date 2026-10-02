@@ -75,7 +75,7 @@ export default async function BerandaPage() {
   const obligations = data.bca.currentCycle ? obligationProgress(data.bca.currentCycle.obligations) : null;
 
   return (
-    <div className="space-y-8">
+    <div className="stagger space-y-8">
       <section aria-labelledby="headline" className="space-y-3 bg-primary-soft p-5 md:p-6">
         <p id="headline" className="text-sm text-muted">
           Personal cash tercatat

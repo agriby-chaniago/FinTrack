@@ -43,7 +43,7 @@ export default async function PengaturanPage() {
   const currentCycle = cycleKeyOf(businessDateOf(now));
 
   return (
-    <div className="space-y-5">
+    <div className="stagger space-y-5">
       <PageHeader title="Pengaturan" />
 
       <Card>

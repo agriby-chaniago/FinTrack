@@ -54,7 +54,7 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
   const shares = categoryShares(report.outflow.specialByCategory.map((c) => ({ name: c.name, amount: c.amount })));
 
   return (
-    <div>
+    <div className="stagger">
       <PageHeader title="Aktivitas" description="Laporan bulan kalender: pemasukan, pengeluaran, dan reserve." />
       <AktivitasTabs active="laporan" />
 

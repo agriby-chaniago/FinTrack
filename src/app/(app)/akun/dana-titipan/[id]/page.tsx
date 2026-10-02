@@ -19,7 +19,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   const open = subject.positions.length > 0;
 
   return (
-    <div className="space-y-5">
+    <div className="stagger space-y-5">
       <PageHeader title={subject.name} description="Dana titipan" action={<LinkButton href="/akun">Kembali</LinkButton>} />
       <Card>
         <div className="flex items-start justify-between gap-2">

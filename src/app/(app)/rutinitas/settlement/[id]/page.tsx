@@ -35,7 +35,7 @@ export default async function SettlementDetailPage({ params }: { params: Promise
   const days = (asSettled.days as Day[] | undefined) ?? [];
 
   return (
-    <div className="space-y-5">
+    <div className="stagger space-y-5">
       <PageHeader
         title={`Settlement ${formatDate(view.startDate)} – ${formatDate(view.endDate)}`}
         description={`Saldo penutupan ${formatDateTime(typeof asSettled.closingAt === "string" ? asSettled.closingAt : view.closingAt)}${view.nonstandard ? " · periode catch-up" : ""}`}

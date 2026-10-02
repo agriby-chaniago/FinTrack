@@ -14,7 +14,7 @@ export default async function SaldoAwalPage() {
   const names = new Map(snapshot.accounts.map((a) => [a.accountId, a.name]));
 
   return (
-    <div className="space-y-5">
+    <div className="stagger space-y-5">
       <PageHeader
         title="Saldo awal"
         description={`Posisi saat mulai FinTrack, ${formatDateTime(snapshot.cutoverAt)}. Koreksi membuat snapshot pengganti; snapshot lama tetap tersimpan.`}

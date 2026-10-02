@@ -21,7 +21,7 @@ export default async function AkunPage() {
   const cleared = subjects.filter((s) => s.status === "CLEARED");
 
   return (
-    <div className="space-y-8">
+    <div className="stagger space-y-8">
       <PageHeader
         title="Akun"
         description="Saldo tercatat per akun. Uang pribadi = saldo fisik dikurangi dana titipan."

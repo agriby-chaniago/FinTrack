@@ -30,7 +30,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
   const occurrence = entry.eventClass === "MONTHLY_INCOME" || entry.eventClass === "RECURRING_EXPENSE";
 
   return (
-    <div className="space-y-5">
+    <div className="stagger space-y-5">
       <PageHeader title={entryTitle(entry)} action={<LinkButton href="/aktivitas">Kembali</LinkButton>} />
 
       <Card>
