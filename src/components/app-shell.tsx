@@ -10,6 +10,7 @@ import "@/lib/install-prompt";
 import { applyTheme, type ThemePreference } from "@/lib/theme";
 
 import { Brand } from "./brand";
+import { installRipple } from "./ripple";
 import { ToastProvider } from "./toast";
 import { Icon, type IconName } from "./ui";
 import { useMediaQuery } from "./use-media-query";
@@ -88,8 +89,8 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const reduced = useReducedMotion();
   const wide = useMediaQuery("(min-width: 48rem)");
-  // Phone: the sheet rises from the bottom edge. Desktop: the centered popover rises 16px.
-  const hidden = reduced ? { opacity: 0 } : wide ? { opacity: 0, y: 16 } : { y: "100%" };
+  // Phone: the sheet rises from the bottom edge. Desktop: the centered popover rises 40px (PRD v0.22 P10).
+  const hidden = reduced ? { opacity: 0 } : wide ? { opacity: 0, y: 40 } : { y: "100%" };
   useEffect(() => {
     const dialog = ref.current;
     if (dialog && open && !dialog.open) dialog.showModal();
@@ -109,7 +110,7 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
     >
       <AnimatePresence onExitComplete={() => ref.current?.close()}>
         {open ? (
-          <m.div key="sheet" initial={hidden} animate={{ opacity: 1, y: 0 }} exit={hidden} transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }} className="bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl">
+          <m.div key="sheet" initial={hidden} animate={{ opacity: 1, y: 0 }} exit={hidden} transition={{ duration: 0.24, ease: [0.34, 1.3, 0.64, 1] }} className="bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 id="catat-title" className="text-lg font-semibold">
                 Catat
@@ -118,11 +119,11 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <Icon name="close" className="size-5" />
               </button>
             </div>
-            <ul className="space-y-1">
+            <ul className="sheet-cascade space-y-1">
               {catatActions.map((action) => (
                 <li key={action.href}>
-                  <Link href={action.href} onClick={onClose} className="flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-surface-subtle">
-                    <span className="inline-flex size-9 items-center justify-center bg-primary-soft text-primary">
+                  <Link href={action.href} onClick={onClose} className="ripple-host relative flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-surface-subtle">
+                    <span className="sheet-icon inline-flex size-9 items-center justify-center bg-primary-soft text-primary">
                       <Icon name={action.icon} />
                     </span>
                     <span>
@@ -156,6 +157,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
   const warm = useWarmedUp();
   const activeIndex = destinations.findIndex((item) => isActive(pathname, item.href));
   // Between the four tabs the page slides in tab order (PRD v0.22 P10); other links do not slide.
+  useEffect(installRipple, []);
   const tabTypes = (index: number) => (activeIndex < 0 || index === activeIndex ? undefined : [index > activeIndex ? "tab-forward" : "tab-back"]);
 
   return (
@@ -168,7 +170,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
             onClick={() => setCatatOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={catatOpen}
-            className="group mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98]"
+            className="group ripple-host relative mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98]"
           >
             {catatIcon} Catat
           </button>
@@ -225,7 +227,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
           aria-haspopup="dialog"
           aria-expanded={catatOpen}
           style={{ viewTransitionName: "app-catat" }}
-          className="group fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98] md:hidden"
+          className="group ripple-host fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98] md:hidden"
         >
           {catatIcon} Catat
         </button>

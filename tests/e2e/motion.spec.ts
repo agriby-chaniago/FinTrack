@@ -329,3 +329,44 @@ test("the tab indicator slides to the new tab and its icon hops", async ({ page 
   expect(await indicator.evaluate((el) => getComputedStyle(el).transitionDuration)).toContain("0.42s");
   await expect.poll(async () => Math.round((await indicator.boundingBox())!.x - (await link.boundingBox())!.x)).toBe(0);
 });
+
+/** Presses the first "Ubah detail" button and returns its ripple locator while the pointer is down. */
+async function pressUbahDetail(page: Page) {
+  await page.goto("/rutinitas");
+  // The ripple listener is installed once the app shell has hydrated.
+  await page.waitForLoadState("networkidle");
+  const button = page.getByRole("button", { name: "Ubah detail" }).first();
+  await button.scrollIntoViewIfNeeded();
+  const box = (await button.boundingBox())!;
+  await page.mouse.move(box.x + 12, box.y + 12);
+  await page.mouse.down();
+  return button.locator(".ripple-wave");
+}
+
+test("pressing a button spreads a square ripple", async ({ page }) => {
+  await signIn(page);
+  const wave = await pressUbahDetail(page);
+  await expect(wave).toHaveCount(1);
+  expect(await wave.evaluate((el) => getComputedStyle(el).animationName)).toBe("ripple");
+  await page.mouse.up();
+  await expect(wave).toHaveCount(0);
+});
+
+test("reduced motion adds no ripple", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signIn(page);
+  const wave = await pressUbahDetail(page);
+  await page.waitForTimeout(100);
+  await expect(wave).toHaveCount(0);
+  await page.mouse.up();
+});
+
+test("+ Catat choices arrive one by one and their icons pop", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Catat" }).click();
+  const items = page.getByRole("dialog", { name: "Catat" }).locator("ul > li");
+  const timing = await items.evaluateAll((els) => els.map((el) => [getComputedStyle(el).animationName, parseFloat(getComputedStyle(el).animationDelay)] as const));
+  expect(timing.every(([name]) => name === "rise-sheet")).toBe(true);
+  expect(Math.round((timing[1][1] - timing[0][1]) * 1000)).toBe(55);
+  expect(await items.first().locator(".sheet-icon").evaluate((el) => getComputedStyle(el).animationName)).toBe("pop-icon");
+});

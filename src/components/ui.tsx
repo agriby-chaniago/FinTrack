@@ -197,17 +197,17 @@ export function EmptyState({ title, children, icon }: { title: string; children?
   );
 }
 
-/** A card that opens a detail: lifts 2px on hover, gives 2% when pressed (PRD v0.21 P9). */
+/** A card that opens a detail: lifts 2px on hover, gives 2% when pressed (PRD v0.21 P9), ripples (v0.22 P10). */
 export const cardLinkClass =
-  "block border border-border bg-surface p-4 transition-[translate,scale,border-color] duration-150 ease-out hover:-translate-y-0.5 hover:border-control active:scale-[0.98] md:p-5";
+  "ripple-host relative block border border-border bg-surface p-4 transition-[translate,scale,border-color] duration-150 ease-out hover:-translate-y-0.5 hover:border-control active:scale-[0.98] md:p-5";
 
 export const buttonClass = {
   primary:
-    "inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 font-medium text-primary-content transition-[color,background-color,border-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98] active:bg-primary-pressed disabled:cursor-not-allowed disabled:opacity-60",
+    "ripple-host relative inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 font-medium text-primary-content transition-[color,background-color,border-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98] active:bg-primary-pressed disabled:cursor-not-allowed disabled:opacity-60",
   secondary:
-    "inline-flex h-11 items-center justify-center gap-2 border border-control bg-surface px-4 font-medium transition-[color,background-color,border-color,scale] duration-150 hover:bg-surface-subtle active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60",
+    "ripple-host relative inline-flex h-11 items-center justify-center gap-2 border border-control bg-surface px-4 font-medium transition-[color,background-color,border-color,scale] duration-150 hover:bg-surface-subtle active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60",
   danger:
-    "inline-flex h-11 items-center justify-center gap-2 border border-danger-fg px-4 font-medium text-danger-fg transition-[color,background-color,border-color,scale] duration-150 hover:bg-danger-bg active:scale-[0.98] disabled:opacity-60",
+    "ripple-host relative inline-flex h-11 items-center justify-center gap-2 border border-danger-fg px-4 font-medium text-danger-fg transition-[color,background-color,border-color,scale] duration-150 hover:bg-danger-bg active:scale-[0.98] disabled:opacity-60",
   link: "inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline",
 };
 
