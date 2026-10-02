@@ -370,3 +370,16 @@ test("+ Catat choices arrive one by one and their icons pop", async ({ page }) =
   expect(Math.round((timing[1][1] - timing[0][1]) * 1000)).toBe(55);
   expect(await items.first().locator(".sheet-icon").evaluate((el) => getComputedStyle(el).animationName)).toBe("pop-icon");
 });
+
+// S21: the toast stays out of the way.
+test("the toast sits under the header on a phone and dismisses on tap", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/rutinitas");
+  await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp/ }).first().click();
+  const toast = page.getByRole("status").filter({ hasText: "dikonfirmasi" });
+  await expect(toast).toBeVisible();
+  const box = (await toast.boundingBox())!;
+  expect(box.y).toBeLessThan(page.viewportSize()!.height * 0.3);
+  await toast.getByRole("button").click();
+  await expect(toast).toBeHidden({ timeout: 1000 });
+});
