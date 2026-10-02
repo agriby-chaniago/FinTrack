@@ -398,10 +398,21 @@ test("the bouncing phone sheet never shows a gap below it", async ({ page }) => 
   await signIn(page);
   await page.getByRole("button", { name: "Catat" }).click();
   await expect(page.getByRole("dialog", { name: "Catat" })).toBeVisible();
-  // 48px of the sheet's own surface continues below it, under the screen edge.
+  // 48px of the sheet's own surface continues below it, under the screen edge, as a shadow.
   const below = await page.locator("dialog[open] > div").evaluate((el) => {
-    const style = getComputedStyle(el, "::after");
-    return { content: style.content, position: style.position, height: style.height, color: style.backgroundColor === getComputedStyle(el).backgroundColor };
+    const style = getComputedStyle(el);
+    return style.boxShadow === `${style.backgroundColor} 0px 48px 0px 0px`;
   });
-  expect(below).toEqual({ content: '""', position: "absolute", height: "48px", color: true });
+  expect(below).toBe(true);
+});
+
+test("the + Catat sheet opens whole, with its title in view and nothing to scroll", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Catat" }).click();
+  const dialog = page.getByRole("dialog", { name: "Catat" });
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(600);
+  const state = await page.locator("dialog[open]").evaluate((el) => ({ scrollTop: el.scrollTop, scrolls: el.scrollHeight > el.clientHeight }));
+  expect(state).toEqual({ scrollTop: 0, scrolls: false });
+  await expect(dialog.getByRole("heading", { name: "Catat" })).toBeInViewport();
 });

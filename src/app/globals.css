@@ -605,6 +605,14 @@ main > * {
   animation: hop 380ms var(--ease-spring);
 }
 
+/* On a phone the + Catat sheet's surface continues 48px below it, so its spring never
+   shows a gap at the screen edge. It is a shadow, so the dialog gains nothing to scroll. */
+@media (width < 48rem) {
+  .sheet-extend {
+    box-shadow: 0 48px 0 0 var(--surface);
+  }
+}
+
 /* + Catat choices arrive one by one; their icons pop. */
 .sheet-cascade > li {
   animation: rise-sheet 300ms var(--ease-spring) backwards;
