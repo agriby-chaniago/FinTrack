@@ -108,6 +108,8 @@
   --success-bg: #ecfdf3;
   --outflow-fg: #9c2a10;
   --outflow-bg: #fff4ed;
+  --shine-bar: rgb(255 255 255 / 0.55);
+  --shine-skeleton: rgb(255 255 255 / 0.6);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -141,6 +143,8 @@
     --success-bg: #073d2a;
     --outflow-fg: #fdb022;
     --outflow-bg: #431407;
+    --shine-bar: rgb(255 255 255 / 0.5);
+    --shine-skeleton: rgb(255 255 255 / 0.08);
   }
 }
 
@@ -174,6 +178,8 @@
   --success-bg: #073d2a;
   --outflow-fg: #fdb022;
   --outflow-bg: #431407;
+  --shine-bar: rgb(255 255 255 / 0.5);
+  --shine-skeleton: rgb(255 255 255 / 0.08);
 }
 
 @theme inline {
@@ -231,9 +237,18 @@ body {
     transition-delay: 0s !important;
     animation-duration: 0.01ms !important;
     animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
   }
 
-  .toast-timer {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+
+  .toast-timer,
+  .ripple-wave {
     display: none;
   }
 }
@@ -284,16 +299,27 @@ main > * {
   animation: fade-in 150ms ease-out;
 }
 
-/* Expressive-calm motion (PRD v0.21 P9). Each entrance runs once when its element
-   mounts and fills backwards, so server HTML is already final at rest. */
+/* Motion (PRD v0.21 P9, intensity Meriah from v0.22 P10). Each entrance runs once
+   when its element mounts and fills backwards, so server HTML is final at rest.
+   Rows, bars, and markers inside a section start from that section's --stagger-delay. */
 :root {
   --ease-calm: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --rise-distance: 40px;
+  --rise-duration: 520ms;
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(var(--rise-distance));
+  }
+}
+
+@keyframes rise-small {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--rise-distance) * 0.75)) scale(0.97);
   }
 }
 
@@ -322,44 +348,173 @@ main > * {
   }
 }
 
+@keyframes shine-pass {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes sweep-line {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  50% {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 100%);
+  }
+}
+
+@keyframes ping {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@keyframes hop {
+  40% {
+    transform: translateY(-5px) scale(1.2);
+  }
+}
+
+@keyframes rise-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes pop-icon {
+  from {
+    transform: scale(0.4);
+  }
+}
+
+@keyframes flash-success {
+  30% {
+    background-color: var(--success-bg);
+  }
+}
+
+@keyframes strike {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.28;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes tab-leave {
+  to {
+    opacity: 0;
+    translate: var(--tab-offset);
+  }
+}
+
+@keyframes tab-enter {
+  from {
+    opacity: 0;
+    translate: var(--tab-offset);
+  }
+}
+
 /* Page sections rise one after another, once per page open. */
 .stagger > * {
-  animation: rise 260ms var(--ease-calm) backwards;
+  --stagger-delay: 0ms;
+  animation: rise var(--rise-duration) var(--ease-spring) var(--stagger-delay) backwards;
 }
 
 .stagger > :nth-child(2) {
-  animation-delay: 50ms;
+  --stagger-delay: 90ms;
 }
 
 .stagger > :nth-child(3) {
-  animation-delay: 100ms;
+  --stagger-delay: 180ms;
 }
 
 .stagger > :nth-child(4) {
-  animation-delay: 150ms;
+  --stagger-delay: 270ms;
 }
 
 .stagger > :nth-child(5) {
-  animation-delay: 200ms;
+  --stagger-delay: 360ms;
 }
 
-.stagger > :nth-child(6) {
-  animation-delay: 250ms;
+.stagger > :nth-child(n + 6) {
+  --stagger-delay: 450ms;
 }
 
-.stagger > :nth-child(n + 7) {
-  animation-delay: 300ms;
+/* Cards and rows of a list arrive one by one after their section (P10). */
+.cascade > * {
+  --cascade-step: 0;
+  animation: rise-small var(--rise-duration) var(--ease-spring) calc(var(--stagger-delay, 0ms) + 80ms + var(--cascade-step) * 90ms) backwards;
 }
 
-/* Progress fills from empty; callers may override the delay inline. */
+.cascade > :nth-child(2) {
+  --cascade-step: 1;
+}
+
+.cascade > :nth-child(3) {
+  --cascade-step: 2;
+}
+
+.cascade > :nth-child(4) {
+  --cascade-step: 3;
+}
+
+.cascade > :nth-child(5) {
+  --cascade-step: 4;
+}
+
+.cascade > :nth-child(6) {
+  --cascade-step: 5;
+}
+
+.cascade > :nth-child(7) {
+  --cascade-step: 6;
+}
+
+.cascade > :nth-child(8) {
+  --cascade-step: 7;
+}
+
+.cascade > :nth-child(n + 9) {
+  --cascade-step: 8;
+}
+
+/* Progress fills from empty after its section arrives; callers may set the delay inline. */
 .fill-in {
   transform-origin: left;
-  animation: fill 600ms var(--ease-calm) 250ms backwards;
+  animation: fill 600ms var(--ease-calm) calc(var(--stagger-delay, 0ms) + 250ms) backwards;
 }
 
 /* Markers pop in; callers set the delay inline so they arrive in order. */
 .pop-in {
-  animation: pop 220ms var(--ease-calm) backwards;
+  animation: pop 220ms var(--ease-spring) backwards;
 }
 
 /* A success check draws itself (its path uses pathLength="1"). */
@@ -374,4 +529,227 @@ main > * {
   animation-name: drain;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
+}
+
+/* A highlight passes once over a progress bar after it fills. */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--shine-bar), transparent);
+  transform: translateX(-120%);
+  animation: shine-pass 650ms ease-in-out calc(var(--stagger-delay, 0ms) + 900ms);
+}
+
+/* Skeletons shimmer while a page loads. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--shine-skeleton), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.1s linear infinite;
+}
+
+/* A petrol line sweeps under the headline once the count-up is done. */
+.sweep-line {
+  position: relative;
+  display: inline-block;
+}
+
+.sweep-line::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 3px;
+  background: var(--primary);
+  clip-path: inset(0 100% 0 0);
+  animation: sweep-line 900ms var(--ease-calm) calc(var(--stagger-delay, 0ms) + 620ms);
+}
+
+/* Today's marker in the DANA week pulses once. */
+.today-ping {
+  position: relative;
+}
+
+.today-ping::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--primary);
+  opacity: 0;
+  pointer-events: none;
+  animation: ping 700ms ease-out calc(var(--stagger-delay, 0ms) + 760ms);
+}
+
+/* The active tab's marker slides to the new tab; its icon hops once. */
+.tab-indicator {
+  transition:
+    translate 420ms var(--ease-spring),
+    opacity 200ms ease-out;
+}
+
+.tab-hop[aria-current="page"] > svg {
+  animation: hop 380ms var(--ease-spring);
+}
+
+/* + Catat choices arrive one by one; their icons pop. */
+.sheet-cascade > li {
+  animation: rise-sheet 300ms var(--ease-spring) backwards;
+}
+
+.sheet-cascade .sheet-icon {
+  animation: pop-icon 380ms var(--ease-spring) backwards;
+}
+
+.sheet-cascade > :nth-child(1) {
+  animation-delay: 90ms;
+}
+
+.sheet-cascade > :nth-child(2) {
+  animation-delay: 145ms;
+}
+
+.sheet-cascade > :nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.sheet-cascade > :nth-child(4) {
+  animation-delay: 255ms;
+}
+
+.sheet-cascade > :nth-child(5) {
+  animation-delay: 310ms;
+}
+
+.sheet-cascade > :nth-child(1) .sheet-icon {
+  animation-delay: 140ms;
+}
+
+.sheet-cascade > :nth-child(2) .sheet-icon {
+  animation-delay: 195ms;
+}
+
+.sheet-cascade > :nth-child(3) .sheet-icon {
+  animation-delay: 250ms;
+}
+
+.sheet-cascade > :nth-child(4) .sheet-icon {
+  animation-delay: 305ms;
+}
+
+.sheet-cascade > :nth-child(5) .sheet-icon {
+  animation-delay: 360ms;
+}
+
+/* A finished task is checked off: a green flash and a strike-through. */
+.celebrate {
+  animation: flash-success 900ms ease-out 150ms;
+}
+
+.celebrate-strike {
+  transform-origin: left;
+  animation: strike 280ms var(--ease-calm) 180ms backwards;
+}
+
+/* A square ripple spreads from where a button or card is pressed; hosts are positioned. */
+.ripple-host {
+  overflow: hidden;
+}
+
+.ripple-wave {
+  position: absolute;
+  pointer-events: none;
+  background: currentColor;
+  animation: ripple 520ms ease-out forwards;
+}
+
+/* Rolling digits: the exact text stays in place for layout and screen readers, and an
+   aria-hidden overlay of digit columns rolls over it. */
+.odo-overlay {
+  position: absolute;
+  inset: 0;
+  white-space: nowrap;
+}
+
+.odo {
+  display: inline-block;
+  height: 1lh;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.odo > span,
+.odo > span > span {
+  display: block;
+}
+
+.odo > span > span {
+  height: 1lh;
+}
+
+/* Tab transitions (P10): the old page leaves, the new one arrives from the tab's side. */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-old(.tab-forward),
+::view-transition-old(.tab-back) {
+  animation: tab-leave 160ms ease-in both;
+}
+
+::view-transition-new(.tab-forward),
+::view-transition-new(.tab-back) {
+  animation: tab-enter var(--rise-duration) var(--ease-spring) both;
+}
+
+::view-transition-old(.tab-forward) {
+  --tab-offset: calc(var(--rise-distance) * -2);
+}
+
+::view-transition-new(.tab-forward) {
+  --tab-offset: calc(var(--rise-distance) * 2);
+}
+
+::view-transition-old(.tab-back) {
+  --tab-offset: calc(var(--rise-distance) * 2);
+}
+
+::view-transition-new(.tab-back) {
+  --tab-offset: calc(var(--rise-distance) * -2);
+}
+
+/* The header, navigation, and + Catat stay still above the sliding page. */
+::view-transition-group(app-header),
+::view-transition-group(app-nav),
+::view-transition-group(app-sidebar),
+::view-transition-group(app-catat) {
+  animation: none;
+  z-index: 100;
+}
+
+::view-transition-old(app-header),
+::view-transition-old(app-nav),
+::view-transition-old(app-sidebar),
+::view-transition-old(app-catat) {
+  display: none;
+}
+
+::view-transition-new(app-header),
+::view-transition-new(app-nav),
+::view-transition-new(app-sidebar),
+::view-transition-new(app-catat) {
+  animation: none;
 }

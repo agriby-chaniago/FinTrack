@@ -138,7 +138,8 @@ test("page sections rise in one after another", async ({ page }) => {
   const sections = page.locator("main .stagger > *");
   await expect.poll(() => sections.nth(1).evaluate((el) => getComputedStyle(el).animationName)).toBe("rise");
   const delays = await sections.evaluateAll((els) => els.slice(0, 3).map((el) => getComputedStyle(el).animationDelay));
-  expect(delays).toEqual(["0s", "0.05s", "0.1s"]);
+  // Meriah (PRD v0.22 P10): sections 90 ms apart.
+  expect(delays).toEqual(["0s", "0.09s", "0.18s"]);
 });
 
 test("reduced motion drops every animation delay", async ({ page }) => {
@@ -217,8 +218,10 @@ test("progress fills and the week strip pops in order", async ({ page }) => {
   const bar = page.getByRole("progressbar", { name: "Kelayakan tren mingguan" }).locator("div");
   expect(await bar.evaluate((el) => getComputedStyle(el).animationName)).toBe("fill");
   const markers = page.getByRole("list", { name: "Income harian minggu berjalan" }).locator("li > span:first-child");
-  const timing = await markers.evaluateAll((els) => els.slice(0, 3).map((el) => `${getComputedStyle(el).animationName} ${getComputedStyle(el).animationDelay}`));
-  expect(timing).toEqual(["pop 0.3s", "pop 0.34s", "pop 0.38s"]);
+  const timing = await markers.evaluateAll((els) => els.slice(0, 3).map((el) => [getComputedStyle(el).animationName, parseFloat(getComputedStyle(el).animationDelay)] as const));
+  expect(timing.map(([name]) => name)).toEqual(["pop", "pop", "pop"]);
+  // Markers pop 40 ms apart, counted from their section's delay.
+  expect(timing.slice(1).map(([, delay], i) => Math.round((delay - timing[i][1]) * 1000))).toEqual([40, 40]);
 });
 
 test("+ Catat turns into a close mark while the sheet is open", async ({ page }) => {
