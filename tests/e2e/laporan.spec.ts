@@ -122,6 +122,14 @@ test.describe("with four settled weeks", () => {
     // The line draws in over 700 ms (PRD v0.21 P9); its animation callbacks must not throw.
     await page.waitForTimeout(1000);
     expect(errors).toEqual([]);
+    // A refresh with the same data keeps the drawn chart instead of rebuilding and replaying it.
+    const chartId = () => page.locator("[data-chart-id]").first().getAttribute("data-chart-id");
+    const before = await chartId();
+    expect(before).not.toBeNull();
+    await page.evaluate(() => (window as unknown as { next: { router: { refresh(): void } } }).next.router.refresh());
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+    expect(await chartId()).toBe(before);
     await page.setViewportSize({ width: 412, height: 915 });
     await page.reload();
     await expect(page.getByRole("list", { name: "Data tren mingguan" })).toBeVisible();

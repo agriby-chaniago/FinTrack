@@ -53,13 +53,16 @@ function config({ kind, labels, series, unit }: TrendChartProps): ChartConfigura
   } as ChartConfiguration;
 }
 
-export default function ChartCanvas(props: TrendChartProps) {
+export default function ChartCanvas({ trend }: { trend: TrendChartProps }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const chart = new Chart(canvas.current!, config(props));
+    const chart = new Chart(canvas.current!, config(trend));
+    // Identifies the drawn chart, so a test can tell a kept chart from a rebuilt one.
+    if (frame.current) frame.current.dataset.chartId = String(chart.id);
     // A theme switch recolors the chart without replaying the draw-in.
     const recolor = () => {
-      const next = config(props);
+      const next = config(trend);
       chart.data = next.data;
       chart.options = next.options ?? {};
       chart.update("none");
@@ -73,10 +76,10 @@ export default function ChartCanvas(props: TrendChartProps) {
       scheme.removeEventListener("change", recolor);
       chart.destroy();
     };
-  }, [props]);
+  }, [trend]);
   return (
-    <div className="relative h-64">
-      <canvas ref={canvas} role="img" aria-label={props.summary} />
+    <div ref={frame} className="relative h-64">
+      <canvas ref={canvas} role="img" aria-label={trend.summary} />
     </div>
   );
 }

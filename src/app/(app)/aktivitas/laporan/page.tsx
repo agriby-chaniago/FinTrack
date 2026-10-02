@@ -6,7 +6,7 @@ import { buttonClass, Card, Money, PageHeader, ProgressBar, Row, SectionTitle, T
 import { businessDateOf, cycleKeyOf, isCycleKey, nextCycleKey } from "@/lib/business-time";
 import { approx, formatCycle, formatDate } from "@/lib/format";
 import { completenessLabel } from "@/lib/labels";
-import { categoryShares } from "@/lib/report-view";
+import { categoryShares, deltaLabel } from "@/lib/report-view";
 import { reportPage } from "@/server/application/reports";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
@@ -21,7 +21,7 @@ function Stat({ label, value, delta, previousMonth, signed }: { label: string; v
         <Money value={value} signed={signed} />
       </p>
       <p className="mt-1 text-xs text-muted">
-        <Money value={delta} signed /> dari {formatCycle(previousMonth)}
+        <span className="tabular whitespace-nowrap">{deltaLabel(delta)}</span> dari {formatCycle(previousMonth)}
       </p>
     </div>
   );

@@ -1,10 +1,25 @@
 // Laporan view helpers (PRD v0.20 P4, P5). Pure; money stays decimal strings and bigint.
 import { formatCycle, formatDate, money } from "@/lib/format";
-import { parseIdrDecimal, toIdrDecimal } from "@/lib/money";
+import { formatIdr, parseIdrDecimal, toIdrDecimal } from "@/lib/money";
 
 /** current − previous, exact; a missing previous month counts as zero. */
 export function signedDelta(current: string, previous: string | null): string {
   return toIdrDecimal(parseIdrDecimal(current) - (previous === null ? 0n : parseIdrDecimal(previous)));
+}
+
+/**
+ * A month-over-month delta for display (PRD v0.20 P5). A whole-rupiah delta prints exactly
+ * with its sign; a delta with sen comes from prorated living cost, so it is rounded to whole
+ * rupiah (half away from zero) and marked `≈`.
+ */
+export function deltaLabel(delta: string): string {
+  const minor = parseIdrDecimal(delta);
+  const negative = minor < 0n;
+  const absolute = negative ? -minor : minor;
+  const exact = absolute % 100n === 0n;
+  const rounded = exact ? absolute : ((absolute + 50n) / 100n) * 100n;
+  const sign = rounded === 0n ? "" : negative ? "−" : "+";
+  return `${exact ? "" : "≈ "}${sign}${formatIdr(rounded)}`;
 }
 
 /** Each category's share of the total, largest first; a zero total gives zero shares. */

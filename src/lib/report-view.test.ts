@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { categoryShares, monthlySummary, signedDelta, weeklySummary } from "./report-view";
+import { categoryShares, deltaLabel, monthlySummary, signedDelta, weeklySummary } from "./report-view";
 
 describe("signedDelta", () => {
   it("subtracts exactly in minor units", () => expect(signedDelta("1000000.50", "999999.75")).toBe("0.75"));
@@ -42,5 +42,20 @@ describe("monthlySummary", () => {
         { month: "2026-09", reserveGrowth: "-100000", outflow: "2300000" },
       ]),
     ).toBe("September 2026: reserve -Rp100.000, pengeluaran Rp2.300.000.");
+  });
+});
+
+describe("deltaLabel", () => {
+  it("prints whole-rupiah deltas exactly", () => {
+    expect(deltaLabel("-50000")).toBe("−Rp50.000");
+    expect(deltaLabel("125000")).toBe("+Rp125.000");
+    expect(deltaLabel("0")).toBe("Rp0");
+  });
+
+  it("rounds a delta with sen to whole rupiah and marks it approximate", () => {
+    expect(deltaLabel("1234567.43")).toBe("≈ +Rp1.234.567");
+    expect(deltaLabel("12.50")).toBe("≈ +Rp13");
+    expect(deltaLabel("-12.50")).toBe("≈ −Rp13");
+    expect(deltaLabel("-0.40")).toBe("≈ Rp0");
   });
 });
