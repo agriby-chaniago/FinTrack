@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
+import { CountUpMoney } from "@/components/count-up-money";
 import { AnimatedItem, AnimatedList } from "@/components/motion";
 import { Alert, Card, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
 import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
@@ -81,7 +82,7 @@ export default async function BerandaPage() {
           Personal cash tercatat
         </p>
         <p className="text-[2rem] font-semibold leading-tight md:text-[2.5rem]">
-          <Money value={data.personalCashRecorded} />
+          <CountUpMoney value={data.personalCashRecorded} />
         </p>
         <p className="text-sm text-muted">
           Total terkonfirmasi terakhir <Money value={data.confirmedPersonalCash} />. Nilai tercatat bukan saldo realtime dari bank.

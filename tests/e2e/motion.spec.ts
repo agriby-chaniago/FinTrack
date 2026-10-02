@@ -146,3 +146,66 @@ test("reduced motion drops every animation delay", async ({ page }) => {
   expect(delays.length).toBeGreaterThan(2);
   expect(new Set(delays)).toEqual(new Set(["0s"]));
 });
+
+type Recorder = { __headline: string[] };
+
+/** Starts recording every text the headline amount shows while visible (runs in the page). */
+function startHeadlineRecorder() {
+  const seen: string[] = ((window as unknown as Recorder).__headline = []);
+  new MutationObserver(() => {
+    // Only what a person can see: a streamed boundary stays hidden until React reveals it.
+    const el = document.querySelector("[data-count-up]");
+    const text = el && el.getClientRects().length > 0 ? el.textContent : null;
+    if (text && text !== seen.at(-1)) seen.push(text);
+  }).observe(document, { subtree: true, childList: true, characterData: true });
+}
+
+const recorded = (page: Page) => page.evaluate(() => (window as unknown as Recorder).__headline);
+const digits = (text: string) => BigInt(text.replace(/\D/g, "") || "0");
+
+/** The digits of the exact headline, from the amount in sen (whole rupiah drop ",00"). */
+async function exactDigits(page: Page) {
+  const minor = BigInt((await page.locator("[data-count-up]").getAttribute("data-count-up"))!);
+  const absolute = minor < 0n ? -minor : minor;
+  return `${absolute / 100n}${absolute % 100n === 0n ? "" : (absolute % 100n).toString().padStart(2, "0")}`;
+}
+
+/** The headline went Rp0 → … → exact without going down; `noFlash` also requires Rp0 to be the first text ever shown. */
+async function expectCountedUp(page: Page, noFlash = false) {
+  const exact = await exactDigits(page);
+  await expect.poll(async () => (await recorded(page)).at(-1)?.replace(/\D/g, "")).toBe(exact);
+  const texts = await recorded(page);
+  const from = texts.indexOf("Rp0");
+  expect(from).toBe(noFlash ? 0 : from);
+  expect(from).toBeGreaterThanOrEqual(0);
+  const values = texts.slice(from).map(digits);
+  expect(values.every((value, i) => i === 0 || value >= values[i - 1])).toBe(true);
+  expect(values.length).toBeGreaterThan(2);
+}
+
+test("the headline counts up on a full page load", async ({ page }) => {
+  await signIn(page);
+  await page.addInitScript(startHeadlineRecorder);
+  await page.goto("/");
+  await expectCountedUp(page, true);
+});
+
+test("the headline counts up again after a client navigation", async ({ page }) => {
+  await signIn(page);
+  const nav = page.getByRole("navigation", { name: "Navigasi utama" });
+  await nav.getByRole("link", { name: "Rutinitas" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Rutinitas" })).toBeVisible();
+  await page.evaluate(startHeadlineRecorder);
+  await nav.getByRole("link", { name: "Beranda" }).click();
+  await expectCountedUp(page);
+});
+
+test("reduced motion shows the exact headline at once", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signIn(page);
+  await page.addInitScript(startHeadlineRecorder);
+  await page.goto("/");
+  await expect(page.locator("[data-count-up]")).toHaveAttribute("data-counted", "");
+  expect(await recorded(page)).not.toContain("Rp0");
+  expect((await page.locator("[data-count-up]").textContent())!.replace(/\D/g, "")).toBe(await exactDigits(page));
+});

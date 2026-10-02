@@ -213,7 +213,7 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Financial numbers never shift width and are never animated. */
+/* Financial numbers never shift width; only the Beranda headline counts up (PRD v0.21 P9). */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
