@@ -2799,4 +2799,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.20 · Production active · Slices 0–17 implemented; S18 (Telegram digest) ready, waiting for the production migration_
+_FinTrack PRD v0.20 · Production active · Slices 0–18 implemented_
