@@ -3,10 +3,11 @@ import { redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
 import { CountUpMoney } from "@/components/count-up-money";
-import { AnimatedItem, AnimatedList } from "@/components/motion";
-import { Alert, Card, cardLinkClass, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
-import { TabPage } from "@/components/tab-page";
+import { AnimatedItem } from "@/components/motion";
 import { RollingMoney } from "@/components/rolling-money";
+import { TabPage } from "@/components/tab-page";
+import { TaskSection } from "@/components/task-section";
+import { Alert, Card, cardLinkClass, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
 import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
 import { businessDateOf } from "@/lib/business-time";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
@@ -106,45 +107,42 @@ export default async function BerandaPage() {
         ))}
       </section>
 
-      {tasks.length > 0 ? (
-        <section aria-labelledby="tasks-title">
-          <SectionTitle icon="checklist">
-            <span id="tasks-title">Perlu dilakukan</span>
-          </SectionTitle>
-          <AnimatedList className="cascade divide-y divide-border border border-border bg-surface">
-            {tasks.slice(0, 6).map(({ task, view }) => (
-              <AnimatedItem key={taskKey(task)}>
-                <Link href={view.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
-                  <span>
-                    <span className="block font-medium">{view.title}</span>
-                    <span className="block text-sm text-muted">{view.detail}</span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {view.tag ? <Tag tone="review">{view.tag}</Tag> : null}
-                    <Icon name="chevron" className="size-4 text-muted" />
-                  </span>
-                </Link>
-                {task.type === "TRANSFER" ? (
-                  <div className="space-y-1 px-4 pb-3">
-                    <ProgressBar percent={progressPercent(task.linked, task.amount)} label={`Progres ${view.title}`} />
-                    <p className="text-xs text-muted tabular">
-                      <Money value={task.linked} /> dari <Money value={task.amount} /> · {progressPercent(task.linked, task.amount)}% terpenuhi
-                    </p>
-                  </div>
-                ) : null}
-                {task.type === "TRANSFER" && parseIdrDecimal(task.transferNow) < parseIdrDecimal(task.remaining) ? (
-                  <p className="px-4 pb-3 text-sm text-review-fg">Saldo sumber belum cukup untuk seluruh saran.</p>
-                ) : null}
-              </AnimatedItem>
-            ))}
-          </AnimatedList>
-          {tasks.length > 6 ? (
+      <TaskSection
+        tasks={tasks.slice(0, 6).map(({ task, view }) => ({ key: taskKey(task), title: view.title, detail: view.detail }))}
+        footer={
+          tasks.length > 6 ? (
             <Link href="/rutinitas" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary">
               Lihat semua di Rutinitas ({tasks.length})
             </Link>
-          ) : null}
-        </section>
-      ) : null}
+          ) : null
+        }
+      >
+        {tasks.slice(0, 6).map(({ task, view }) => (
+          <AnimatedItem key={taskKey(task)}>
+            <Link href={view.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-surface-subtle">
+              <span>
+                <span className="block font-medium">{view.title}</span>
+                <span className="block text-sm text-muted">{view.detail}</span>
+              </span>
+              <span className="flex items-center gap-2">
+                {view.tag ? <Tag tone="review">{view.tag}</Tag> : null}
+                <Icon name="chevron" className="size-4 text-muted" />
+              </span>
+            </Link>
+            {task.type === "TRANSFER" ? (
+              <div className="space-y-1 px-4 pb-3">
+                <ProgressBar percent={progressPercent(task.linked, task.amount)} label={`Progres ${view.title}`} />
+                <p className="text-xs text-muted tabular">
+                  <Money value={task.linked} /> dari <Money value={task.amount} /> · {progressPercent(task.linked, task.amount)}% terpenuhi
+                </p>
+              </div>
+            ) : null}
+            {task.type === "TRANSFER" && parseIdrDecimal(task.transferNow) < parseIdrDecimal(task.remaining) ? (
+              <p className="px-4 pb-3 text-sm text-review-fg">Saldo sumber belum cukup untuk seluruh saran.</p>
+            ) : null}
+          </AnimatedItem>
+        ))}
+      </TaskSection>
 
       <section aria-labelledby="accounts-title">
         <SectionTitle icon="wallet">

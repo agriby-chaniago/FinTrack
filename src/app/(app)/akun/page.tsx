@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
-import { Card, cardLinkClass, LinkButton, Money, PageHeader, SectionTitle, StatusBadge, Tag } from "@/components/ui";
-import { TabPage } from "@/components/tab-page";
 import { RollingMoney } from "@/components/rolling-money";
+import { TabPage } from "@/components/tab-page";
+import { Card, cardLinkClass, LinkButton, Money, PageHeader, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { accountsOverview } from "@/server/application/accounts-overview";
 import { listExternalSubjects } from "@/server/application/external-funds";

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
-import { Alert, Card, LinkButton, Money, PageHeader, Row, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { RollingMoney } from "@/components/rolling-money";
+import { Alert, Card, LinkButton, Money, PageHeader, Row, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { formatDateTime, jakartaInputValue } from "@/lib/format";
 import { isUuid } from "@/server/api/responses";
 import { accountsOverview } from "@/server/application/accounts-overview";

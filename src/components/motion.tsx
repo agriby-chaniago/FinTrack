@@ -93,18 +93,23 @@ export function Reveal({ revealKey, children }: { revealKey: string; children: R
 }
 
 /** A list whose items fold away when they leave, so the rest of the list moves up. */
-export function AnimatedList({ className, children }: { className?: string; children: ReactNode }) {
+export function AnimatedList({ className, children, onExitComplete }: { className?: string; children: ReactNode; onExitComplete?: () => void }) {
   return (
     <ul className={className}>
-      <AnimatePresence initial={false}>{children}</AnimatePresence>
+      <AnimatePresence initial={false} onExitComplete={onExitComplete}>
+        {children}
+      </AnimatePresence>
     </ul>
   );
 }
 
-export function AnimatedItem({ children }: { children: ReactNode }) {
+/** `leaveX` also slides the item sideways as it folds away (a finished task, PRD v0.22 P10). */
+export function AnimatedItem({ children, className, leaveX = 0 }: { children: ReactNode; className?: string; leaveX?: number }) {
   const fold = useFold();
+  const x = useSlide(leaveX);
+  const exit = x ? { ...fold.hidden, x, transition: { duration: 0.52, ease: [0.2, 0.7, 0.2, 1] as const } } : fold.hidden;
   return (
-    <m.li initial={fold.hidden} animate={fold.shown} exit={fold.hidden}>
+    <m.li className={className} initial={fold.hidden} animate={fold.shown} exit={exit}>
       {children}
     </m.li>
   );

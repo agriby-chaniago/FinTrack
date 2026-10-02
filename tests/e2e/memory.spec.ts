@@ -109,3 +109,72 @@ test.describe("rolling amounts", () => {
     await expect(page.locator(".odo-overlay")).toHaveCount(0);
   });
 });
+
+test.describe("finished tasks", () => {
+  const nav = (page: Page) => page.getByRole("navigation", { name: "Navigasi utama" });
+  const celebrated = (page: Page) => page.locator("section[aria-labelledby='tasks-title'] .celebrate");
+
+  test("a task finished in Rutinitas flashes there and is checked off on return to Beranda", async ({ page }) => {
+    await signIn(page);
+    await nav(page).getByRole("link", { name: "Rutinitas" }).click();
+    await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp750\.000/ }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Income bulanan dikonfirmasi" })).toBeVisible();
+    // The occurrence that was just confirmed flashes green with a drawn check.
+    expect(await page.locator(".celebrate").first().evaluate((el) => getComputedStyle(el).animationName)).toBe("flash-success");
+
+    await nav(page).getByRole("link", { name: "Beranda" }).click();
+    const row = celebrated(page).filter({ hasText: "Konfirmasi income bulanan" });
+    await expect(row).toHaveCount(1);
+    expect(await row.locator("svg path").evaluate((el) => getComputedStyle(el).animationName)).toBe("draw");
+    expect(await row.locator(".celebrate-strike").evaluate((el) => getComputedStyle(el).animationName)).toBe("strike");
+    await expect(row).toHaveCount(0, { timeout: 5000 });
+  });
+
+  test("a full page load replays no finished task", async ({ page }) => {
+    await signIn(page);
+    await nav(page).getByRole("link", { name: "Rutinitas" }).click();
+    await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp750\.000/ }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Income bulanan dikonfirmasi" })).toBeVisible();
+    await page.goto("/");
+    await expect(page.getByText("Personal cash tercatat")).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(celebrated(page)).toHaveCount(0);
+  });
+
+  test("reduced motion replays no finished task", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await signIn(page);
+    await nav(page).getByRole("link", { name: "Rutinitas" }).click();
+    await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp750\.000/ }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Income bulanan dikonfirmasi" })).toBeVisible();
+    await nav(page).getByRole("link", { name: "Beranda" }).click();
+    await expect(page.getByText("Personal cash tercatat")).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(celebrated(page)).toHaveCount(0);
+  });
+
+  test("the last finished tasks still celebrate before the list goes away", async ({ page, playwright }) => {
+    await signIn(page);
+    await nav(page).getByRole("link", { name: "Rutinitas" }).click();
+    await page.getByRole("button", { name: "Tidak diterima", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Tidak diterima", exact: true })).toHaveCount(0);
+    const notCharged = page.getByRole("button", { name: "Tidak ditagih", exact: true });
+    for (let remaining = 2; remaining > 0; remaining -= 1) {
+      await expect(notCharged).toHaveCount(remaining);
+      await notCharged.first().click();
+    }
+    await expect(notCharged).toHaveCount(0);
+    // Resolving the cycle asks to check the Jago and BCA balances; confirm them unchanged so no task is left.
+    const api = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3000" });
+    const headers = () => ({ authorization: `Bearer ${user.accessToken}`, "idempotency-key": crypto.randomUUID() });
+    const accounts: { id: string; displayName: string; physical: string }[] = (await (await api.get("/api/v1/accounts", { headers: headers() })).json()).data.accounts;
+    for (const account of accounts.filter((a) => a.displayName === "Jago" || a.displayName === "BCA")) {
+      const confirmed = await api.post("/api/v1/balance-confirmations", { headers: headers(), data: { accountId: account.id, physicalBalance: account.physical } });
+      expect(confirmed.ok()).toBe(true);
+    }
+    await api.dispose();
+    await nav(page).getByRole("link", { name: "Beranda" }).click();
+    await expect(celebrated(page)).toHaveCount(3);
+    await expect(page.locator("section[aria-labelledby='tasks-title']")).toHaveCount(0, { timeout: 6000 });
+  });
+});

@@ -654,14 +654,28 @@ main > * {
   animation-delay: 360ms;
 }
 
-/* A finished task is checked off: a green flash and a strike-through. */
+/* A finished task is checked off: a green flash, a drawn check, and a strike-through.
+   Rows that replay on Beranda wait until their section has arrived (--celebrate-delay). */
 .celebrate {
-  animation: flash-success 900ms ease-out 150ms;
+  animation: flash-success 900ms ease-out var(--celebrate-delay, 150ms);
+}
+
+.celebrate-later {
+  --celebrate-delay: calc(var(--stagger-delay, 0ms) + 600ms);
+}
+
+.celebrate .draw-check {
+  animation-delay: calc(var(--celebrate-delay, 150ms) - 30ms);
 }
 
 .celebrate-strike {
   transform-origin: left;
-  animation: strike 280ms var(--ease-calm) 180ms backwards;
+  animation: strike 280ms var(--ease-calm) calc(var(--celebrate-delay, 150ms) + 30ms) backwards;
+}
+
+/* A replayed row is already in place, so it does not cascade in. */
+.cascade > .cascade-skip {
+  animation: none;
 }
 
 /* A square ripple spreads from where a button or card is pressed; hosts are positioned. */

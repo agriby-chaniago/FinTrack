@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { EmptyState, Icon, LinkButton, Money, PageHeader, Tag } from "@/components/ui";
 import { TabPage } from "@/components/tab-page";
+import { EmptyState, Icon, LinkButton, Money, PageHeader, Tag } from "@/components/ui";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { listActivity } from "@/server/application/activity";
 import { runAsPageOwner } from "@/server/auth/page-owner";

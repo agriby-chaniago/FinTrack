@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Alert, Card, EmptyState, LinkButton, Money, PageHeader, Row, SectionTitle, Tag, type Tone } from "@/components/ui";
+import { ResolveFlash } from "@/components/resolve-flash";
 import { TabPage } from "@/components/tab-page";
+import { Alert, Card, EmptyState, LinkButton, Money, PageHeader, Row, SectionTitle, Tag, type Tone } from "@/components/ui";
 import { approx, formatCycle, formatDate } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceStatusLabel, occurrenceTagLabel, progressLabel, settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal } from "@/lib/money";
@@ -224,7 +225,7 @@ export default async function RutinitasPage() {
 
               <ul className="cascade mt-3 space-y-4">
                 {cycle.income ? (
-                  <li className="bg-surface-subtle p-3">
+                  <ResolveFlash status={cycle.income.status} className="bg-surface-subtle p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-medium">Income bulanan</p>
                       <span className="flex items-center gap-2">
@@ -256,10 +257,10 @@ export default async function RutinitasPage() {
                         confirmedEntryId={cycle.income.actual?.entryId ?? null}
                       />
                     </div>
-                  </li>
+                  </ResolveFlash>
                 ) : null}
                 {cycle.obligations.map((o) => (
-                  <li key={o.occurrenceId} className="bg-surface-subtle p-3">
+                  <ResolveFlash key={o.occurrenceId} status={o.status} className="bg-surface-subtle p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-medium">{o.name}</p>
                       <span className="flex items-center gap-2">
@@ -298,7 +299,7 @@ export default async function RutinitasPage() {
                         confirmedEntryId={o.actual?.entryId ?? null}
                       />
                     </div>
-                  </li>
+                  </ResolveFlash>
                 ))}
               </ul>
 

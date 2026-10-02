@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { buttonClass, Card, Money, PageHeader, ProgressBar, Row, SectionTitle, Tag } from "@/components/ui";
 import { TabPage } from "@/components/tab-page";
+import { buttonClass, Card, Money, PageHeader, ProgressBar, Row, SectionTitle, Tag } from "@/components/ui";
 import { businessDateOf, cycleKeyOf, isCycleKey, nextCycleKey } from "@/lib/business-time";
 import { approx, formatCycle, formatDate } from "@/lib/format";
 import { completenessLabel } from "@/lib/labels";
