@@ -159,8 +159,9 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S16 | Motion + perapian form | S15 | Selesai; `LazyMotion` pada surface P3; reduced-motion; form memakai satu pola submit | — |
 | S17 | Halaman Laporan + Chart.js | S15 | Selesai; `/aktivitas/laporan`; chart lazy hanya ≥ `md` dan setelah threshold; text summary; query budget | — |
 | S18 | Pengingat Telegram | S12 | Selesai; aktif di production sejak 2 Oktober 2026 (migration 0013, token terpasang, run pertama SENT); digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | Chat id pemilik (pemilik mengirim `/start` ke bot) |
+| S19 | Motion ekspresif-tenang | S16, S17 | Sedang dikerjakan; P9: section berurutan, count-up headline tanpa kilatan sebelum hydration, progress dan strip terisi, hover dan tekan, `+ Catat` berputar, centang tergambar, chart tergambar, hitung mundur toast; reduced-motion tanpa gerak dan tanpa delay | — |
 
-Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`.
+Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`. Rencana S19: `docs/superpowers/plans/2026-10-02-s19-expressive-motion.md`.
 
 Slice boleh dimulai hanya ketika seluruh item pada kolom "Diblokir oleh" sudah berupa keputusan LOCKED di PRD.
 

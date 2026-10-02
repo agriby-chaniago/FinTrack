@@ -8,8 +8,8 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | --- | --- |
 | **Pemilik produk** | Agriby Chaniago |
 | **Status** | Draft / discovery |
-| **Versi dokumen** | 0.20 |
-| **Terakhir diperbarui** | 1 Oktober 2026 (v0.20) |
+| **Versi dokumen** | 0.21 |
+| **Terakhir diperbarui** | 2 Oktober 2026 (v0.21) |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
 | **Target berikutnya** | Aplikasi mobile dengan backend yang sama |
@@ -1405,7 +1405,7 @@ Warna tidak pernah menjadi satu-satunya pembawa arti. Final implementation token
 #### Typography dan density
 
 - Primary typeface: Geist Sans dengan system-sans fallback; tidak ada display font atau monospace kedua
-- Financial numbers memakai `tabular-nums` dan tidak dianimasikan dengan count-up/rolling number
+- Financial numbers memakai `tabular-nums` dan tidak dianimasikan dengan count-up/rolling number, kecuali headline `Personal cash tercatat` (v0.21 P9)
 - Headline amount: 32px mobile dan 40px desktop
 - Account amount: 20–24px
 - Body/action: 16px; supporting text: 14px; metadata minimum: 12px
@@ -1445,8 +1445,8 @@ Financial mutation tidak memakai optimistic confirmation. UI mencegah duplicate 
 #### Motion
 
 - CSS transition untuk hover/focus/pressed dan simple color change: sekitar 120–160ms
-- Motion untuk meaningful enter/exit/layout, sheet, dialog, dan task-list movement: sekitar 160–220ms dengan ease-out
-- Tidak ada animated balance count-up, bounce berlebihan, parallax, confetti, pulsing balance, scroll hijacking, atau global page choreography
+- Motion untuk meaningful enter/exit/layout, sheet, dialog, dan task-list movement: sekitar 160–220ms dengan ease-out; animasi masuk halaman, isi progress, count-up headline, dan gambar chart memakai durasi v0.21 P9 (260–700ms)
+- Tidak ada bounce berlebihan, parallax, confetti, pulsing balance, atau scroll hijacking. Count-up hanya untuk headline Personal cash, dan koreografi halaman hanya berupa section yang muncul berurutan sekali per halaman (v0.21 P9)
 - `prefers-reduced-motion` menghapus transform/layout motion non-esensial, mematikan chart animation, dan menyederhanakan sisanya
 - Anime.js tetap approved tetapi deferred sampai ada SVG/timeline kompleks yang nyata; tidak menjadi dependency MVP hanya untuk memenuhi preferensi
 - Embla tidak menjadi dependency MVP karena dashboard carousel telah dilarang
@@ -1515,7 +1515,7 @@ Gradient dominan, glassmorphism, glow, dan ilustrasi besar tetap tidak dipakai.
 
 #### P3 — Motion diadopsi
 
-Motion (sudah PREFERRED) dipasang memakai `LazyMotion` + `domAnimation` dan hanya untuk surface berikut: item `Perlu dilakukan` keluar setelah selesai dan sisa daftar bergeser (layout), transisi langkah onboarding dan settlement, sheet/popover `+ Catat`, expand/collapse detail, dan toast sukses. Hover/pressed, progress bar, dan munculnya konten setelah skeleton memakai CSS transition. Durasi dan larangan pada `Motion` tetap berlaku, termasuk larangan count-up balance dan aturan `prefers-reduced-motion`.
+Motion (sudah PREFERRED) dipasang memakai `LazyMotion` + `domAnimation` dan hanya untuk surface berikut: item `Perlu dilakukan` keluar setelah selesai dan sisa daftar bergeser (layout), transisi langkah onboarding dan settlement, sheet/popover `+ Catat`, expand/collapse detail, dan toast sukses. Hover/pressed, progress bar, dan munculnya konten setelah skeleton memakai CSS transition. Durasi dan larangan pada `Motion` tetap berlaku, termasuk larangan count-up balance dan aturan `prefers-reduced-motion` (dilonggarkan oleh P9 pada v0.21).
 
 Pelaksanaan S16: `<details>` bawaan di server component dianimasikan dengan CSS `::details-content`, bukan Motion; hasil pencatatan yang sudah diakui server muncul dengan fade; toast hanya mengonfirmasi aksi Rutinitas yang berubah di tempat (konfirmasi occurrence, tandai tidak diterima/ditagih, tutup target). Dengan `prefers-reduced-motion`, slide langsung berada di posisi akhir dan lipatan menjadi fade, sehingga tidak ada elemen yang bergeser atau melompat. Ketiga form pencatatan (pengeluaran khusus, transfer, dana titipan) memakai satu komponen submit yang sama.
 
@@ -1574,6 +1574,23 @@ Permintaan pemilik: tile akun menampilkan ikon aplikasi BCA, DANA, dan Jago.
 - Tile akun muncul pada account card Beranda, daftar Akun, dan header detail Akun
 
 Mengganti sebagian: `provider-brand color tidak menjadi visual language FinTrack` pada `Theme dan palette`, khusus untuk ikon. `Provider-branded card colors` pada `Tidak termasuk MVP` tetap berlaku.
+
+#### P9 — Motion ekspresif-tenang (v0.21)
+
+Status: **LOCKED** (2 Oktober 2026, pemilik memilih kedelapan animasi dari demo interaktif). Pemilik menilai animasi v0.20 masih terlalu minimalis. Level yang dipilih adalah ekspresif-tenang: gerak terasa hidup, tetapi singkat, terjadi sekali, dan tidak mengganggu angka yang sedang dibaca.
+
+- Section halaman muncul berurutan sekali setiap halaman dibuka: naik 12px sambil memudar masuk, 260ms per section, jeda 50ms antar-section, jeda maksimum 300ms
+- Count-up hanya untuk angka headline `Personal cash tercatat` di Beranda: 600ms dari Rp0 dengan ease-out, dibulatkan ke ribuan selama berjalan, dan selalu berhenti tepat pada nilai canonical. HTML server sudah berisi nilai canonical sehingga halaman benar tanpa JavaScript; perhitungan memakai bilangan bulat (`BigInt`), bukan `number`. Angka lain tidak dianimasikan
+- Progress bar terisi dari kosong dalam 600ms; penanda strip tujuh hari DANA dan segmen kewajiban muncul satu per satu dengan jeda 40ms
+- Kartu yang membuka detail terangkat 2px saat hover (hanya perangkat yang memiliki hover) dan mengecil 2% saat ditekan; tombol mengecil 2% saat ditekan; 160ms
+- Ikon `+` pada tombol `+ Catat` berputar 45° menjadi `×` selama sheet terbuka; sheet mobile naik dari tepi bawah dan popover desktop naik 16px, 220ms
+- Centang sukses pada pesan yang sudah diakui server dan pada toast tergambar dalam 400ms
+- Grafik Laporan tergambar dalam 700ms: garis dari kiri ke kanan, batang tumbuh berurutan
+- Toast memiliki garis hitung mundur yang menyusut selama 3,5 detik, sama dengan umur toast
+- Satu easing bersama `cubic-bezier(0.2, 0.7, 0.2, 1)`; tetap tanpa bounce, parallax, confetti, pulsing, atau scroll hijacking
+- Dengan `prefers-reduced-motion`, tidak ada elemen yang bergeser, berputar, menghitung, atau tergambar: konten langsung tampil pada state akhir, delay dihapus, chart tanpa animasi, dan garis hitung mundur toast disembunyikan
+
+Mengganti: larangan `animated balance count-up` dan `global page choreography` pada `Motion`, aturan `tidak dianimasikan dengan count-up/rolling number` pada `Typography dan density`, serta `count-up balance` pada `Tidak termasuk MVP`, masing-masing hanya sejauh daftar di atas. Rentang durasi P3 tetap berlaku untuk surface P3 selain yang disebut di sini.
 
 #### Tetap ditunda
 
@@ -2169,7 +2186,7 @@ Baseline teknis:
 - Global search dan notification center
 - Dashboard carousel atau chart yang belum memiliki cukup history/use case
 - Anime.js atau Embla dependency tanpa concrete MVP use case
-- Decorative animation, count-up balance, parallax, confetti, glow, glassmorphism, dan provider-branded card colors
+- Decorative animation, count-up balance selain headline Personal cash (v0.21 P9), parallax, confetti, glow, glassmorphism, dan provider-branded card colors
 - Gamification
 - Push/email reminders dan background notifications; in-app pending prompt tetap termasuk MVP (pasca-MVP: digest Telegram satu arah, v0.20 P6)
 - Multiple queued future daily-income transitions atau planned pause range dalam satu aksi
@@ -2548,7 +2565,7 @@ Jalur pengecualian juga wajib diuji:
 - Dashboard awal tidak memerlukan chart; chart hanya ditambahkan setelah history cukup dan lebih informatif daripada angka/trend text
 - UI memakai custom `fintrack-light`/`fintrack-dark` themes dengan core palette dan semantic color roles yang konsisten
 - Theme preference mendukung `system`, `light`, dan `dark`, diselesaikan sebelum first paint, serta tidak mengubah semantic meaning
-- Geist Sans dan `tabular-nums` digunakan untuk nominal; canonical amount tidak memakai count-up atau rolling animation
+- Geist Sans dan `tabular-nums` digunakan untuk nominal; canonical amount tidak memakai count-up atau rolling animation, kecuali headline Personal cash yang berhenti tepat pada nilai canonical (v0.21 P9)
 - Card/surface memakai border tipis, 12px radius, comfortable density, dan shadow hanya untuk overlay/FAB/dialog/sheet
 - Global action menggunakan desktop popover/mobile action sheet; multi-step financial workflow memakai canonical guided page
 - Financial mutation tidak dinyatakan confirmed sebelum server acknowledgement dan duplicate submission dicegah
@@ -2624,6 +2641,7 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | Tidak ada warna brand provider sama sekali | Warna brand hanya di ikon aplikasi provider pada tile akun (v0.20 P8) |
 | Tidak ada halaman laporan | Laporan sebagai sub-view Aktivitas di `/aktivitas/laporan` (v0.20 P5) |
 | Tidak ada pengingat di luar aplikasi | Digest Telegram harian satu arah tanpa nominal (v0.20 P6) |
+| Tanpa count-up balance dan tanpa koreografi halaman | Count-up hanya pada headline Personal cash; section halaman muncul berurutan sekali per halaman (v0.21 P9) |
 | Semua preferred animation/carousel library dipasang sejak awal | Motion dipakai selektif; Anime.js dan Embla ditunda sampai ada concrete use case |
 | Target DANA yang tidak terpenuhi hanya mendapat liquidity warning | Liquidity warning tetap ada, ditambah aksi eksplisit `Tutup target` dengan reason `LIQUIDITY_WRITE_OFF` |
 | Retained floor dipilih ketika BCA remainder suggestion diaktifkan | Retained floor wajib dipilih saat financial onboarding |
@@ -2787,6 +2805,7 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Digest pengingat Telegram harian satu arah tanpa nominal (v0.20) |
 | **LOCKED** | Geometri siku tanpa radius; radio input satu-satunya bentuk bulat (v0.20 P7, permintaan pemilik 1 Oktober 2026) |
 | **LOCKED** | Logo BCA serta ikon aplikasi DANA dan Jago pada tile akun; glyph tunai untuk `CASH`; monogram untuk provider lain (v0.20 P8, permintaan pemilik 1 Oktober 2026) |
+| **LOCKED** | Motion ekspresif-tenang: section berurutan, count-up headline Personal cash, progress terisi, hover dan tekan, `+ Catat` berputar, centang tergambar, chart tergambar, hitung mundur toast (v0.21 P9, pilihan pemilik 2 Oktober 2026) |
 
 ### Aturan pemeliharaan dokumen
 
@@ -2799,4 +2818,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.20 · Production active · Slices 0–18 implemented_
+_FinTrack PRD v0.21 · Production active · Slices 0–18 implemented_
