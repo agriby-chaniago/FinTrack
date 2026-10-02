@@ -78,3 +78,13 @@ test("a day in the open week stays a plain exception", async ({ page }) => {
   await form.getByRole("button", { name: "Simpan pengecualian" }).click();
   await expect(form.getByText("Tersimpan.", { exact: true })).toBeVisible();
 });
+
+const shortMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const formatDate = (iso: string) => `${Number(iso.slice(8))} ${shortMonths[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+
+test("the date field says which days can be chosen and why", async ({ page }) => {
+  const form = await openExceptionForm(page);
+  const date = form.getByLabel("Tanggal", { exact: true });
+  const min = (await date.getAttribute("min"))!;
+  await expect(date).toHaveAccessibleDescription(`Bisa dipilih ${formatDate(min)} sampai hari ini. Hari sebelumnya sudah tercakup saldo awal.`);
+});

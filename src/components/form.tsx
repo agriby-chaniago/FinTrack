@@ -20,14 +20,28 @@ export function TextField(props: { label: string; value: string; onChange: (valu
   );
 }
 
-export function DateField(props: { label: string; value: string; onChange: (value: string) => void; max?: string; min?: string; type?: "date" | "datetime-local" | "month" }) {
+export function DateField(props: { label: string; value: string; onChange: (value: string) => void; max?: string; min?: string; hint?: string; type?: "date" | "datetime-local" | "month" }) {
   const id = useId();
   return (
     <div>
       <label htmlFor={id} className="text-sm font-medium">
         {props.label}
       </label>
-      <input id={id} type={props.type ?? "date"} value={props.value} max={props.max} min={props.min} onChange={(e) => props.onChange(e.target.value)} className={controlClass} />
+      <input
+        id={id}
+        type={props.type ?? "date"}
+        value={props.value}
+        max={props.max}
+        min={props.min}
+        aria-describedby={props.hint ? `${id}-hint` : undefined}
+        onChange={(e) => props.onChange(e.target.value)}
+        className={controlClass}
+      />
+      {props.hint ? (
+        <p id={`${id}-hint`} className="mt-1 text-sm text-muted">
+          {props.hint}
+        </p>
+      ) : null}
     </div>
   );
 }

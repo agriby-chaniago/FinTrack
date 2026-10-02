@@ -197,7 +197,14 @@ export function OverrideForm({ ruleId, startDate, lastSettledEnd }: { ruleId: st
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <DateField label="Tanggal" value={date} min={startDate} max={today} onChange={setDate} />
+        <DateField
+          label="Tanggal"
+          value={date}
+          min={startDate}
+          max={today}
+          hint={`Bisa dipilih ${formatDate(startDate)} sampai hari ini. Hari sebelumnya sudah tercakup saldo awal.`}
+          onChange={setDate}
+        />
         <AmountInput label="Income yang benar-benar diterima" hint="Rp0 berarti tidak diterima." value={amount} onChange={setAmount} />
       </div>
       {settled ? (
