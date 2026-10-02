@@ -1592,6 +1592,8 @@ Status: **LOCKED** (2 Oktober 2026, pemilik memilih kedelapan animasi dari demo 
 
 Mengganti: larangan `animated balance count-up` dan `global page choreography` pada `Motion`, aturan `tidak dianimasikan dengan count-up/rolling number` pada `Typography dan density`, serta `count-up balance` pada `Tidak termasuk MVP`, masing-masing hanya sejauh daftar di atas. Rentang durasi P3 tetap berlaku untuk surface P3 selain yang disebut di sini.
 
+Pelaksanaan S19: animasi masuk memakai CSS keyframes yang berjalan sekali saat elemen dipasang, sehingga HTML server sudah final tanpa JavaScript. Count-up headline mengikuti pola inline script Next.js (`preventing flash before hydration`): pada full page load angka dihitung sebelum first paint, setelah navigasi client oleh layout effect, dan screen reader hanya menerima nilai persis. Pergantian theme mewarnai ulang chart tanpa memutar ulang animasinya.
+
 #### Tetap ditunda
 
 Forecasting dan investasi tetap **DEFERRED**. Pengingat tidak menjadi notification center.
@@ -2818,4 +2820,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.21 · Production active · Slices 0–18 implemented_
+_FinTrack PRD v0.21 · Production active · Slices 0–19 implemented_
