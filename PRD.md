@@ -7,9 +7,9 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | Metadata | Nilai |
 | --- | --- |
 | **Pemilik produk** | Agriby Chaniago |
-| **Status** | Draft / discovery |
-| **Versi dokumen** | 0.22 |
-| **Terakhir diperbarui** | 2 Oktober 2026 (v0.22) |
+| **Status** | Aktif di production |
+| **Versi dokumen** | 0.23 |
+| **Terakhir diperbarui** | 2 Oktober 2026 (v0.23) |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
 | **Target berikutnya** | Aplikasi mobile dengan backend yang sama |
@@ -1548,7 +1548,8 @@ Membuka ulang: `Push/email reminders dan background notifications` pada `Tidak t
 - Pesan hanya dikirim jika ada task `Perlu dilakukan`; isinya judul task dan link ke FinTrack, tanpa nominal, saldo, atau nama dana titipan
 - Maksimal satu digest per tanggal bisnis
 - Kegagalan Telegram tidak memengaruhi aplikasi dan tercatat sebagai failure di workflow
-- Pelaksanaan S18: route tanpa sesi membuka owner transaction biasa lewat fungsi `fintrack.reminder_owner_auth_user_id()` (SECURITY DEFINER, hanya untuk `fintrack_app`), tanpa `BYPASSRLS`; tanggal kirim dicatat di `fintrack.reminder_delivery` sebelum mengirim, sehingga pengiriman gagal di-rollback dan dicoba lagi pada run berikutnya
+- Pelaksanaan S18: route tanpa sesi membuka owner transaction biasa lewat fungsi `fintrack.reminder_owner_auth_user_id()` (SECURITY DEFINER, hanya untuk `fintrack_app`), tanpa `BYPASSRLS`; tanggal kirim dicatat di `fintrack.reminder_delivery` sebelum mengirim, sehingga pengiriman gagal di-rollback dan dicoba lagi pada run berikutnya (cara ini diganti pada S21)
+- Pelaksanaan S21: tanggal dan isi digest disiapkan dalam satu transaksi singkat, Telegram dipanggil tanpa transaksi yang terbuka, lalu tanggal dicatat setelah Telegram menerima pesan. Pengiriman yang gagal tidak mencatat apa pun sehingga run berikutnya mencoba lagi, dan concurrency group workflow mencegah dua run berjalan bersamaan. Digest memuat paling banyak 10 judul tugas dan menyebut jumlah sisanya, jauh di bawah batas 4096 karakter pesan Telegram
 
 #### P7 — Geometri siku (`extra crispy`)
 
@@ -2623,21 +2624,13 @@ Jalur pengecualian juga wajib diuji:
 
 ### Prioritas pembahasan berikutnya
 
-| Prioritas | Topik | Keputusan yang dibutuhkan |
-| ---: | --- | --- |
-| **1** | Production environment | Project Supabase production, environment variables Vercel per environment, custom SMTP, bucket R2, dan MFA pada seluruh akun |
+Tidak ada topik yang menunggu keputusan. Production berjalan sejak 30 September 2026: project Supabase `fintrack_prod`, Vercel `fintrack-new` dengan environment variables production, keepalive harian, dan digest Telegram harian. SMTP sendiri dan MFA pada akun Supabase, Vercel, dan GitHub ditunda atas keputusan pemilik; backup R2 harian tidak dipakai (lihat decision log).
 
 Seluruh temuan audit readiness (`docs/audit/2026-09-30-readiness.md`) telah diputuskan: OD-1 sampai OD-6 pada v0.16 dan resolusi HB/MC pada v0.18. Hasil spike platform tercatat di `docs/implementation-plan.md`.
 
 ### Pending onboarding data
 
-Hal berikut adalah data aktual yang nanti perlu diberikan pengguna, bukan keputusan produk yang masih terbuka:
-
-- Actual initial `cutover_at`
-- Latest exact physical balance Jago, BCA, dan DANA pada cutover tersebut
-- External subjects yang masih aktif beserta opening amount dan account position-nya
-- Nilai `Saldo minimum ditahan` BCA
-- Nama dan expected amount subscription aktif; expected date tanggal 5 sudah diketahui
+Tidak ada. Pemilik menyelesaikan onboarding production dengan data aktual (cutover 30 September 2026 pukul 19.00 WIB): saldo fisik Jago, BCA, dan DANA, dana titipan yang aktif, `Saldo minimum ditahan` BCA, serta subscription aktif. Data itu tersimpan di aplikasi, bukan di dokumen ini.
 
 ### Open questions
 
@@ -2827,6 +2820,7 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Uang fisik dilacak sebagai account `Tunai` (`CASH`) yang di-settle bersama DANA dalam satu settlement pool; diaktifkan dari settlement, saldo dompet diisi setiap settlement, dan target reserve tetap dari DANA saja (30 September 2026) |
 | **LOCKED** | Production berjalan tanpa daily R2 backup atas keputusan pemilik; bila data hilang, pemilik melakukan setup ulang. Pipeline backup tetap tersedia dan nonaktif (30 September 2026) |
 | **DEFERRED** | Custom SMTP; owner production dibuat langsung di Supabase Dashboard dengan Auto Confirm (30 September 2026) |
+| **DEFERRED** | MFA pada akun Supabase, Vercel, dan GitHub, atas keputusan pemilik (2 Oktober 2026) |
 | **LOCKED** | Palette `Petrol & Paper` menggantikan core palette indigo/abu-abu; semantic color tetap (v0.20, 1 Oktober 2026) |
 | **LOCKED** | Kepadatan visual informatif: panel headline, monogram account, icon section, progress bar, strip tujuh hari DANA (v0.20) |
 | **LOCKED** | Motion dipasang dengan `LazyMotion` untuk task list, langkah flow, sheet, expand/collapse, dan toast (v0.20) |
@@ -2837,6 +2831,7 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 | **LOCKED** | Logo BCA serta ikon aplikasi DANA dan Jago pada tile akun; glyph tunai untuk `CASH`; monogram untuk provider lain (v0.20 P8, permintaan pemilik 1 Oktober 2026) |
 | **LOCKED** | Motion ekspresif-tenang: section berurutan, count-up headline Personal cash, progress terisi, hover dan tekan, `+ Catat` berputar, centang tergambar, chart tergambar, hitung mundur toast (v0.21 P9, pilihan pemilik 2 Oktober 2026) |
 | **LOCKED** | Motion Meriah: 40px/520ms/jeda 90ms dengan pegas, geser antar tab, indikator tab meluncur, kartu berurutan, tugas selesai dirayakan, angka bergulir, skeleton berkilau, riak kotak, isi sheet berurutan, denyut hari ini, kilau progress, garis headline; tanpa confetti (v0.22 P10, pilihan pemilik 2 Oktober 2026) |
+| **LOCKED** | Digest Telegram memuat paling banyak 10 judul tugas dan jumlah sisanya; Telegram dipanggil tanpa transaksi database yang terbuka (S21, 2 Oktober 2026) |
 
 ### Aturan pemeliharaan dokumen
 
@@ -2849,4 +2844,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.22 · Production active · Slices 0–20 implemented_
+_FinTrack PRD v0.23 · Production active · Slices 0–21 implemented_

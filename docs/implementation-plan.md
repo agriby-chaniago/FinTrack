@@ -14,15 +14,15 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | --- | --- |
 | Scaffold Next.js 16 + TypeScript strict + Tailwind 4 | Selesai |
 | Drizzle + migration runner + provisioning role | Selesai |
-| Role `fintrack_app`, `fintrack_probe`, `fintrack_backup` + schema `fintrack`/`ops` | Selesai (lokal) |
-| `app_owner` singleton + RLS + `withOwnerDb()` / `requireOwner()` | Selesai (lokal) |
-| Internal keepalive route + probe relation | Selesai (belum di-deploy) |
+| Role `fintrack_app`, `fintrack_probe`, `fintrack_backup` + schema `fintrack`/`ops` | Selesai |
+| `app_owner` singleton + RLS + `withOwnerDb()` / `requireOwner()` | Selesai |
+| Internal keepalive route + probe relation | Selesai; keepalive harian aktif di production |
 | CI: lint, typecheck, unit test, build, database test | Hijau di GitHub Actions |
 | Spike pada Supabase hosted (pooler `fintrack_app.<project-ref>`) | Lulus pada staging `ap-southeast-1` (39/39 integration test) |
-| S1: bootstrap owner idempoten + recovery `--rebind` | Selesai (lokal) |
-| S1: adapter cookie dan Bearer → principal yang sama; penolakan identity ambigu | Selesai (lokal) |
-| S1: `/api/v1/session`, logout lokal/global, kontrak error JSON | Selesai (lokal) |
-| S1: `/login`, `/forgot-password`, `/auth/callback`, `/reset-password`, `proxy.ts` | Selesai (lokal); login form belum diuji otomatis di browser |
+| S1: bootstrap owner idempoten + recovery `--rebind` | Selesai |
+| S1: adapter cookie dan Bearer → principal yang sama; penolakan identity ambigu | Selesai |
+| S1: `/api/v1/session`, logout lokal/global, kontrak error JSON | Selesai |
+| S1: `/login`, `/forgot-password`, `/auth/callback`, `/reset-password`, `proxy.ts` | Selesai; login diuji end-to-end di browser (Playwright) |
 | S1: runbook bootstrap dan recovery | `docs/runbooks/owner-bootstrap-and-recovery.md` |
 | S2: utilitas uang IDR persis dan kalender Asia/Jakarta | Selesai |
 | S2: schema account, kategori, setting, dana titipan, onboarding, posisi awal, definisi rule | Selesai (migration `0002`, RLS di file yang sama) |
@@ -161,8 +161,9 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S18 | Pengingat Telegram | S12 | Selesai; aktif di production sejak 2 Oktober 2026 (migration 0013, token terpasang, run pertama SENT); digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | Chat id pemilik (pemilik mengirim `/start` ke bot) |
 | S19 | Motion ekspresif-tenang | S16, S17 | Selesai; P9: section berurutan, count-up headline tanpa kilatan sebelum hydration, progress dan strip terisi, hover dan tekan, `+ Catat` berputar, centang tergambar, chart tergambar, hitung mundur toast; reduced-motion tanpa gerak dan tanpa delay | — |
 | S20 | Motion Meriah | S19 | Selesai; P10: intensitas Meriah, geser antar tab (View Transitions), indikator tab, kartu berurutan, tugas selesai dirayakan, angka bergulir, skeleton berkilau, riak kotak, isi sheet berurutan, denyut hari ini, kilau progress, garis headline; reduced-motion tanpa gerak | — |
+| S21 | Polish + hardening | S20 | Selesai; digest Telegram tanpa transaksi terbuka saat memanggil Telegram dan maksimal 10 judul; ikon jam untuk status menunggu; toast untuk revisi perkiraan; toast di bawah header pada HP dan bisa diketuk; skeleton akun dengan tile; langkah onboarding crossfade; selisih Laporan tanpa sen; grafik Laporan tidak dibangun ulang saat refresh; sheet tanpa celah saat memantul; baris tugas yang diputar ulang tersembunyi dari screen reader | — |
 
-Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`. Rencana S19: `docs/superpowers/plans/2026-10-02-s19-expressive-motion.md`. Rencana S20: `docs/superpowers/plans/2026-10-02-s20-meriah-motion.md`.
+Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`. Rencana S19: `docs/superpowers/plans/2026-10-02-s19-expressive-motion.md`. Rencana S20: `docs/superpowers/plans/2026-10-02-s20-meriah-motion.md`. Rencana S21: `docs/superpowers/plans/2026-10-02-s21-polish-and-hardening.md`.
 
 Slice boleh dimulai hanya ketika seluruh item pada kolom "Diblokir oleh" sudah berupa keputusan LOCKED di PRD.
 
