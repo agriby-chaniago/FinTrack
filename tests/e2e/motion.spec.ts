@@ -244,3 +244,11 @@ test("account cards give a little when pressed", async ({ page }) => {
   await expect.poll(() => card.evaluate((el) => getComputedStyle(el).scale)).toBe("0.98");
   await page.mouse.up();
 });
+
+test("screen readers get the exact headline, never a counting value", async ({ page }) => {
+  await signIn(page);
+  const counting = page.locator("[data-count-up]");
+  await expect(counting).toHaveAttribute("aria-hidden", "true");
+  const spoken = page.locator("p:has(> [data-count-up]) > .sr-only");
+  expect((await spoken.textContent())!.replace(/\D/g, "")).toBe(await exactDigits(page));
+});
