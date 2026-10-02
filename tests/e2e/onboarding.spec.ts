@@ -49,8 +49,21 @@ test("owner signs in and completes onboarding with the locked fixture", async ({
   await expect(page).toHaveURL(/\/onboarding$/);
   await expect(page.getByText("Langkah 1 dari 5")).toBeVisible();
 
+  // Steps crossfade: the step area is never blank between two steps (S21).
+  await page.evaluate(() => {
+    const area = document.querySelector("[data-step-area]")!;
+    const sums: number[] = ((window as unknown as { __stepOpacity: number[] }).__stepOpacity = []);
+    const start = performance.now();
+    const tick = () => {
+      sums.push([...area.children].reduce((total, child) => total + Number(getComputedStyle(child).opacity), 0));
+      if (performance.now() - start < 2500) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   await page.getByRole("button", { name: "Simpan & lanjut" }).click();
   await expect(page.getByRole("heading", { name: "Saldo di setiap akun" })).toBeVisible();
+  await page.waitForTimeout(400);
+  expect(Math.min(...(await page.evaluate(() => (window as unknown as { __stepOpacity: number[] }).__stepOpacity)))).toBeGreaterThan(0.6);
   await page.getByLabel("Saldo Jago").fill("0");
   await page.getByLabel("Saldo BCA").fill("831.999,93");
   await page.getByLabel("Saldo DANA").fill("0");

@@ -68,11 +68,15 @@ const stepVariants = {
   exit: (offset: number) => ({ opacity: 0, x: -offset }),
 };
 
-/** Guided-flow steps: forward slides in from the right, back from the left. */
+/**
+ * Guided-flow steps: forward slides in from the right, back from the left. The old
+ * step is popped out of the layout and fades while the new one arrives, so the step
+ * area is never blank; the parent must be positioned.
+ */
 export function StepTransition({ step, direction, children }: { step: number; direction: 1 | -1; children: ReactNode }) {
   const offset = direction * useSlide(16);
   return (
-    <AnimatePresence mode="wait" initial={false} custom={offset}>
+    <AnimatePresence mode="popLayout" initial={false} custom={offset}>
       <m.div key={step} custom={offset} variants={stepVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18, ease: "easeOut" }}>
         {children}
       </m.div>

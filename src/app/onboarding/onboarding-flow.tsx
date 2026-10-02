@@ -224,7 +224,7 @@ export function OnboardingFlow({ initialDraft, initialVersion, initialReview }: 
         ) : null}
       </div>
 
-      <div className="mt-6">
+      <div data-step-area className="relative mt-6">
         <StepTransition step={step} direction={direction}>
           {step === 0 ? (
             <Section
