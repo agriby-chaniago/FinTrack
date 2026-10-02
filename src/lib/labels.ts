@@ -42,6 +42,14 @@ export const occurrenceStatusLabel: Record<string, string> = {
   NOT_CHARGED: "Tidak ditagih",
 };
 
+/** Icon beside each occurrence status: waiting reads as a clock, never as a check. */
+export const occurrenceStatusIcon: Record<string, "clock" | "check" | "minus"> = {
+  PENDING: "clock",
+  CONFIRMED: "check",
+  NOT_RECEIVED: "minus",
+  NOT_CHARGED: "minus",
+};
+
 export const occurrenceTagLabel: Record<string, string> = {
   OVERDUE: "Terlambat",
   LATE: "Masuk terlambat",

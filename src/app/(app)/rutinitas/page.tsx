@@ -5,7 +5,7 @@ import { ResolveFlash } from "@/components/resolve-flash";
 import { TabPage } from "@/components/tab-page";
 import { Alert, Card, EmptyState, LinkButton, Money, PageHeader, Row, SectionTitle, Tag, type Tone } from "@/components/ui";
 import { approx, formatCycle, formatDate } from "@/lib/format";
-import { cycleNoteLabel, cycleStateLabel, occurrenceStatusLabel, occurrenceTagLabel, progressLabel, settlementModeLabel } from "@/lib/labels";
+import { cycleNoteLabel, cycleStateLabel, occurrenceStatusIcon, occurrenceStatusLabel, occurrenceTagLabel, progressLabel, settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal } from "@/lib/money";
 import { dailyIncomeView } from "@/server/application/daily-income";
 import { listMonthlyCycles } from "@/server/application/monthly";
@@ -230,7 +230,9 @@ export default async function RutinitasPage() {
                       <p className="font-medium">Income bulanan</p>
                       <span className="flex items-center gap-2">
                         {cycle.income.label ? <Tag tone="review">{occurrenceTagLabel[cycle.income.label]}</Tag> : null}
-                        <Tag tone={cycle.income.status === "CONFIRMED" ? "success" : "neutral"}>{occurrenceStatusLabel[cycle.income.status]}</Tag>
+                        <Tag tone={cycle.income.status === "CONFIRMED" ? "success" : "neutral"} icon={occurrenceStatusIcon[cycle.income.status]}>
+                          {occurrenceStatusLabel[cycle.income.status]}
+                        </Tag>
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted">
@@ -265,7 +267,9 @@ export default async function RutinitasPage() {
                       <p className="font-medium">{o.name}</p>
                       <span className="flex items-center gap-2">
                         {o.label ? <Tag tone="review">{occurrenceTagLabel[o.label]}</Tag> : null}
-                        <Tag tone={o.status === "CONFIRMED" ? "success" : "neutral"}>{occurrenceStatusLabel[o.status]}</Tag>
+                        <Tag tone={o.status === "CONFIRMED" ? "success" : "neutral"} icon={occurrenceStatusIcon[o.status]}>
+                          {occurrenceStatusLabel[o.status]}
+                        </Tag>
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted">

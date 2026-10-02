@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AmountInput } from "@/components/amount-input";
 import { Checkbox, DateField, FormErrors, NumberField, SelectField, TextField } from "@/components/form";
 import { Swap } from "@/components/motion";
+import { useToast } from "@/components/toast";
 import { buttonClass, Money, Tag } from "@/components/ui";
 import { useMutation } from "@/lib/api-client";
 import { formatCycle, formatDate } from "@/lib/format";
@@ -155,13 +156,14 @@ export function EndRuleForm({ path, currentCycle, label, noEvent }: { path: stri
   );
 }
 
-export function RevisionForm(props: { ruleId: string; currentCycle: string; expectedDay: number | null; expectedAmount: string | null; subscription: boolean }) {
+/** Changes a rule's expectation from a coming month; the form closes, so a toast confirms it. */
+export function RevisionForm(props: { ruleId: string; name: string; currentCycle: string; expectedDay: number | null; expectedAmount: string | null; subscription: boolean }) {
   const [open, setOpen] = useState(false);
   const [cycle, setCycle] = useState(nextCycle(props.currentCycle));
   const [day, setDay] = useState<number | null>(props.expectedDay);
   const [amount, setAmount] = useState<string | null>(props.expectedAmount);
-  const [saved, setSaved] = useState(false);
   const revise = useMutation<Record<string, unknown>>(`/api/v1/recurring-expense-rules/${props.ruleId}/revisions`);
+  const toast = useToast();
   return (
     <Swap swapKey={open ? "form" : "button"}>
       {open ? (
@@ -170,9 +172,9 @@ export function RevisionForm(props: { ruleId: string; currentCycle: string; expe
           onSubmit={async (event) => {
             event.preventDefault();
             const result = await revise.submit({ effectiveFromCycle: cycle, expectedDay: day, expectedAmount: amount });
-            setSaved(result.ok);
             if (result.ok) {
               setOpen(false);
+              toast(`Perkiraan ${props.name} diubah mulai ${formatCycle(cycle)}`);
             }
           }}
         >
@@ -182,7 +184,6 @@ export function RevisionForm(props: { ruleId: string; currentCycle: string; expe
             <AmountInput label={props.subscription ? "Nominal" : "Nominal (opsional)"} value={amount} onChange={setAmount} />
           </div>
           <FormErrors errors={revise.error} />
-          <Saved show={saved} />
           <div className="flex gap-2">
             <button type="submit" className={buttonClass.primary} disabled={revise.pending}>
               Simpan perubahan

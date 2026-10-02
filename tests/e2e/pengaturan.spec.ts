@@ -19,6 +19,10 @@ let user: Awaited<ReturnType<typeof createAuthUser>>;
 const todayJakarta = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const currentMonth = () => `${monthNames[Number(todayJakarta().slice(5, 7)) - 1]} ${todayJakarta().slice(0, 4)}`;
+const nextMonth = () => {
+  const [year, month] = todayJakarta().split("-").map(Number);
+  return month === 12 ? `Januari ${year + 1}` : `${monthNames[month]} ${year}`;
+};
 
 test.beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "e2e-pengaturan");
@@ -30,6 +34,24 @@ test.afterAll(async () => {
   await clients.admin`truncate fintrack.app_owner cascade`;
   await clients.authAdmin.auth.admin.deleteUser(user.id);
   await closeClients(clients);
+});
+
+async function signInToPengaturan(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
+  await page.getByRole("button", { name: "Masuk" }).click();
+  await expect(page.getByText("Personal cash tercatat")).toBeVisible();
+  await page.goto("/pengaturan");
+}
+
+test("a saved revision is confirmed even though its form closes", async ({ page }) => {
+  await signInToPengaturan(page);
+  const row = page.getByRole("listitem").filter({ hasText: "Biaya bulanan bank" });
+  await row.getByRole("button", { name: "Ubah perkiraan" }).click();
+  await row.getByLabel("Nominal (opsional)").fill("12.000");
+  await row.getByRole("button", { name: "Simpan perubahan" }).click();
+  await expect(page.getByRole("status").filter({ hasText: `Perkiraan Biaya bulanan bank diubah mulai ${nextMonth()}` })).toBeVisible();
 });
 
 test("ending an obligation this month says it will end, not that it is active", async ({ page }) => {

@@ -122,7 +122,7 @@ export default async function PengaturanPage() {
               </div>
               {rule.status !== "ENDED" ? (
                 <div className="flex flex-wrap gap-4">
-                  <RevisionForm ruleId={rule.id} currentCycle={currentCycle} expectedDay={rule.expectedDay} expectedAmount={rule.expectedAmount} subscription={rule.kind === "SUBSCRIPTION"} />
+                  <RevisionForm ruleId={rule.id} name={rule.name} currentCycle={currentCycle} expectedDay={rule.expectedDay} expectedAmount={rule.expectedAmount} subscription={rule.kind === "SUBSCRIPTION"} />
                   <EndRuleForm path={`/api/v1/recurring-expense-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri" noEvent="Tidak ditagih" />
                 </div>
               ) : null}
