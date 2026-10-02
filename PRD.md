@@ -1619,6 +1619,8 @@ Animasi baru:
 
 Mengganti: jarak, durasi, dan jeda section P9 (12px, 260ms, 50ms, maksimum 300ms), serta aturan P9 bahwa count-up hanya untuk headline, sejauh daftar di atas.
 
+Pelaksanaan S20: geser antar tab memakai `<ViewTransition>` React di halaman dan skeleton keempat tab, dengan arah dari `transitionTypes` pada link navigasi; halaman yang sudah di-prefetch langsung masuk, selain itu skeleton-nya yang masuk. Memori sesi (angka bergulir dan tugas yang dirayakan) hanya hidup di JavaScript klien, sehingga full page load tidak pernah memutar ulang apa pun. Overlay angka bergulir menggambar digit dengan generated content CSS, sehingga teks DOM angka tidak pernah berubah. Tugas yang dirayakan muncul di atas daftar setelah section-nya tiba, lalu melipat keluar setelah 1,5 detik.
+
 #### Tetap ditunda
 
 Forecasting dan investasi tetap **DEFERRED**. Pengingat tidak menjadi notification center.
@@ -2847,4 +2849,4 @@ Tidak ada keputusan produk yang terbuka. Detail aktual seperti URL production, p
 
 ---
 
-_FinTrack PRD v0.22 · Production active · Slices 0–19 implemented_
+_FinTrack PRD v0.22 · Production active · Slices 0–20 implemented_

@@ -155,9 +155,9 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
   const pathname = usePathname();
   const [catatOpen, setCatatOpen] = useState(false);
   const warm = useWarmedUp();
+  useEffect(installRipple, []);
   const activeIndex = destinations.findIndex((item) => isActive(pathname, item.href));
   // Between the four tabs the page slides in tab order (PRD v0.22 P10); other links do not slide.
-  useEffect(installRipple, []);
   const tabTypes = (index: number) => (activeIndex < 0 || index === activeIndex ? undefined : [index > activeIndex ? "tab-forward" : "tab-back"]);
 
   return (
