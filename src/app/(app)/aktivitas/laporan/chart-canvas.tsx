@@ -4,6 +4,7 @@
 import { BarController, BarElement, CategoryScale, Chart, LinearScale, LineController, LineElement, PointElement, Tooltip, type ChartConfiguration } from "chart.js";
 import { useEffect, useRef } from "react";
 
+import { chartMotion } from "@/lib/chart-motion";
 import { money } from "@/lib/format";
 
 import type { TrendChartProps } from "./trend-chart";
@@ -34,7 +35,7 @@ function config({ kind, labels, series, unit }: TrendChartProps): ChartConfigura
       })),
     },
     options: {
-      animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 200 },
+      ...chartMotion(kind, labels.length, matchMedia("(prefers-reduced-motion: reduce)").matches),
       responsive: true,
       maintainAspectRatio: false,
       scales: {
@@ -56,12 +57,12 @@ export default function ChartCanvas(props: TrendChartProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const chart = new Chart(canvas.current!, config(props));
-    // A theme switch recolors the chart.
+    // A theme switch recolors the chart without replaying the draw-in.
     const recolor = () => {
       const next = config(props);
       chart.data = next.data;
       chart.options = next.options ?? {};
-      chart.update();
+      chart.update("none");
     };
     const observer = new MutationObserver(recolor);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });

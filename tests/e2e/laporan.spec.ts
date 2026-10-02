@@ -111,12 +111,17 @@ test.describe("with four settled weeks", () => {
   });
 
   test("desktop shows charts only when eligible, mobile shows the data list", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
     await signInAs(page, user);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/aktivitas/laporan");
     // Weekly is eligible after four settlements; monthly needs three completed BCA cycles.
     await expect(page.locator("canvas[role='img']")).toHaveCount(1);
     await expect(page.locator("canvas[role='img']")).toHaveAttribute("aria-label", /per hari/);
+    // The line draws in over 700 ms (PRD v0.21 P9); its animation callbacks must not throw.
+    await page.waitForTimeout(1000);
+    expect(errors).toEqual([]);
     await page.setViewportSize({ width: 412, height: 915 });
     await page.reload();
     await expect(page.getByRole("list", { name: "Data tren mingguan" })).toBeVisible();
