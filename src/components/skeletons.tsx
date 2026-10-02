@@ -35,6 +35,22 @@ function CardBlock({ lines = 3, className = "" }: { lines?: number; className?: 
   );
 }
 
+/** An account card while it loads: the 40px tile (PRD v0.20 P8), the name, and the balance. */
+function AccountBlock() {
+  return (
+    <div className="border border-border bg-surface p-4 md:p-5">
+      <div className="flex items-center gap-3">
+        <Skeleton data-tile="" className="size-10 shrink-0" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      </div>
+      <Skeleton className="mt-3 h-6 w-2/5" />
+    </div>
+  );
+}
+
 function ListBlock({ rows = 6 }: { rows?: number }) {
   return (
     <div className="divide-y divide-border border border-border bg-surface">
@@ -70,9 +86,9 @@ export function BerandaSkeleton() {
       </div>
       <ListBlock rows={3} />
       <div className="grid gap-3 md:grid-cols-3">
-        <CardBlock lines={2} />
-        <CardBlock lines={2} />
-        <CardBlock lines={2} />
+        <AccountBlock />
+        <AccountBlock />
+        <AccountBlock />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <CardBlock />
@@ -89,6 +105,19 @@ export function CardsSkeleton({ title, description, cards = 3 }: { title: string
       {Array.from({ length: cards }, (_, index) => (
         <CardBlock key={index} />
       ))}
+    </Loading>
+  );
+}
+
+export function AccountsSkeleton({ title, description }: { title: string; description?: string }) {
+  return (
+    <Loading>
+      <PageHeader title={title} description={description} />
+      <div className="space-y-3">
+        <AccountBlock />
+        <AccountBlock />
+        <AccountBlock />
+      </div>
     </Loading>
   );
 }

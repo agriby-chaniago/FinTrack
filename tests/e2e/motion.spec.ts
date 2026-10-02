@@ -383,3 +383,13 @@ test("the toast sits under the header on a phone and dismisses on tap", async ({
   await toast.getByRole("button").click();
   await expect(toast).toBeHidden({ timeout: 1000 });
 });
+
+test("account skeletons show the tile while Akun loads", async ({ page }) => {
+  await signIn(page);
+  await page.route(/\/akun\?_rsc=/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Akun" }).click();
+  await expect(page.locator("main [data-tile]")).toHaveCount(3);
+});
