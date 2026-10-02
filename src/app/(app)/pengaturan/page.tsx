@@ -27,6 +27,18 @@ import {
 
 const ruleStatus: Record<string, string> = { ACTIVE: "Aktif", SCHEDULED: "Terjadwal", ENDED: "Berakhir" };
 
+/** An active rule with a last month is still in force but already ended by the owner. */
+function RuleStatusTag({ status, lastCycle }: { status: string; lastCycle: string | null }) {
+  if (status === "ACTIVE" && lastCycle) {
+    return (
+      <Tag tone="info" icon="clock">
+        Akan berakhir
+      </Tag>
+    );
+  }
+  return <Tag tone={status === "ACTIVE" ? "success" : "neutral"}>{ruleStatus[status]}</Tag>;
+}
+
 export default async function PengaturanPage() {
   const now = new Date();
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
@@ -68,9 +80,9 @@ export default async function PengaturanPage() {
                   Perkiraan <Money value={rule.expectedAmount} /> · mulai {formatCycle(rule.firstExpectedCycle)}
                   {rule.lastExpectedCycle ? ` · sampai ${formatCycle(rule.lastExpectedCycle)}` : ""}
                 </span>
-                <Tag tone={rule.status === "ACTIVE" ? "success" : "neutral"}>{ruleStatus[rule.status]}</Tag>
+                <RuleStatusTag status={rule.status} lastCycle={rule.lastExpectedCycle} />
               </div>
-              {rule.status !== "ENDED" ? <EndRuleForm path={`/api/v1/monthly-income-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri income bulanan" /> : null}
+              {rule.status !== "ENDED" ? <EndRuleForm path={`/api/v1/monthly-income-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri income bulanan" noEvent="Tidak diterima" /> : null}
             </li>
           ))}
         </ul>
@@ -106,12 +118,12 @@ export default async function PengaturanPage() {
                     </p>
                   ))}
                 </div>
-                <Tag tone={rule.status === "ACTIVE" ? "success" : "neutral"}>{ruleStatus[rule.status]}</Tag>
+                <RuleStatusTag status={rule.status} lastCycle={rule.lastCycle} />
               </div>
               {rule.status !== "ENDED" ? (
                 <div className="flex flex-wrap gap-4">
                   <RevisionForm ruleId={rule.id} currentCycle={currentCycle} expectedDay={rule.expectedDay} expectedAmount={rule.expectedAmount} subscription={rule.kind === "SUBSCRIPTION"} />
-                  <EndRuleForm path={`/api/v1/recurring-expense-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri" />
+                  <EndRuleForm path={`/api/v1/recurring-expense-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri" noEvent="Tidak ditagih" />
                 </div>
               ) : null}
             </li>
