@@ -47,6 +47,8 @@ test("special expense records and Catat lagi clears the form", async ({ page }) 
   await page.getByLabel("Nominal").fill("25.000");
   await page.getByRole("button", { name: "Simpan pengeluaran" }).click();
   await expect(page.getByText("Catatan sudah masuk ke Aktivitas dan saldo tercatat.")).toBeVisible();
+  // The acknowledged success draws its check (PRD v0.21 P9).
+  expect(await page.getByRole("status").filter({ hasText: "Tersimpan" }).locator("svg path").evaluate((el) => getComputedStyle(el).animationName)).toBe("draw");
   await expect(page.getByRole("link", { name: "Lihat catatan" })).toBeVisible();
   await page.getByRole("button", { name: "Catat lagi" }).click();
   await expect(page.getByLabel("Nominal")).toHaveValue("");

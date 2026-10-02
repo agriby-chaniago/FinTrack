@@ -42,6 +42,15 @@ export function Icon({ name, className = "size-4" }: { name: IconName; className
   );
 }
 
+/** A check that draws itself once when it appears (PRD v0.21 P9). */
+export function DrawnCheck({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className={`${className} shrink-0`}>
+      <path d="M4 10.5 8 14.5 16.5 6" pathLength={1} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="square" className="draw-check" />
+    </svg>
+  );
+}
+
 const statusStyle: Record<string, { icon: IconName; className: string }> = {
   CONFIRMED: { icon: "check", className: "bg-confirmed-bg text-confirmed-fg" },
   CALCULATED_AFTER_CONFIRMATION: { icon: "calculator", className: "bg-calculated-bg text-calculated-fg" },
@@ -86,7 +95,7 @@ export function Tag({ tone, children, icon }: { tone: Tone; children: ReactNode;
 export function Alert({ tone, title, children, live }: { tone: Tone; title?: string; children?: ReactNode; live?: boolean }) {
   return (
     <div role={tone === "danger" ? "alert" : live ? "status" : undefined} className={`flex gap-2 px-3 py-2 text-sm ${toneClass[tone]}`}>
-      <Icon name={toneIcon[tone]} className="mt-0.5 size-4" />
+      {tone === "success" ? <DrawnCheck className="mt-0.5 size-4" /> : <Icon name={toneIcon[tone]} className="mt-0.5 size-4" />}
       <div>
         {title ? <p className="font-medium">{title}</p> : null}
         {children ? <div className={title ? "mt-0.5" : undefined}>{children}</div> : null}

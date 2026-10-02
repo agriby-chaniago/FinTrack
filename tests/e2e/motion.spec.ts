@@ -117,6 +117,8 @@ test("confirming an occurrence shows a toast and the confirmed state", async ({ 
   await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp750\.000/ }).click();
   const toast = page.getByRole("status").filter({ hasText: "Income bulanan dikonfirmasi" });
   await expect(toast).toBeVisible();
+  expect(await toast.locator(".toast-timer").evaluate((el) => `${getComputedStyle(el).animationName} ${getComputedStyle(el).animationDuration}`)).toBe("drain 3.5s");
+  expect(await toast.locator("svg path").evaluate((el) => getComputedStyle(el).animationName)).toBe("draw");
   await expect(page.getByRole("button", { name: "Tandai tidak diterima" })).toBeVisible();
   await expect(toast).toBeHidden({ timeout: 6000 });
 });
