@@ -38,6 +38,8 @@ test.afterAll(async () => {
 });
 
 test("owner signs in and completes onboarding with the locked fixture", async ({ page }) => {
+  // Five guided steps, each with a short step transition (PRD v0.20 P3); slower CI runners need the room.
+  test.setTimeout(90_000);
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
 

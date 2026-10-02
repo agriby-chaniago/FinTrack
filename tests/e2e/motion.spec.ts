@@ -124,5 +124,7 @@ test("confirming an occurrence shows a toast and the confirmed state", async ({ 
 test("page content fades in when it replaces the skeleton", async ({ page }) => {
   await signIn(page);
   await page.goto("/akun");
-  expect(await page.locator("main > *").first().evaluate((el) => getComputedStyle(el).animationName)).toBe("fade-in");
+  // Wait for the page itself: the skeleton it replaces is detached and reads as "".
+  await expect(page.getByRole("heading", { level: 1, name: "Akun" })).toBeVisible();
+  await expect.poll(() => page.locator("main > *").first().evaluate((el) => getComputedStyle(el).animationName)).toBe("fade-in");
 });
