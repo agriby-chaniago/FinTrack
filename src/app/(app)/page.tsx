@@ -44,11 +44,13 @@ function WeekStrip({ days }: { days: StripDay[] }) {
   return (
     <div className="space-y-2">
       <ul aria-label="Income harian minggu berjalan" className="flex justify-between gap-1">
-        {days.map((day) => {
+        {days.map((day, index) => {
           const icon = markerIcon[day.marker];
           return (
             <li key={day.date} aria-label={`${day.weekday} ${markerLabel[day.marker]}`} className="flex flex-1 flex-col items-center gap-1.5">
-              <span className={`flex size-8 items-center justify-center ${markerStyle[day.marker]}`}>{icon ? <Icon name={icon} className="size-3.5" /> : null}</span>
+              <span className={`pop-in flex size-8 items-center justify-center ${markerStyle[day.marker]}`} style={{ animationDelay: `${300 + index * 40}ms` }}>
+                {icon ? <Icon name={icon} className="size-3.5" /> : null}
+              </span>
               <span aria-hidden="true" className="text-xs text-muted">
                 {day.weekday}
               </span>

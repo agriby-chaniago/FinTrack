@@ -209,3 +209,12 @@ test("reduced motion shows the exact headline at once", async ({ page }) => {
   expect(await recorded(page)).not.toContain("Rp0");
   expect((await page.locator("[data-count-up]").textContent())!.replace(/\D/g, "")).toBe(await exactDigits(page));
 });
+
+test("progress fills and the week strip pops in order", async ({ page }) => {
+  await signIn(page);
+  const bar = page.getByRole("progressbar", { name: "Kelayakan tren mingguan" }).locator("div");
+  expect(await bar.evaluate((el) => getComputedStyle(el).animationName)).toBe("fill");
+  const markers = page.getByRole("list", { name: "Income harian minggu berjalan" }).locator("li > span:first-child");
+  const timing = await markers.evaluateAll((els) => els.slice(0, 3).map((el) => `${getComputedStyle(el).animationName} ${getComputedStyle(el).animationDelay}`));
+  expect(timing).toEqual(["pop 0.3s", "pop 0.34s", "pop 0.38s"]);
+});
