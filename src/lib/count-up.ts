@@ -17,9 +17,10 @@ export function countUpText(minor: bigint, progress: number): string {
 
 /**
  * Counts `el` up once, from Rp0 to the exact text it already shows. The amount in
- * sen is in `data-count-up`. Does nothing under reduced motion, stops as soon as
- * React renders a different amount, and waits while the element is still hidden
- * (a streamed boundary not yet revealed).
+ * sen is in `data-count-up`. Does nothing under reduced motion and stops as soon as
+ * React renders a different amount. While the element is still hidden (a streamed
+ * boundary not yet revealed) it waits for a ResizeObserver notice instead of checking
+ * every frame; after 10 s hidden it lands on the exact text without counting.
  */
 export function runCountUp(el: HTMLElement | null, text: (minor: bigint, progress: number) => string, duration: number): void {
   if (!el || el.hasAttribute("data-counted")) return;
@@ -32,14 +33,24 @@ export function runCountUp(el: HTMLElement | null, text: (minor: bigint, progres
   let start = -1;
   const frame = (now: number) => {
     if (!el.isConnected || el.getAttribute("data-count-up") !== amount) return;
-    if (el.getClientRects().length === 0) {
-      requestAnimationFrame(frame);
-      return;
-    }
     if (start < 0) start = now;
     const progress = (now - start) / duration;
     el.textContent = progress >= 1 ? exact : text(minor, progress);
     if (progress < 1) requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  if (el.getClientRects().length > 0) {
+    requestAnimationFrame(frame);
+    return;
+  }
+  const observer = new ResizeObserver(() => {
+    if (el.getClientRects().length === 0) return;
+    observer.disconnect();
+    clearTimeout(giveUp);
+    requestAnimationFrame(frame);
+  });
+  const giveUp = setTimeout(() => {
+    observer.disconnect();
+    if (el.getAttribute("data-count-up") === amount) el.textContent = exact;
+  }, 10_000);
+  observer.observe(el);
 }
