@@ -1,7 +1,8 @@
 # Daily Telegram digest (PRD v0.20 P6) at 08:00 Asia/Jakarta (01:00 UTC).
 # Enable with variable FINTRACK_REMINDER_ENABLED=true after setting variable
 # FINTRACK_REMINDER_URL and secret FINTRACK_REMINDER_TOKEN (same value as Vercel REMINDER_TOKEN).
-# No retries: the route records the date before sending, so a rerun never sends twice.
+# No retries: the route records the date once Telegram accepts the message, so a later
+# run the same day sends nothing; a failed send records nothing and the next run retries.
 name: Telegram reminder
 
 on:
@@ -10,6 +11,11 @@ on:
   workflow_dispatch:
 
 permissions: {}
+
+# Runs never overlap, so a manual run cannot race the schedule into a second digest.
+concurrency:
+  group: telegram-reminder
+  cancel-in-progress: false
 
 jobs:
   remind:

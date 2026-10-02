@@ -4,7 +4,11 @@ import { taskTitle } from "@/lib/dashboard-view";
 
 type DigestTask = Parameters<typeof taskTitle>[0];
 
+/** At most this many titles, so the message stays far below Telegram's 4096 characters. */
+const MAX_TITLES = 10;
+
 export function digestText(tasks: DigestTask[], accountName: (id: string) => string, origin: string): string {
-  const lines = tasks.map((task) => `• ${taskTitle(task, accountName)}`);
+  const lines = tasks.slice(0, MAX_TITLES).map((task) => `• ${taskTitle(task, accountName)}`);
+  if (tasks.length > MAX_TITLES) lines.push(`• dan ${tasks.length - MAX_TITLES} tugas lain`);
   return [`FinTrack · Perlu dilakukan (${tasks.length})`, "", ...lines, "", `Buka FinTrack: ${origin}`].join("\n");
 }

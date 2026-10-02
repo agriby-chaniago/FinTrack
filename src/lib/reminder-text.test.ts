@@ -19,6 +19,15 @@ describe("digestText", () => {
     expect(text.trim().endsWith("https://fintrack.example")).toBe(true);
   });
 
+  it("lists at most 10 titles and says how many more remain", () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ type: "CONFIRM_OBLIGATION" as const, cycleKey: "2026-10", occurrenceId: `o${i}`, name: `Langganan ${i + 1}`, label: null, expectedAmount: null, expectedDate: null }));
+    const text = digestText(many, name, "https://fintrack.example");
+    expect(text).toContain("Perlu dilakukan (25)");
+    expect(text.split("\n").filter((line) => line.startsWith("• Konfirmasi"))).toHaveLength(10);
+    expect(text).toContain("• dan 15 tugas lain");
+    expect(text.length).toBeLessThan(4096);
+  });
+
   it("never prints an amount", () => {
     const text = digestText(tasks, name, "https://fintrack.example");
     expect(text).not.toMatch(/Rp|750|400|350/);

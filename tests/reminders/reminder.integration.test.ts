@@ -69,6 +69,17 @@ describe("deliverDailyDigest", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("calls Telegram with no transaction open", async () => {
+    const later = new Date(now.getTime() + 2 * 86_400_000);
+    let openTransactions = -1;
+    const outcome = await deliverDailyDigest(clients.runtime, later, origin, async () => {
+      const rows = await clients.admin<{ n: number }[]>`select count(*)::int as n from pg_stat_activity where usename = 'fintrack_app' and state like 'idle in transaction%'`;
+      openTransactions = rows[0].n;
+    });
+    expect(outcome).toBe("SENT");
+    expect(openTransactions).toBe(0);
+  });
+
   it("no bound owner", async () => {
     await clients.admin`update fintrack.app_owner set auth_user_id = null`;
     try {
