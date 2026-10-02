@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Alert, Card, EmptyState, LinkButton, Money, PageHeader, Row, SectionTitle, Tag, type Tone } from "@/components/ui";
+import { TabPage } from "@/components/tab-page";
 import { approx, formatCycle, formatDate } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceStatusLabel, occurrenceTagLabel, progressLabel, settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal } from "@/lib/money";
@@ -45,7 +46,7 @@ export default async function RutinitasPage() {
   const maxLiving = recent.reduce((max, row) => (parseIdrDecimal(row.livingExpense) > max ? parseIdrDecimal(row.livingExpense) : max), 1n);
 
   return (
-    <div className="stagger space-y-8">
+    <TabPage className="stagger space-y-8">
       <PageHeader title="Rutinitas" description="Settlement mingguan, konfirmasi bulanan, dan transfer ke reserve." />
 
       {router.mode !== "NO_WEEKLY_ACCOUNT" ? (
@@ -318,6 +319,6 @@ export default async function RutinitasPage() {
           </Card>
         ))}
       </section>
-    </div>
+    </TabPage>
   );
 }

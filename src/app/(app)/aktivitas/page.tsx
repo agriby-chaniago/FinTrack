@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { EmptyState, Icon, LinkButton, Money, PageHeader, Tag } from "@/components/ui";
+import { TabPage } from "@/components/tab-page";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { listActivity } from "@/server/application/activity";
 import { runAsPageOwner } from "@/server/auth/page-owner";
@@ -21,7 +22,7 @@ export default async function AktivitasPage({ searchParams }: { searchParams: Pr
   const { items, nextCursor } = result.value;
 
   return (
-    <div className="stagger">
+    <TabPage className="stagger">
       <PageHeader title="Aktivitas" description="Semua catatan, urut dari yang terakhir dicatat. Catatan tidak pernah dihapus; koreksi tampil sebagai catatan baru." />
       <AktivitasTabs active="riwayat" />
       {items.length === 0 ? (
@@ -64,6 +65,6 @@ export default async function AktivitasPage({ searchParams }: { searchParams: Pr
           <LinkButton href={`/aktivitas?before=${encodeURIComponent(nextCursor)}`}>Muat lebih lama</LinkButton>
         </div>
       ) : null}
-    </div>
+    </TabPage>
   );
 }

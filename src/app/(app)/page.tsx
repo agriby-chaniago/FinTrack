@@ -5,6 +5,7 @@ import { AccountTile } from "@/components/account-tile";
 import { CountUpMoney } from "@/components/count-up-money";
 import { AnimatedItem, AnimatedList } from "@/components/motion";
 import { Alert, Card, cardLinkClass, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
+import { TabPage } from "@/components/tab-page";
 import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
 import { businessDateOf } from "@/lib/business-time";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
@@ -84,7 +85,7 @@ export default async function BerandaPage() {
   const obligations = data.bca.currentCycle ? obligationProgress(data.bca.currentCycle.obligations) : null;
 
   return (
-    <div className="stagger space-y-8">
+    <TabPage className="stagger space-y-8">
       <section aria-labelledby="headline" className="space-y-3 bg-primary-soft p-5 md:p-6">
         <p id="headline" className="text-sm text-muted">
           Personal cash tercatat
@@ -334,6 +335,6 @@ export default async function BerandaPage() {
       </div>
 
       {data.accounts.length === 0 ? <EmptyState icon="wallet" title="Belum ada akun aktif" /> : null}
-    </div>
+    </TabPage>
   );
 }

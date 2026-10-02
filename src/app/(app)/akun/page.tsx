@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AccountTile } from "@/components/account-tile";
 import { Card, cardLinkClass, LinkButton, Money, PageHeader, SectionTitle, StatusBadge, Tag } from "@/components/ui";
+import { TabPage } from "@/components/tab-page";
 import { formatDateTime } from "@/lib/format";
 import { accountsOverview } from "@/server/application/accounts-overview";
 import { listExternalSubjects } from "@/server/application/external-funds";
@@ -21,7 +22,7 @@ export default async function AkunPage() {
   const cleared = subjects.filter((s) => s.status === "CLEARED");
 
   return (
-    <div className="stagger space-y-8">
+    <TabPage className="stagger space-y-8">
       <PageHeader
         title="Akun"
         description="Saldo tercatat per akun. Uang pribadi = saldo fisik dikurangi dana titipan."
@@ -127,6 +128,6 @@ export default async function AkunPage() {
           <LinkButton href="/akun/saldo-awal">Lihat dan koreksi saldo awal</LinkButton>
         </div>
       </Card>
-    </div>
+    </TabPage>
   );
 }

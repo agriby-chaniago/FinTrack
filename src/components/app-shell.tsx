@@ -154,11 +154,14 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
   const pathname = usePathname();
   const [catatOpen, setCatatOpen] = useState(false);
   const warm = useWarmedUp();
+  const activeIndex = destinations.findIndex((item) => isActive(pathname, item.href));
+  // Between the four tabs the page slides in tab order (PRD v0.22 P10); other links do not slide.
+  const tabTypes = (index: number) => (activeIndex < 0 || index === activeIndex ? undefined : [index > activeIndex ? "tab-forward" : "tab-back"]);
 
   return (
     <ToastProvider>
       <div className="flex min-h-full flex-1">
-        <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
+        <aside style={{ viewTransitionName: "app-sidebar" }} className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
           <Brand className="px-3 text-lg font-semibold" />
           <button
             type="button"
@@ -169,15 +172,22 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
           >
             {catatIcon} Catat
           </button>
-          <nav aria-label="Navigasi utama" className="mt-5 flex-1">
-            <ul className="space-y-1">
-              {destinations.map((item) => (
+          <nav aria-label="Navigasi utama" className="relative mt-5 flex-1">
+            {/* The active tab's background slides to the new tab (PRD v0.22 P10). */}
+            <span
+              aria-hidden="true"
+              className={`tab-indicator absolute inset-x-0 top-0 h-11 bg-primary-soft ${activeIndex < 0 ? "opacity-0" : ""}`}
+              style={{ translate: `0 ${Math.max(activeIndex, 0) * 3}rem` }}
+            />
+            <ul className="relative space-y-1">
+              {destinations.map((item, index) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     prefetch={warm}
+                    transitionTypes={tabTypes(index)}
                     aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                    className="flex min-h-11 items-center gap-3 px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
+                    className="tab-hop flex min-h-11 items-center gap-3 px-3 text-sm font-medium text-muted hover:bg-surface-subtle aria-[current=page]:text-primary"
                   >
                     <Icon name={item.icon} className="size-5" />
                     {item.label}
@@ -200,7 +210,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
+          <header style={{ viewTransitionName: "app-header" }} className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
             <Brand className="font-semibold" />
             <Link href="/pengaturan" className="inline-flex size-11 items-center justify-center hover:bg-surface-subtle" aria-label="Pengaturan">
               <Icon name="settings" className="size-5" />
@@ -214,20 +224,32 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
           onClick={() => setCatatOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={catatOpen}
+          style={{ viewTransitionName: "app-catat" }}
           className="group fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98] md:hidden"
         >
           {catatIcon} Catat
         </button>
 
-        <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+        <nav
+          aria-label="Navigasi utama"
+          style={{ viewTransitionName: "app-nav" }}
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        >
+          {/* The active tab's marker slides to the new tab (PRD v0.22 P10). */}
+          <span
+            aria-hidden="true"
+            className={`tab-indicator absolute -top-px left-0 h-[3px] w-1/4 bg-primary ${activeIndex < 0 ? "opacity-0" : ""}`}
+            style={{ translate: `${Math.max(activeIndex, 0) * 100}% 0` }}
+          />
           <ul className="grid grid-cols-4">
-            {destinations.map((item) => (
+            {destinations.map((item, index) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   prefetch={warm}
+                  transitionTypes={tabTypes(index)}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                  className="flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-primary"
+                  className="tab-hop flex h-16 flex-col items-center justify-center gap-1 text-xs text-muted aria-[current=page]:text-primary"
                 >
                   <Icon name={item.icon} className="size-5" />
                   {item.label}

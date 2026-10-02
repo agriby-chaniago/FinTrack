@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { buttonClass, Card, Money, PageHeader, ProgressBar, Row, SectionTitle, Tag } from "@/components/ui";
+import { TabPage } from "@/components/tab-page";
 import { businessDateOf, cycleKeyOf, isCycleKey, nextCycleKey } from "@/lib/business-time";
 import { approx, formatCycle, formatDate } from "@/lib/format";
 import { completenessLabel } from "@/lib/labels";
@@ -54,7 +55,7 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
   const shares = categoryShares(report.outflow.specialByCategory.map((c) => ({ name: c.name, amount: c.amount })));
 
   return (
-    <div className="stagger">
+    <TabPage className="stagger">
       <PageHeader title="Aktivitas" description="Laporan bulan kalender: pemasukan, pengeluaran, dan reserve." />
       <AktivitasTabs active="laporan" />
 
@@ -227,6 +228,6 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
           </div>
         </section>
       </div>
-    </div>
+    </TabPage>
   );
 }

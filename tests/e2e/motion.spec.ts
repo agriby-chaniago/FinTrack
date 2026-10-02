@@ -276,3 +276,56 @@ test("today pulses once, progress shines, and the headline line sweeps", async (
   expect(await bar.evaluate((el) => getComputedStyle(el, "::after").animationName)).toBe("shine-pass");
   expect(await page.locator("[data-count-up]").evaluate((el) => getComputedStyle(el, "::after").animationName)).toBe("sweep-line");
 });
+
+type VtWindow = { __vt: string[] };
+
+/** Records view-transition animation names with their durations for 1.5 s after this call. */
+function recordViewTransitions(page: Page) {
+  return page.evaluate(() => {
+    const seen: string[] = ((window as unknown as VtWindow).__vt = []);
+    const start = performance.now();
+    const tick = () => {
+      for (const animation of document.getAnimations()) {
+        const pseudo = (animation.effect as KeyframeEffect | null)?.pseudoElement ?? "";
+        if (!pseudo.startsWith("::view-transition")) continue;
+        const entry = `${(animation as CSSAnimation).animationName}:${animation.effect?.getComputedTiming().duration}`;
+        if (!seen.includes(entry)) seen.push(entry);
+      }
+      if (performance.now() - start < 1500) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+const viewTransitions = (page: Page) => page.evaluate(() => (window as unknown as VtWindow).__vt.join(" "));
+
+test("switching tabs slides the page in tab order", async ({ page }) => {
+  await signIn(page);
+  await page.waitForLoadState("networkidle");
+  await recordViewTransitions(page);
+  await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Rutinitas" }).click();
+  await expect.poll(() => viewTransitions(page)).toMatch(/tab-enter:520/);
+  expect(await viewTransitions(page)).toMatch(/tab-leave:160/);
+});
+
+test("reduced motion does not slide between tabs", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signIn(page);
+  await page.waitForLoadState("networkidle");
+  await recordViewTransitions(page);
+  await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Rutinitas" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Rutinitas" })).toBeVisible();
+  await page.waitForTimeout(600);
+  expect((await viewTransitions(page)).split(" ").filter((entry) => entry && !entry.endsWith(":0"))).toEqual([]);
+});
+
+test("the tab indicator slides to the new tab and its icon hops", async ({ page }) => {
+  await signIn(page);
+  const nav = page.getByRole("navigation", { name: "Navigasi utama" });
+  await nav.getByRole("link", { name: "Rutinitas" }).click();
+  const link = nav.getByRole("link", { name: "Rutinitas" });
+  await expect(link).toHaveAttribute("aria-current", "page");
+  expect(await link.locator("svg").evaluate((el) => getComputedStyle(el).animationName)).toBe("hop");
+  const indicator = nav.locator(".tab-indicator");
+  expect(await indicator.evaluate((el) => getComputedStyle(el).transitionDuration)).toContain("0.42s");
+  await expect.poll(async () => Math.round((await indicator.boundingBox())!.x - (await link.boundingBox())!.x)).toBe(0);
+});
