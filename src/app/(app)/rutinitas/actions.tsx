@@ -6,7 +6,7 @@ import { AmountInput } from "@/components/amount-input";
 import { DateField, FormErrors } from "@/components/form";
 import { Collapse, Swap } from "@/components/motion";
 import { useToast } from "@/components/toast";
-import { buttonClass } from "@/components/ui";
+import { Alert, buttonClass } from "@/components/ui";
 import { todayInJakarta, useMutation } from "@/lib/api-client";
 import { formatDate, money } from "@/lib/format";
 
@@ -171,38 +171,52 @@ export function CloseTargetButton({ targetId }: { targetId: string }) {
   );
 }
 
-/** Daily-income exception: an ACTIVE day with a different actual amount (Rp0 = not received). */
-export function OverrideForm({ ruleId, minDate }: { ruleId: string; minDate: string }) {
+/**
+ * Daily-income exception: an ACTIVE day with a different actual amount (Rp0 = not
+ * received). Any day since the rule started can be changed; a day inside a settled
+ * week is saved as a correction that keeps the as-settled snapshot (PRD: correction
+ * after settlement).
+ */
+export function OverrideForm({ ruleId, startDate, lastSettledEnd }: { ruleId: string; startDate: string; lastSettledEnd: string | null }) {
   const today = todayInJakarta();
   const [date, setDate] = useState(today);
   const [amount, setAmount] = useState<string | null>("0");
-  const save = useMutation<Record<string, unknown>>(`/api/v1/daily-income/${ruleId}/overrides`, "PUT");
-  const [saved, setSaved] = useState(false);
+  const save = useMutation<Record<string, unknown>, { afterSettlement: boolean }>(`/api/v1/daily-income/${ruleId}/overrides`, "PUT");
+  const [saved, setSaved] = useState<"exception" | "correction" | null>(null);
+  const settled = lastSettledEnd !== null && date <= lastSettledEnd;
+  async function submit(value: string | null) {
+    const result = await save.submit({ businessDate: date, amount: value });
+    setSaved(result.ok ? (result.data.afterSettlement ? "correction" : "exception") : null);
+  }
   return (
     <form
       className="space-y-3"
       onSubmit={async (event) => {
         event.preventDefault();
-        const result = await save.submit({ businessDate: date, amount });
-        setSaved(result.ok);
+        await submit(amount);
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <DateField label="Tanggal" value={date} min={minDate} max={today} onChange={setDate} />
+        <DateField label="Tanggal" value={date} min={startDate} max={today} onChange={setDate} />
         <AmountInput label="Income yang benar-benar diterima" hint="Rp0 berarti tidak diterima." value={amount} onChange={setAmount} />
       </div>
+      {settled ? (
+        <Alert tone="review" title="Tanggal ini sudah masuk settlement.">
+          Perubahan dicatat sebagai koreksi. Hasil settlement asli tetap tersimpan, dan biaya hidup minggu itu dihitung ulang.
+        </Alert>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <button type="submit" className={buttonClass.primary} disabled={save.pending}>
-          {save.pending ? "Menyimpan…" : "Simpan pengecualian"}
+          {save.pending ? "Menyimpan…" : settled ? "Simpan koreksi" : "Simpan pengecualian"}
         </button>
-        <button type="button" className={buttonClass.secondary} disabled={save.pending} onClick={async () => {
-          const result = await save.submit({ businessDate: date, amount: null });
-          setSaved(result.ok);
-        }}>
+        <button type="button" className={buttonClass.secondary} disabled={save.pending} onClick={() => submit(null)}>
           Kembalikan ke nominal default
         </button>
       </div>
-      <div aria-live="polite">{saved ? <p className="text-sm text-success-fg">Tersimpan.</p> : null}</div>
+      <div aria-live="polite">
+        {saved === "correction" ? <p className="text-sm text-success-fg">Koreksi tersimpan. Biaya hidup minggu itu sudah dihitung ulang.</p> : null}
+        {saved === "exception" ? <p className="text-sm text-success-fg">Tersimpan.</p> : null}
+      </div>
       <FormErrors errors={save.error} />
     </form>
   );

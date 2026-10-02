@@ -113,9 +113,9 @@ export default async function RutinitasPage() {
               <details>
                 <summary className="flex min-h-11 cursor-pointer items-center font-medium">Income harian hari tertentu berbeda?</summary>
                 <p className="mb-3 text-sm text-muted">
-                  Default <Money value={daily.amount} /> per hari aktif. Catat pengecualian untuk hari dengan income berbeda atau tidak diterima.
+                  Default <Money value={daily.amount} /> per hari aktif. Catat pengecualian untuk hari dengan income berbeda atau tidak diterima, termasuk hari yang sudah masuk settlement.
                 </p>
-                <OverrideForm ruleId={daily.ruleId} minDate={daily.minimumTransitionDate} />
+                <OverrideForm ruleId={daily.ruleId} startDate={daily.effectiveStartDate} lastSettledEnd={daily.lastSettledEnd} />
               </details>
             </Card>
           ) : null}
