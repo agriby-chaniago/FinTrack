@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AccountTile } from "@/components/account-tile";
 import { CountUpMoney } from "@/components/count-up-money";
 import { AnimatedItem, AnimatedList } from "@/components/motion";
-import { Alert, Card, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
+import { Alert, Card, cardLinkClass, EmptyState, Icon, Money, ProgressBar, Row, SectionTitle, SegmentBar, StatusBadge, Tag, type IconName } from "@/components/ui";
 import { markerLabel, obligationProgress, progressPercent, stripSummary, taskKey, taskTitle, type StripDay } from "@/lib/dashboard-view";
 import { approx, formatCycle, formatDate, formatDateTime, money } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceTagLabel } from "@/lib/labels";
@@ -146,7 +146,7 @@ export default async function BerandaPage() {
           {data.accounts.map((account, index) => {
             const recordedChanges = parseIdrDecimal(account.personal) - parseIdrDecimal(account.confirmedPersonal);
             return (
-              <Link key={account.id} href={`/akun/${account.id}`} className="block border border-border bg-surface p-4 hover:border-control md:p-5">
+              <Link key={account.id} href={`/akun/${account.id}`} className={cardLinkClass}>
                 {/* In the three-column grid every badge sits on its own row, so names never shrink;
                     on a phone it stays beside the name and drops below only when it does not fit. */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

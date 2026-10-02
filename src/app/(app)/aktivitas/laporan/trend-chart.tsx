@@ -3,9 +3,8 @@
 // Trend chart wrapper (PRD v0.20 P4). Below md nothing renders and Chart.js is
 // never imported; at md and wider, chart-canvas loads on demand without SSR.
 import dynamic from "next/dynamic";
-import { useSyncExternalStore } from "react";
-
 import { Skeleton } from "@/components/skeletons";
+import { useMediaQuery } from "@/components/use-media-query";
 
 export type TrendChartProps = {
   kind: "line" | "bar";
@@ -17,15 +16,8 @@ export type TrendChartProps = {
 
 const ChartCanvas = dynamic(() => import("./chart-canvas"), { ssr: false, loading: () => <Skeleton className="h-64" /> });
 
-const wide = "(min-width: 48rem)";
-function subscribe(onChange: () => void) {
-  const query = matchMedia(wide);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
 export function TrendChart(props: TrendChartProps) {
-  const isWide = useSyncExternalStore(subscribe, () => matchMedia(wide).matches, () => false);
+  const isWide = useMediaQuery("(min-width: 48rem)");
   if (!isWide) return null;
   return (
     <div className="space-y-2">

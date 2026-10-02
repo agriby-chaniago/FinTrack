@@ -218,3 +218,27 @@ test("progress fills and the week strip pops in order", async ({ page }) => {
   const timing = await markers.evaluateAll((els) => els.slice(0, 3).map((el) => `${getComputedStyle(el).animationName} ${getComputedStyle(el).animationDelay}`));
   expect(timing).toEqual(["pop 0.3s", "pop 0.34s", "pop 0.38s"]);
 });
+
+test("+ Catat turns into a close mark while the sheet is open", async ({ page }) => {
+  await signIn(page);
+  const state = await page.evaluate(async () => {
+    const button = [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Catat" && b.checkVisibility())!;
+    button.click();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return `${button.getAttribute("aria-expanded")} ${getComputedStyle(button.querySelector("svg")!).rotate}`;
+  });
+  expect(state).toBe("true 45deg");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Catat" })).toHaveAttribute("aria-expanded", "false");
+});
+
+test("account cards give a little when pressed", async ({ page }) => {
+  await signIn(page);
+  const card = page.locator("main a[href^='/akun/']").first();
+  const box = (await card.boundingBox())!;
+  await page.mouse.move(box.x + 12, box.y + 12);
+  await page.mouse.down();
+  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).scale)).toBe("0.98");
+  await page.mouse.up();
+});

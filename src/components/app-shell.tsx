@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, m } from "motion/react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Loaded on every app page so the browser install prompt is kept for Pengaturan.
@@ -10,9 +10,9 @@ import "@/lib/install-prompt";
 import { applyTheme, type ThemePreference } from "@/lib/theme";
 
 import { Brand } from "./brand";
-import { useSlide } from "./motion";
 import { ToastProvider } from "./toast";
 import { Icon, type IconName } from "./ui";
+import { useMediaQuery } from "./use-media-query";
 
 const destinations: { href: string; label: string; icon: IconName }[] = [
   { href: "/", label: "Beranda", icon: "home" },
@@ -22,7 +22,8 @@ const destinations: { href: string; label: string; icon: IconName }[] = [
 ];
 
 // The plus glyph leaves a fifth of its box empty on each side; the nudge centers the drawn icon and label.
-const catatIcon = <Icon name="plus" className="-ml-1 size-4" />;
+// While the sheet is open the plus turns into a close mark (PRD v0.21 P9).
+const catatIcon = <Icon name="plus" className="-ml-1 size-4 transition-[rotate] duration-200 ease-out group-aria-expanded:rotate-45" />;
 
 const catatActions: { href: string; label: string; description: string; icon: IconName }[] = [
   { href: "/catat/pengeluaran", label: "Pengeluaran khusus", description: "Vape dan pengeluaran tidak rutin", icon: "arrowDown" },
@@ -82,10 +83,13 @@ function ThemeToggle({ initial }: { initial: ThemePreference }) {
   );
 }
 
-/** `+ Catat` sheet: the panel slides up and fades; the dialog closes after the exit animation. */
+/** `+ Catat` sheet: the panel rises into place; the dialog closes after the exit animation. */
 function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const slide = useSlide(24);
+  const reduced = useReducedMotion();
+  const wide = useMediaQuery("(min-width: 48rem)");
+  // Phone: the sheet rises from the bottom edge. Desktop: the centered popover rises 16px.
+  const hidden = reduced ? { opacity: 0 } : wide ? { opacity: 0, y: 16 } : { y: "100%" };
   useEffect(() => {
     const dialog = ref.current;
     if (dialog && open && !dialog.open) dialog.showModal();
@@ -105,7 +109,7 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
     >
       <AnimatePresence onExitComplete={() => ref.current?.close()}>
         {open ? (
-          <m.div key="sheet" initial={{ opacity: 0, y: slide }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: slide }} className="bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl">
+          <m.div key="sheet" initial={hidden} animate={{ opacity: 1, y: 0 }} exit={hidden} transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }} className="bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 id="catat-title" className="text-lg font-semibold">
                 Catat
@@ -156,7 +160,13 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
       <div className="flex min-h-full flex-1">
         <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
           <Brand className="px-3 text-lg font-semibold" />
-          <button type="button" onClick={() => setCatatOpen(true)} className="mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content hover:bg-primary-hover">
+          <button
+            type="button"
+            onClick={() => setCatatOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={catatOpen}
+            className="group mx-1 mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary font-medium text-primary-content transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98]"
+          >
             {catatIcon} Catat
           </button>
           <nav aria-label="Navigasi utama" className="mt-5 flex-1">
@@ -202,7 +212,9 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
         <button
           type="button"
           onClick={() => setCatatOpen(true)}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg hover:bg-primary-hover md:hidden"
+          aria-haspopup="dialog"
+          aria-expanded={catatOpen}
+          className="group fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 items-center gap-2 bg-primary px-5 font-medium text-primary-content shadow-lg transition-[background-color,scale] duration-150 hover:bg-primary-hover active:scale-[0.98] md:hidden"
         >
           {catatIcon} Catat
         </button>
