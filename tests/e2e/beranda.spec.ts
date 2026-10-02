@@ -52,3 +52,32 @@ test("Beranda shows provider icons, the week strip, and chart eligibility, all s
   const card = page.locator("main a[href^='/akun/']").first();
   expect(await card.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe("0px");
 });
+
+test("account names stay readable next to a long status badge on desktop", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
+  await page.getByRole("button", { name: "Masuk" }).click();
+  await expect(page.getByText("Personal cash tercatat")).toBeVisible();
+  // A special expense from Jago after its confirmation gives Jago the longest badge.
+  await page.goto("/catat/pengeluaran");
+  await page.getByLabel("Nominal").fill("12.000");
+  await page.getByRole("button", { name: "Simpan pengeluaran" }).click();
+  await expect(page.getByText("Catatan sudah masuk ke Aktivitas dan saldo tercatat.")).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await expect(page.getByText("Terhitung setelah konfirmasi").first()).toBeVisible();
+  const cards = page.locator("section[aria-labelledby='accounts-title'] a");
+  for (let i = 0; i < (await cards.count()); i++) {
+    const layout = await cards.nth(i).evaluate((card) => {
+      const name = card.querySelector("p.font-medium") as HTMLElement;
+      const badge = [...card.querySelectorAll("span")].find((s) => s.className.includes("rounded") || s.className.includes("bg-")) as HTMLElement;
+      const a = name.getBoundingClientRect();
+      const b = badge.getBoundingClientRect();
+      const overlap = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      return { truncated: name.scrollWidth > name.clientWidth, overlap, text: name.textContent };
+    });
+    expect(layout, `card ${layout.text}`).toEqual({ truncated: false, overlap: false, text: layout.text });
+  }
+});

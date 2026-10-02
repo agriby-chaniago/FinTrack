@@ -144,13 +144,17 @@ export default async function BerandaPage() {
             const recordedChanges = parseIdrDecimal(account.personal) - parseIdrDecimal(account.confirmedPersonal);
             return (
               <Link key={account.id} href={`/akun/${account.id}`} className="block border border-border bg-surface p-4 hover:border-control md:p-5">
-                <div className="flex items-center gap-3">
+                {/* In the three-column grid every badge sits on its own row, so names never shrink;
+                    on a phone it stays beside the name and drops below only when it does not fit. */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <AccountTile account={account} index={index} />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-24 flex-1">
                     <p className="truncate font-medium">{account.displayName}</p>
                     <p className="text-xs text-muted">{account.purposeLabel}</p>
                   </div>
-                  <StatusBadge status={account.status} />
+                  <div className="md:basis-full">
+                    <StatusBadge status={account.status} />
+                  </div>
                 </div>
                 <p className="mt-3 text-xl font-semibold md:text-2xl">
                   <Money value={account.personal} />
