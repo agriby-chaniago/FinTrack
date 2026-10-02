@@ -160,8 +160,9 @@ Registry cakupan export (M12) berada di `src/server/application/export.ts`, buka
 | S17 | Halaman Laporan + Chart.js | S15 | Selesai; `/aktivitas/laporan`; chart lazy hanya ≥ `md` dan setelah threshold; text summary; query budget | — |
 | S18 | Pengingat Telegram | S12 | Selesai; aktif di production sejak 2 Oktober 2026 (migration 0013, token terpasang, run pertama SENT); digest harian tanpa nominal; satu per tanggal bisnis; workflow terjadwal; secret tidak di repo | Chat id pemilik (pemilik mengirim `/start` ke bot) |
 | S19 | Motion ekspresif-tenang | S16, S17 | Selesai; P9: section berurutan, count-up headline tanpa kilatan sebelum hydration, progress dan strip terisi, hover dan tekan, `+ Catat` berputar, centang tergambar, chart tergambar, hitung mundur toast; reduced-motion tanpa gerak dan tanpa delay | — |
+| S20 | Motion Meriah | S19 | Sedang dikerjakan; P10: intensitas Meriah, geser antar tab (View Transitions), indikator tab, kartu berurutan, tugas selesai dirayakan, angka bergulir, skeleton berkilau, riak kotak, isi sheet berurutan, denyut hari ini, kilau progress, garis headline; reduced-motion tanpa gerak | — |
 
-Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`. Rencana S19: `docs/superpowers/plans/2026-10-02-s19-expressive-motion.md`.
+Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`. Rencana S19: `docs/superpowers/plans/2026-10-02-s19-expressive-motion.md`. Rencana S20: `docs/superpowers/plans/2026-10-02-s20-meriah-motion.md`.
 
 Slice boleh dimulai hanya ketika seluruh item pada kolom "Diblokir oleh" sudah berupa keputusan LOCKED di PRD.
 
