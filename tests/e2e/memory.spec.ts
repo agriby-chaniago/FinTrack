@@ -125,6 +125,8 @@ test.describe("finished tasks", () => {
     await nav(page).getByRole("link", { name: "Beranda" }).click();
     const row = celebrated(page).filter({ hasText: "Konfirmasi income bulanan" });
     await expect(row).toHaveCount(1);
+    // The replay is decoration: its whole list item is hidden from screen readers.
+    await expect(row.locator("xpath=..")).toHaveAttribute("aria-hidden", "true");
     expect(await row.locator("svg path").evaluate((el) => getComputedStyle(el).animationName)).toBe("draw");
     expect(await row.locator(".celebrate-strike").evaluate((el) => getComputedStyle(el).animationName)).toBe("strike");
     await expect(row).toHaveCount(0, { timeout: 5000 });

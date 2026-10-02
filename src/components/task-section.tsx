@@ -41,8 +41,8 @@ export function TaskSection({ tasks, footer, children }: { tasks: TaskSnapshot[]
       </SectionTitle>
       <AnimatedList className="cascade divide-y divide-border border border-border bg-surface" onExitComplete={() => setLeaving(false)}>
         {finished.map((task) => (
-          <AnimatedItem key={`done-${task.key}`} className="cascade-skip" leaveX={40}>
-            <div aria-hidden="true" className="celebrate celebrate-later flex min-h-14 items-center gap-3 px-4 py-3">
+          <AnimatedItem key={`done-${task.key}`} className="cascade-skip" leaveX={40} decorative>
+            <div className="celebrate celebrate-later flex min-h-14 items-center gap-3 px-4 py-3">
               <span className="flex size-5 shrink-0 items-center justify-center bg-primary text-primary-content">
                 <DrawnCheck className="size-3.5" />
               </span>

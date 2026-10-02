@@ -110,7 +110,15 @@ function CatatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
     >
       <AnimatePresence onExitComplete={() => ref.current?.close()}>
         {open ? (
-          <m.div key="sheet" initial={hidden} animate={{ opacity: 1, y: 0 }} exit={hidden} transition={{ duration: 0.24, ease: [0.34, 1.3, 0.64, 1] }} className="bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl">
+          <m.div
+            key="sheet"
+            initial={hidden}
+            animate={{ opacity: 1, y: 0 }}
+            exit={hidden}
+            transition={{ duration: 0.24, ease: [0.34, 1.3, 0.64, 1] }}
+            // On a phone 48px of surface continue below the sheet, so its spring never shows a gap at the screen edge.
+            className="relative bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl max-md:after:absolute max-md:after:inset-x-0 max-md:after:top-full max-md:after:h-12 max-md:after:bg-surface max-md:after:content-['']"
+          >
             <div className="mb-3 flex items-center justify-between">
               <h2 id="catat-title" className="text-lg font-semibold">
                 Catat

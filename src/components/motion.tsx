@@ -107,13 +107,16 @@ export function AnimatedList({ className, children, onExitComplete }: { classNam
   );
 }
 
-/** `leaveX` also slides the item sideways as it folds away (a finished task, PRD v0.22 P10). */
-export function AnimatedItem({ children, className, leaveX = 0 }: { children: ReactNode; className?: string; leaveX?: number }) {
+/**
+ * `leaveX` also slides the item sideways as it folds away (a finished task, PRD v0.22 P10);
+ * a `decorative` item is hidden from screen readers.
+ */
+export function AnimatedItem({ children, className, leaveX = 0, decorative = false }: { children: ReactNode; className?: string; leaveX?: number; decorative?: boolean }) {
   const fold = useFold();
   const x = useSlide(leaveX);
   const exit = x ? { ...fold.hidden, x, transition: { duration: 0.52, ease: [0.2, 0.7, 0.2, 1] as const } } : fold.hidden;
   return (
-    <m.li className={className} initial={fold.hidden} animate={fold.shown} exit={exit}>
+    <m.li className={className} aria-hidden={decorative || undefined} initial={fold.hidden} animate={fold.shown} exit={exit}>
       {children}
     </m.li>
   );

@@ -393,3 +393,15 @@ test("account skeletons show the tile while Akun loads", async ({ page }) => {
   await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Akun" }).click();
   await expect(page.locator("main [data-tile]")).toHaveCount(3);
 });
+
+test("the bouncing phone sheet never shows a gap below it", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Catat" }).click();
+  await expect(page.getByRole("dialog", { name: "Catat" })).toBeVisible();
+  // 48px of the sheet's own surface continues below it, under the screen edge.
+  const below = await page.locator("dialog[open] > div").evaluate((el) => {
+    const style = getComputedStyle(el, "::after");
+    return { content: style.content, position: style.position, height: style.height, color: style.backgroundColor === getComputedStyle(el).backgroundColor };
+  });
+  expect(below).toEqual({ content: '""', position: "absolute", height: "48px", color: true });
+});
