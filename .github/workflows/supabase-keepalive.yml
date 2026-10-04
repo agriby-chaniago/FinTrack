@@ -20,7 +20,7 @@ jobs:
         shell: bash
         env:
           FINTRACK_KEEPALIVE_URL: ${{ vars.FINTRACK_KEEPALIVE_URL }}
-          FINTRACK_KEEPALIVE_TOKEN: ${{ secrets.FINTRACK_KEEPALIVE_TOKEN }}
+          FINTRACK_KEEPALIVE_TOKEN: ${{ secrets.KEEPALIVE_TOKEN }}
         run: |
           set -euo pipefail
 
