@@ -13,8 +13,8 @@ describe("appOrigin", () => {
 
   it("falls back to the Vercel branch URL on previews", () => {
     vi.stubEnv("APP_ORIGIN", "");
-    vi.stubEnv("VERCEL_BRANCH_URL", "fintrack-git-main-team.vercel.app");
-    expect(appOrigin()).toBe("https://fintrack-git-main-team.vercel.app");
+    vi.stubEnv("VERCEL_BRANCH_URL", "branch-example.vercel.app");
+    expect(appOrigin()).toBe("https://branch-example.vercel.app");
   });
 
   it("fails closed without any origin", () => {
