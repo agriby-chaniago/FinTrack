@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/agriby-chaniago/FinTrack/discussions
+    about: Ask questions, request help, or discuss features here instead of opening a bug issue.
