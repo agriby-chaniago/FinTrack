@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 
 import { expect, test } from "@playwright/test";
+import { expectExportPair } from "../helpers/export-downloads";
 
 const env = Object.fromEntries(
   readFileSync(".env.local", "utf8")
@@ -27,7 +28,9 @@ const nextMonth = () => {
 test.beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "e2e-pengaturan");
   const cutover = new Date(new Date(`${todayJakarta()}T00:00:00Z`).getTime() - 3 * 86_400_000).toISOString().slice(0, 10);
-  await resetWithConfirmedFixture(clients, user.id, `${cutover}T20:00:00+07:00`);
+  await resetWithConfirmedFixture(clients, user.id, `${cutover}T20:00:00+07:00`, (draft) => {
+    draft.routines.bankFee.includeCurrentCycle = cutover.slice(0, 7) === todayJakarta().slice(0, 7);
+  });
 });
 
 test.afterAll(async () => {
@@ -71,4 +74,9 @@ test("ending an obligation this month says it will end, not that it is active", 
   await expect(row.getByText("Akan berakhir", { exact: true })).toBeVisible();
   await expect(row.getByText("Aktif", { exact: true })).toHaveCount(0);
   await expect(row.getByText(`sampai ${currentMonth()}`)).toBeVisible();
+});
+
+test("downloads a matching analytical CSV and full ZIP from one export request", async ({ page }) => {
+  await signInToPengaturan(page);
+  await expectExportPair(page);
 });

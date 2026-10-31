@@ -1,0 +1,20 @@
+{
+  "info": {
+    "name": "FinTrack local export load",
+    "description": "Synthetic local fixture only. Same owner requests deliberately overlap. No production target or financial mutations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [{
+    "name": "Download corrected CSV + full archive",
+    "request": {
+      "method": "GET",
+      "url": "http://127.0.0.1:3200/api/v1/export",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }
+    },
+    "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+      "pm.test('owner export succeeds', () => pm.response.to.have.status(200));",
+      "pm.test('zip without cache', () => { pm.expect(pm.response.headers.get('content-type')).to.include('application/zip'); pm.expect(pm.response.headers.get('cache-control')).to.equal('no-store'); });",
+      "pm.test('request is traceable', () => pm.expect(pm.response.headers.get('x-request-id')).to.be.a('string').and.not.empty);"
+    ] } }]
+  }]
+}

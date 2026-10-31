@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseIdrDecimal as rp } from "@/lib/money";
 
-import { monthCompleteness, prorataByMonth } from "./reporting";
+import { monthCompleteness, monthCompletenessByMonth, prorataByMonth } from "./reporting";
 
 describe("CALENDAR_DAY_PRORATA_V1", () => {
   it("splits the PRD example exactly: Rp171.428,57 to October and Rp68.571,43 to November", () => {
@@ -30,6 +30,12 @@ describe("CALENDAR_DAY_PRORATA_V1", () => {
 });
 
 describe("month completeness", () => {
+  it("preserves partial, incomplete, and uncovered months in a shared coverage index", () => {
+    const reports = monthCompletenessByMonth(["2026-01", "2026-02", "2026-03"], "2026-01-27", [{ startDate: "2026-01-27", endDate: "2026-02-02" }], "2026-03-01");
+    expect(reports.get("2026-01")).toEqual({ completeness: "PERIODE_PARSIAL", coveredDays: 5, expectedDays: 5, gaps: [], overlaps: [] });
+    expect(reports.get("2026-02")).toEqual({ completeness: "SEMENTARA", coveredDays: 2, expectedDays: 28, gaps: [], overlaps: [] });
+    expect(reports.get("2026-03")).toEqual({ completeness: "SEMENTARA", coveredDays: 0, expectedDays: 1, gaps: [], overlaps: [] });
+  });
   it("is provisional until every day is settled, then complete", () => {
     const weeks = [{ startDate: "2027-02-01", endDate: "2027-02-21" }];
     expect(monthCompleteness("2027-02", "2027-02-01", weeks, "2027-03-05")).toMatchObject({ completeness: "SEMENTARA", coveredDays: 21, expectedDays: 28 });

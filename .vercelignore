@@ -1,0 +1,15 @@
+# Local credentials, caches, agent memory, and browser recordings are not build inputs.
+.env*
+.git/
+.next/
+.vercel/
+node_modules/
+.remember/
+.superpowers/
+.claude/
+.vitest/
+test-results/
+playwright-report/
+coverage/
+*.tsbuildinfo
+laporan performance fintrack new/

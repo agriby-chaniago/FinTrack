@@ -17,8 +17,11 @@ function daysAgoIso(n: number): string {
 
 beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "reminder");
-  // Cutover three days ago leaves this month's income and obligations pending.
-  await resetWithConfirmedFixture(clients, user.id, `${daysAgoIso(3)}T20:00:00+07:00`);
+  // Explicitly opt this month's income in: three days ago is usually still
+  // this month, so the default next-cycle rule otherwise leaves nothing due.
+  await resetWithConfirmedFixture(clients, user.id, `${daysAgoIso(3)}T20:00:00+07:00`, (draft) => {
+    draft.routines.monthlyIncome.includeCurrentCycle = true;
+  });
 }, 120_000);
 
 afterAll(async () => {

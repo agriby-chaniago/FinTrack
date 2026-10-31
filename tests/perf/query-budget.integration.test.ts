@@ -19,6 +19,8 @@ import { listRecurringRules } from "@/server/application/monthly";
 import { getOnboardingState } from "@/server/application/onboarding";
 import { recordingContext } from "@/server/application/recording-context";
 import { getSettings } from "@/server/application/settings";
+import { readExportSnapshot } from "@/server/application/export";
+import { readExportAnalysis } from "@/server/application/export-analysis";
 import { businessDateOf, cycleKeyOf } from "@/lib/business-time";
 import { dashboard, reportPage, settlementHistory } from "@/server/application/reports";
 import { settlementRouter } from "@/server/application/settlement";
@@ -97,6 +99,7 @@ describe("query budget per page (grows with neither weeks nor months)", () => {
     ["Akun", 24, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
     ["Aktivitas", 7, (tx, o) => listActivity(tx, o, { limit: 50 })],
     ["Laporan", 22, (tx, o) => reportPage(tx, o, cycleKeyOf(businessDateOf(now)), now)],
+    ["Ekspor CSV + ZIP", 64, async (tx, o) => { const snapshot = await readExportSnapshot(tx, o); await readExportAnalysis(tx, o, snapshot, now); }],
     ["Catat (form context)", 19, (tx, o) => recordingContext(tx, o)],
     [
       "Pengaturan",

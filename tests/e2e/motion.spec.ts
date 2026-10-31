@@ -24,7 +24,12 @@ function daysAgo(n: number): string {
 test.beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "e2e-motion");
   // Cutover three days ago leaves this month's income and obligations pending.
-  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`);
+  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`, (draft) => {
+    const includeCurrentCycle = draft.cutoverAt?.slice(0, 7) === daysAgo(0).slice(0, 7);
+    draft.routines.monthlyIncome.includeCurrentCycle = includeCurrentCycle;
+    draft.routines.subscriptions[0].includeCurrentCycle = includeCurrentCycle;
+    draft.routines.bankFee.includeCurrentCycle = includeCurrentCycle;
+  });
 });
 
 test.afterAll(async () => {
@@ -375,7 +380,11 @@ test("+ Catat choices arrive one by one and their icons pop", async ({ page }) =
 test("the toast sits under the header on a phone and dismisses on tap", async ({ page }) => {
   await signIn(page);
   await page.goto("/rutinitas");
-  await page.getByRole("button", { name: /^Konfirmasi sesuai saran · Rp/ }).first().click();
+  const occurrence = page.getByRole("listitem").filter({ hasText: "Langganan" }).first();
+  await occurrence.getByRole("button", { name: "Ubah detail" }).click();
+  // An obligation's suggested day can predate this fixture's onboarding.
+  await occurrence.getByLabel("Tanggal aktual").fill(daysAgo(0));
+  await occurrence.getByRole("button", { name: "Konfirmasi", exact: true }).click();
   const toast = page.getByRole("status").filter({ hasText: "dikonfirmasi" });
   await expect(toast).toBeVisible();
   const box = (await toast.boundingBox())!;

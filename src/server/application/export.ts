@@ -6,10 +6,14 @@ import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { strToU8, Zip, ZipDeflate } from "fflate";
 
+import { ANALYSIS_CSV_PATH, ANALYSIS_FORMAT_VERSION, ANALYSIS_GUIDE_PATH, analysisColumns, EXPORT_FORMAT_VERSION } from "@/lib/export-contract";
 import type { OwnerTx } from "@/server/db/owner";
 import { sqlRows } from "@/server/db/rows";
 
-export const EXPORT_FORMAT_VERSION = 1;
+import type { AnalysisProjection } from "./export-analysis";
+import { datasetMeanings, exportGuide } from "./export-guide";
+
+export { EXPORT_FORMAT_VERSION } from "@/lib/export-contract";
 
 /**
  * Coverage registry (migration map M12): every base table in schema
@@ -61,17 +65,21 @@ export async function readExportSnapshot(tx: OwnerTx, ownerId: string): Promise<
     where table_schema = 'fintrack' order by table_name, ordinal_position`);
   const datasets: ExportDataset[] = [];
   for (const { table, orderBy } of exportedTables) {
-    // Minor-unit amounts become exact decimal strings; jsonb keeps numeric precision.
+    const columns = columnRows.filter((c) => c.table_name === table).map((c) => c.column_name);
+    const money = columns.filter((column) => column.endsWith("_minor"));
+    // Override only money keys before the pg JSON parser sees them. Rebuilding
+    // every key is costly on large tables; ledger_entry has no money columns.
+    const exactMoney = money.length
+      ? sql` || jsonb_build_object(${sql.join(money.map((column) => sql`${column}::text, t.${sql.identifier(column)}::text`), sql`, `)})`
+      : sql``;
     const rows = await sqlRows<{ row: Row }>(tx, sql`
-      select (select jsonb_object_agg(key, case when key like '%\_minor' and jsonb_typeof(value) = 'number'
-                                             then to_jsonb(value #>> '{}') else value end)
-              from jsonb_each(to_jsonb(t))) as row
+      select to_jsonb(t)${exactMoney} as row
       from ${sql.identifier("fintrack")}.${sql.identifier(table)} t
       where t.owner_id = ${ownerId}
       order by ${sql.raw(orderBy)}`);
     datasets.push({
       table,
-      columns: columnRows.filter((c) => c.table_name === table).map((c) => c.column_name),
+      columns,
       rows: rows.map((r) => r.row),
     });
   }
@@ -98,30 +106,48 @@ export function toCsv(dataset: ExportDataset): string {
 export type ExportFile = { path: string; content: Uint8Array };
 
 /** Builds the archive entries: data files first, then the manifest describing them. */
-export function exportFiles(datasets: ExportDataset[], exportedAt: Date): ExportFile[] {
+export function exportFiles(datasets: ExportDataset[], exportedAt: Date, analysis: AnalysisProjection): ExportFile[] {
   const files: ExportFile[] = [];
+  const exportedAtIso = exportedAt.toISOString();
+  const exportId = createHash("sha256").update(JSON.stringify({ exportedAt: exportedAtIso, datasets })).digest("hex");
   const json = {
     formatVersion: EXPORT_FORMAT_VERSION,
-    exportedAt: exportedAt.toISOString(),
+    exportId,
+    exportedAt: exportedAtIso,
     datasets: Object.fromEntries(datasets.map((d) => [d.table, d.rows])),
   };
   files.push({ path: "fintrack.json", content: strToU8(`${JSON.stringify(json, null, 2)}\n`) });
   for (const dataset of datasets) files.push({ path: `csv/${dataset.table}.csv`, content: strToU8(toCsv(dataset)) });
+  files.push({ path: ANALYSIS_CSV_PATH, content: strToU8(toCsv({
+    table: "analysis", columns: [...analysisColumns],
+    rows: analysis.rows.map((row) => ({ ...row, export_id: exportId, exported_at: exportedAtIso })),
+  })) });
+  files.push({ path: ANALYSIS_GUIDE_PATH, content: strToU8(exportGuide(exportId, exportedAtIso)) });
 
   const manifest = {
     formatVersion: EXPORT_FORMAT_VERSION,
     application: "FinTrack",
-    exportedAt: exportedAt.toISOString(),
+    exportId,
+    exportedAt: exportedAtIso,
     snapshot: "Single PostgreSQL REPEATABLE READ, READ ONLY transaction",
+    analysis: {
+      formatVersion: ANALYSIS_FORMAT_VERSION,
+      csv: ANALYSIS_CSV_PATH, guide: ANALYSIS_GUIDE_PATH,
+      authority: "Corrected application projection; raw history is supporting evidence, never additional cashflow.",
+      failedChecks: analysis.failedChecks, warningChecks: analysis.warningChecks,
+      pairing: "The separately downloaded CSV must be byte-identical to the CSV in this ZIP. Match exportId and SHA-256 before combining sources.",
+      aiUploadVerified: false,
+    },
     conventions: {
       amounts: "Columns ending in _minor are exact integer strings in minor units (1/100 IDR).",
+      analysisAmounts: "Analysis CSV *_idr fields and value with unit IDR are decimal RUPIAH strings. Nested snapshot/basis/draft money is also rupiah decimal, not _minor.",
       businessDates: "Date-only values are YYYY-MM-DD business dates in Asia/Jakarta.",
       timestamps: "ISO 8601 with offset.",
       externalOwnership: "ledger_leg.external_effect_minor and holding_id keep external-fund ownership explicit; personal = physical − external.",
-      csv: "RFC 4180, UTF-8, CRLF. Text cells starting with = + @ are prefixed with ' for spreadsheet safety; fintrack.json is exact.",
+      csv: "RFC 4180, UTF-8, CRLF. Text cells starting with = + @ tab or carriage return are prefixed with ' for spreadsheet safety; fintrack.json is exact.",
     },
     excluded: excludedTables,
-    datasets: datasets.map((d) => ({ name: d.table, rows: d.rows.length, csv: `csv/${d.table}.csv` })),
+    datasets: datasets.map((d) => ({ name: d.table, rows: d.rows.length, csv: `csv/${d.table}.csv`, meaning: datasetMeanings[d.table] })),
     files: files.map((file) => ({ path: file.path, bytes: file.content.byteLength, sha256: createHash("sha256").update(file.content).digest("hex") })),
   };
   files.push({ path: "manifest.json", content: strToU8(`${JSON.stringify(manifest, null, 2)}\n`) });

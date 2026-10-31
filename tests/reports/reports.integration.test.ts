@@ -22,6 +22,8 @@ import { POST as createSettlement } from "@/app/api/v1/settlements/route";
 import { POST as postSpecial } from "@/app/api/v1/special-expenses/route";
 import { POST as postTransfer } from "@/app/api/v1/transfers/route";
 import { excludedTables, exportedTables } from "@/server/application/export";
+import { ANALYSIS_CSV_PATH, ANALYSIS_GUIDE_PATH, EXPORT_FORMAT_VERSION } from "@/lib/export-contract";
+import { analysisFromArchive } from "@/lib/export-download";
 
 import { signedDelta } from "@/lib/report-view";
 import { monthReport, monthReports, reportPage } from "@/server/application/reports";
@@ -206,13 +208,19 @@ describe("owner export (PRD: Export data milik pengguna)", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="fintrack-export-\d{8}-\d{4}\.zip"$/);
 
-    const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+    const archive = new Uint8Array(await response.arrayBuffer());
+    const files = unzipSync(archive);
     const manifest = JSON.parse(strFromU8(files["manifest.json"]));
-    expect(manifest.formatVersion).toBe(1);
+    expect(manifest.formatVersion).toBe(EXPORT_FORMAT_VERSION);
+    expect(manifest.analysis.failedChecks).toBe(0);
+    expect(manifest.analysis.aiUploadVerified).toBe(false);
     for (const file of manifest.files as { path: string; sha256: string }[]) {
       expect(createHash("sha256").update(files[file.path]).digest("hex")).toBe(file.sha256);
     }
-    expect(Object.keys(files).sort()).toEqual(["fintrack.json", "manifest.json", ...exportedTables.map((t) => `csv/${t.table}.csv`)].sort());
+    expect(Object.keys(files).sort()).toEqual(["fintrack.json", "manifest.json", ANALYSIS_CSV_PATH, ANALYSIS_GUIDE_PATH, ...exportedTables.map((t) => `csv/${t.table}.csv`)].sort());
+    const companion = await analysisFromArchive(archive);
+    expect(companion.csv).toEqual(files[ANALYSIS_CSV_PATH]);
+    expect(companion.exportId).toBe(manifest.exportId);
 
     const json = JSON.parse(strFromU8(files["fintrack.json"]));
     const [{ entries }] = await clients.admin<{ entries: number }[]>`select count(*)::int as entries from fintrack.ledger_entry`;

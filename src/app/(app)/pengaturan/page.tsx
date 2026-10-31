@@ -13,6 +13,7 @@ import { recordingContext } from "@/server/application/recording-context";
 import { getSettings } from "@/server/application/settings";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
+import { ExportDownloads } from "./export-downloads";
 import {
   AddSubscriptionForm,
   CategoryRow,
@@ -163,10 +164,7 @@ export default async function PengaturanPage() {
 
       <Card>
         <SectionTitle>Data</SectionTitle>
-        <p className="mb-3 text-sm text-muted">Unduh seluruh data dalam format JSON dan CSV untuk arsip pribadi.</p>
-        <a href="/api/v1/export" className="inline-flex h-11 items-center border border-control px-4 font-medium hover:bg-surface-subtle" download>
-          Ekspor data
-        </a>
+        <ExportDownloads />
       </Card>
 
       <Card>

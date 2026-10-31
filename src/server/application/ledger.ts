@@ -210,6 +210,7 @@ export async function accountBalances(
   tx: OwnerTx,
   ownerId: string,
   asOf?: { instant: Date; recordedAt: Date },
+  now: Date = new Date(),
 ): Promise<{ accounts: AccountBalanceView[]; personalCashRecorded: string }> {
   const inclusion = asOf
     ? sql`and (e.effective_business_date < ${businessDateOf(asOf.instant)}::date
@@ -272,7 +273,7 @@ export async function accountBalances(
   const { recognizedIncomeFor } = await import("./daily-income");
   const { weeklyAccountFreshness } = await import("./freshness");
   const { manualFreshnessFor } = await import("./reconciliation");
-  const today = businessDateOf(asOf?.instant ?? new Date());
+  const today = businessDateOf(asOf?.instant ?? now);
 
   // Loaded once for every account (set-based), then combined per account below.
   const rules = new Map<string, typeof dailyIncomeRule.$inferSelect>();

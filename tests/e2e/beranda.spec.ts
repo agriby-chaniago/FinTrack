@@ -24,7 +24,11 @@ function daysAgo(n: number): string {
 test.beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "e2e-beranda");
   // Income starts the day after cutover, so the open DANA week always includes today.
-  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`);
+  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`, (draft) => {
+    // A pending cycle keeps month-end reconciliation from taking precedence
+    // over the CALCULATED_AFTER_CONFIRMATION badge under test.
+    draft.routines.monthlyIncome.includeCurrentCycle = draft.cutoverAt?.slice(0, 7) === daysAgo(0).slice(0, 7);
+  });
 });
 
 test.afterAll(async () => {

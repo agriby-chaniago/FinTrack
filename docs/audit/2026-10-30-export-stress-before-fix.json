@@ -1,0 +1,274 @@
+{
+  "generatedAt": "2026-10-30T11:48:06.413Z",
+  "target": "http://127.0.0.1:3200",
+  "data": "synthetic, local Supabase only",
+  "node": "v25.2.1",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-12450HX",
+  "logicalCpus": 12,
+  "nodeHeapLimitMiB": 1024,
+  "serverPeakRssMb": 1016.3203125,
+  "generatorPeakRssMb": 849.90625,
+  "sourceHashes": {
+    "src/server/application/export.ts": "64f8e4a67eda33583262617fad41bd4484af705c65c3fdf5ed864c682087c9b4",
+    "src/server/application/export-analysis.ts": "097b4d3c086ac7906439ca963094629237a22ec097a214617c231ba617a62e05",
+    "src/server/application/settlement.ts": "223a99d26b5fecb6dc27505a2a408000c4a25427ec89cd09246e6578769851c1",
+    "src/lib/export-contract.ts": "14ff65d66996c20ae5e2f07f7d2b7eec1255cb41000b2b30156486b9a01150a3",
+    "src/lib/export-download.ts": "a29f3e3d6a53ee8f15e56db38e5e1791f47175d8aa7bc3022e70f4fbcdbbfebf"
+  },
+  "results": [
+    {
+      "kind": "query_budget",
+      "years": 1,
+      "closingRevisions": 0,
+      "queries": 53,
+      "budget": 64
+    },
+    {
+      "kind": "burst",
+      "years": 1,
+      "events": 1102,
+      "settlements": 52,
+      "revisions": 24,
+      "closingRevisions": 0,
+      "concurrency": 1,
+      "requests": 1,
+      "errors": 0,
+      "p50Ms": 934.1508650000001,
+      "p95Ms": 934.1508650000001,
+      "totalMs": 935.0049290000002,
+      "bytes": 474275,
+      "csvBytes": 1119103,
+      "analysisRows": 2013,
+      "serverPeakRssMb": 229.43359375
+    },
+    {
+      "kind": "burst",
+      "years": 1,
+      "events": 1102,
+      "settlements": 52,
+      "revisions": 24,
+      "closingRevisions": 0,
+      "concurrency": 5,
+      "requests": 5,
+      "errors": 0,
+      "p50Ms": 1487.5946329999997,
+      "p95Ms": 1617.4010009999997,
+      "totalMs": 1618.8031929999997,
+      "bytes": 474272,
+      "csvBytes": 1119103,
+      "analysisRows": 2013,
+      "serverPeakRssMb": 290.31640625
+    },
+    {
+      "kind": "query_budget",
+      "years": 5,
+      "closingRevisions": 20,
+      "queries": 73,
+      "budget": 64
+    },
+    {
+      "kind": "burst",
+      "years": 5,
+      "events": 10783,
+      "settlements": 261,
+      "revisions": 250,
+      "closingRevisions": 20,
+      "concurrency": 1,
+      "requests": 1,
+      "errors": 0,
+      "p50Ms": 1548.6979960000008,
+      "p95Ms": 1548.6979960000008,
+      "totalMs": 1549.320662,
+      "bytes": 4179239,
+      "csvBytes": 8681608,
+      "analysisRows": 14820,
+      "serverPeakRssMb": 445.54296875
+    },
+    {
+      "kind": "burst",
+      "years": 5,
+      "events": 10783,
+      "settlements": 261,
+      "revisions": 250,
+      "closingRevisions": 20,
+      "concurrency": 5,
+      "requests": 5,
+      "errors": 0,
+      "p50Ms": 5159.414581999999,
+      "p95Ms": 6052.159383000002,
+      "totalMs": 6055.676146,
+      "bytes": 4179211,
+      "csvBytes": 8681608,
+      "analysisRows": 14820,
+      "serverPeakRssMb": 584.82421875
+    },
+    {
+      "kind": "postman",
+      "profile": "fixed",
+      "peak": 5,
+      "durationMinutes": 1,
+      "exitCode": 0,
+      "summary": {
+        "event": "summary",
+        "ts": "2026-10-30T11:44:30.429Z",
+        "runNumber": null,
+        "runId": "1a3b9b56-7eda-4fea-8e2f-f663a8891932",
+        "recorded": false,
+        "metrics": {
+          "responseTime": {
+            "avg": 6061,
+            "min": 2643,
+            "max": 8467,
+            "percentile90": 7291,
+            "percentile95": 7324,
+            "percentile99": 8467
+          },
+          "errors": {
+            "percentage": 0,
+            "segmentation": {
+              "errorTypes": {}
+            },
+            "totalExecutions": 46,
+            "transportErrorExecutions": 0,
+            "scriptErrorExecutions": 0
+          },
+          "requestThroughput": {
+            "sum": 46,
+            "rate": 0.77
+          },
+          "virtualUsers": {
+            "avg": 5
+          },
+          "testFailures": {
+            "percentage": 0,
+            "totalRequests": 46,
+            "requestsWithFailedAssertions": 0
+          }
+        },
+        "durationSeconds": 60,
+        "totalRequests": 46
+      },
+      "serverPeakRssMb": 691.9453125
+    },
+    {
+      "kind": "query_budget",
+      "years": 10,
+      "closingRevisions": 100,
+      "queries": 153,
+      "budget": 64
+    },
+    {
+      "kind": "burst",
+      "years": 10,
+      "events": 26623,
+      "settlements": 521,
+      "revisions": 500,
+      "closingRevisions": 100,
+      "concurrency": 1,
+      "requests": 1,
+      "errors": 0,
+      "p50Ms": 4018.232572000008,
+      "p95Ms": 4018.232572000008,
+      "totalMs": 4018.908370000019,
+      "bytes": 10201856,
+      "csvBytes": 20505026,
+      "analysisRows": 34564,
+      "serverPeakRssMb": 782.12109375
+    },
+    {
+      "kind": "burst",
+      "years": 10,
+      "events": 26623,
+      "settlements": 521,
+      "revisions": 500,
+      "closingRevisions": 100,
+      "concurrency": 5,
+      "requests": 5,
+      "errors": 0,
+      "p50Ms": 16560.958497000014,
+      "p95Ms": 16574.247424,
+      "totalMs": 16575.438493000023,
+      "bytes": 10201916,
+      "csvBytes": 20505026,
+      "analysisRows": 34564,
+      "serverPeakRssMb": 958.8359375
+    },
+    {
+      "kind": "burst",
+      "years": 10,
+      "events": 26623,
+      "settlements": 521,
+      "revisions": 500,
+      "closingRevisions": 100,
+      "concurrency": 10,
+      "requests": 10,
+      "errors": 0,
+      "p50Ms": 17573.040917999984,
+      "p95Ms": 35073.48448700001,
+      "totalMs": 35075.12037300001,
+      "bytes": 10201800,
+      "csvBytes": 20505026,
+      "analysisRows": 34564,
+      "serverPeakRssMb": 1012.4921875
+    },
+    {
+      "kind": "postman",
+      "profile": "spike",
+      "peak": 10,
+      "durationMinutes": 1,
+      "exitCode": 1,
+      "summary": {
+        "event": "summary",
+        "ts": "2026-10-30T11:48:05.485Z",
+        "runNumber": null,
+        "runId": "25e0092a-bc60-48f6-976f-bdd24c4a0a84",
+        "recorded": false,
+        "metrics": {
+          "responseTime": {
+            "avg": 18717,
+            "min": 3862,
+            "max": 33040,
+            "percentile90": 32339,
+            "percentile95": 33040,
+            "percentile99": 33040
+          },
+          "errors": {
+            "percentage": 0,
+            "segmentation": {
+              "errorTypes": {}
+            },
+            "totalExecutions": 16,
+            "transportErrorExecutions": 0,
+            "scriptErrorExecutions": 0
+          },
+          "requestThroughput": {
+            "sum": 16,
+            "rate": 0.27
+          },
+          "virtualUsers": {
+            "avg": 3
+          },
+          "testFailures": {
+            "percentage": 0,
+            "totalRequests": 16,
+            "requestsWithFailedAssertions": 0
+          }
+        },
+        "durationSeconds": 60,
+        "totalRequests": 16
+      },
+      "serverPeakRssMb": 1016.3203125
+    }
+  ],
+  "gates": [
+    "Query budget 73/64 with 20 closing revisions",
+    "Query budget 153/64 with 100 closing revisions",
+    "Postman spike did not pass; inspect reported runner error or thresholds"
+  ],
+  "passed": false,
+  "notEstablished": [
+    "Hosted Vercel latency/capacity",
+    "AI response without prompt"
+  ],
+  "tempLogDirectory": "/tmp/fintrack-export-stress-5oHTDa"
+}

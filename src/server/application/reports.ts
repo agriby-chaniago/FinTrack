@@ -11,7 +11,7 @@ import type { OwnerTx } from "@/server/db/owner";
 import { settlement } from "@/server/db/schema/settlement";
 import { dailyIncomeBetween, daysBetweenInclusive, roundedAverage } from "@/server/domain/daily-income";
 import { lastDayOfCycle } from "@/server/domain/monthly";
-import { monthCompleteness, prorataByMonth } from "@/server/domain/reporting";
+import { monthCompletenessByMonth, prorataByMonth } from "@/server/domain/reporting";
 
 import { accountsOverview } from "./accounts-overview";
 import { dailyRuleContext, dailyRuleFor, recognizedIncomeFor } from "./daily-income";
@@ -25,7 +25,7 @@ export type ReportView = "corrected" | "as_settled";
 
 const amount = (value: MinorUnits) => toIdrDecimal(value);
 
-type LegRow = {
+export type ReportLeg = {
   month: string;
   kind: string;
   event_class: string;
@@ -38,7 +38,7 @@ type LegRow = {
   original_reserve_inflow: boolean | null;
 };
 
-function emptyLedgerTotals() {
+export function emptyLedgerTotals() {
   return {
     totals: {
       monthlyIncome: 0n,
@@ -60,7 +60,7 @@ function emptyLedgerTotals() {
 type LedgerTotals = ReturnType<typeof emptyLedgerTotals>;
 
 /** Adds one ledger leg to its month's totals; every report classifies legs here. */
-function addLeg({ totals, specialByCategory, specialByAccount }: LedgerTotals, leg: LegRow, reserve: string) {
+export function addReportLeg({ totals, specialByCategory, specialByAccount }: LedgerTotals, leg: ReportLeg, reserve: string) {
   const p = BigInt(leg.personal);
   if (leg.event_class === "ADJUSTMENT") {
     totals.adjustments += p;
@@ -124,7 +124,7 @@ async function ledgerTotalsByMonth(tx: OwnerTx, ownerId: string, months: string[
             and e.effective_business_date between s.start_date and s.end_date and e.recorded_at > s.settled_at)`
       : sql``;
 
-  const legs = await sqlRows<LegRow>(tx, sql`
+  const legs = await sqlRows<ReportLeg>(tx, sql`
     select to_char(e.effective_business_date, 'YYYY-MM') as month, e.kind, e.event_class, e.reporting_classification as classification, e.correction_role as role,
            l.account_id, e.category_id, c.display_name as category_name,
            (l.physical_effect_minor - l.external_effect_minor)::text as personal,
@@ -140,7 +140,7 @@ async function ledgerTotalsByMonth(tx: OwnerTx, ownerId: string, months: string[
   const byMonth = new Map(sorted.map((month) => [month, emptyLedgerTotals()] as const));
   for (const leg of legs) {
     const bucket = byMonth.get(leg.month);
-    if (bucket) addLeg(bucket, leg, reserve);
+    if (bucket) addReportLeg(bucket, leg, reserve);
   }
   return byMonth;
 }
@@ -202,6 +202,9 @@ async function loadMonthReports(tx: OwnerTx, ownerId: string, requested: string[
 
   // Living expense: prorata of each settlement touching the month.
   const correctedLiving = view === "as_settled" ? null : await correctedLivingExpenses(tx, ownerId);
+  const coverages = rule
+    ? monthCompletenessByMonth(months, rule.effectiveStartDate, settledRows.map((r) => ({ startDate: r.startDate, endDate: r.endDate })), today)
+    : null;
 
   const reports = new Map(
     months.map((month) => {
@@ -217,9 +220,7 @@ async function loadMonthReports(tx: OwnerTx, ownerId: string, requested: string[
         livingParts.push({ settlementId: row.id, startDate: row.startDate, endDate: row.endDate, allocated: amount(share) });
       }
 
-      const coverage = rule
-        ? monthCompleteness(month, rule.effectiveStartDate, settledRows.map((r) => ({ startDate: r.startDate, endDate: r.endDate })), today)
-        : null;
+      const coverage = coverages?.get(month) ?? null;
 
       const dailyIncome = dailyByMonth.get(month)!;
       const totalIncome = dailyIncome + totals.monthlyIncome + totals.otherIncome + totals.giftIncome;

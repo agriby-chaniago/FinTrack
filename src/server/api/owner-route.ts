@@ -30,6 +30,13 @@ export type OwnerRouteContext = {
 
 type RouteSegmentContext = { params?: Promise<Record<string, string | string[] | undefined> | undefined> };
 
+type OwnerRouteHandler = {
+  (request: Request, segment?: RouteSegmentContext): Promise<Response>;
+  // Next's production route validator reflects the last overload and expects
+  // its framework-supplied context. Direct callers/tests may still omit it.
+  (request: Request, segment: { params: Promise<Record<string, string | string[] | undefined>> }): Promise<Response>;
+};
+
 export type OwnerRouteOptions = {
   /** Injected in tests; production uses the process-wide runtime handle. */
   readonly db?: () => RuntimeDb;
@@ -113,8 +120,8 @@ function withCookies(response: Response, cookies: CookieToSet[]): Response {
 export function ownerRoute(
   handler: (context: OwnerRouteContext) => Promise<Response>,
   options: OwnerRouteOptions = {},
-): (request: Request, segment?: RouteSegmentContext) => Promise<Response> {
-  return async (request, segment) => {
+): OwnerRouteHandler {
+  return async (request: Request, segment?: RouteSegmentContext) => {
     const requestId = crypto.randomUUID();
     // Static routes receive a segment whose params resolve to undefined.
     const rawParams = (await segment?.params) ?? {};

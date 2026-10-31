@@ -89,12 +89,36 @@ async function poolCash(tx: OwnerTx, ownerId: string, accountId: string, opening
 
 export type ConfirmationRow = typeof balanceConfirmation.$inferSelect;
 
+/** Structural chain traversal stays in one round trip, regardless of revisions. */
+export async function authoritativeConfirmations(tx: OwnerTx, ownerId: string, confirmationIds: string[]): Promise<Map<string, ConfirmationRow>> {
+  if (confirmationIds.length === 0) return new Map();
+  const ids = sql.join([...new Set(confirmationIds)].map((id) => sql`${id}::uuid`), sql`, `);
+  const rows = await sqlRows<{
+    root_id: string; id: string; owner_id: string; account_id: string; physical: string;
+    as_of: string; source: string; supersedes_id: string | null; recorded_at: string;
+  }>(tx, sql`
+    with recursive chain as (
+      select c.*, c.id as root_id, array[c.id] as visited
+      from fintrack.balance_confirmation c
+      where c.owner_id = ${ownerId} and c.id in (${ids})
+      union all
+      select c.*, p.root_id, p.visited || c.id
+      from chain p join fintrack.balance_confirmation c on c.id = p.superseded_by_id
+      where c.owner_id = ${ownerId} and not c.id = any(p.visited)
+    )
+    select root_id, id, owner_id, account_id, physical_balance_minor::text as physical,
+           as_of::text as as_of, source, supersedes_id, recorded_at::text as recorded_at
+    from chain where superseded_by_id is null`);
+  return new Map(rows.map((row) => [row.root_id, {
+    id: row.id, ownerId: row.owner_id, accountId: row.account_id,
+    physicalBalanceMinor: BigInt(row.physical), asOf: new Date(row.as_of), source: row.source,
+    supersedesId: row.supersedes_id, supersededById: null, recordedAt: new Date(row.recorded_at),
+  }]));
+}
+
 /** Latest non-superseded confirmation in a replacement chain. */
 export async function authoritativeConfirmation(tx: OwnerTx, ownerId: string, confirmationId: string): Promise<ConfirmationRow> {
-  let [row] = await tx.select().from(balanceConfirmation).where(and(eq(balanceConfirmation.ownerId, ownerId), eq(balanceConfirmation.id, confirmationId)));
-  while (row?.supersededById) {
-    [row] = await tx.select().from(balanceConfirmation).where(and(eq(balanceConfirmation.ownerId, ownerId), eq(balanceConfirmation.id, row.supersededById)));
-  }
+  const row = (await authoritativeConfirmations(tx, ownerId, [confirmationId])).get(confirmationId);
   if (!row) throw new ApiError("NOT_FOUND");
   return row;
 }

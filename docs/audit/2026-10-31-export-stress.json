@@ -1,0 +1,313 @@
+{
+  "generatedAt": "2026-10-30T17:46:01.170Z",
+  "target": "http://127.0.0.1:3200",
+  "data": "synthetic, local Supabase only",
+  "scope": "full stress profiles",
+  "node": "v24.22.2",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-12450HX",
+  "logicalCpus": 12,
+  "nodeHeapLimitMiB": 1024,
+  "serverPeakRssMb": 1007.20703125,
+  "generatorPeakRssMb": 746.05859375,
+  "sourceHashes": {
+    "src/server/application/export.ts": "9ffd20c1a33ffbd107c958d583817b39c673fc0f19890fdefe72bbd44849a42b",
+    "src/server/application/export-analysis.ts": "a76887f1159bf03b2486376bf54b61b6a65bdcca96512683bc81284967ed5c89",
+    "src/server/application/settlement.ts": "29478ad7036af3ab6afc9e900de3db6c5f5c802255edf637e2944c44a04be817",
+    "src/lib/export-contract.ts": "14ff65d66996c20ae5e2f07f7d2b7eec1255cb41000b2b30156486b9a01150a3",
+    "src/lib/export-download.ts": "a29f3e3d6a53ee8f15e56db38e5e1791f47175d8aa7bc3022e70f4fbcdbbfebf"
+  },
+  "results": [
+    {
+      "kind": "stages",
+      "years": 1,
+      "snapshotMs": 43.39998700000001,
+      "projectionMs": 557.0100559999998,
+      "assemblyMs": 26.858998999999585,
+      "zipMs": 84.45443799999975,
+      "zipBytes": 474507,
+      "uncompressedBytes": 3132654
+    },
+    {
+      "kind": "query_budget",
+      "years": 1,
+      "closingRevisions": 0,
+      "queries": 53,
+      "budget": 64
+    },
+    {
+      "kind": "burst",
+      "years": 1,
+      "events": 1102,
+      "settlements": 52,
+      "revisions": 24,
+      "closingRevisions": 0,
+      "concurrency": 1,
+      "requests": 1,
+      "errors": 0,
+      "p50Ms": 856.4042130000003,
+      "p95Ms": 856.4042130000003,
+      "totalMs": 856.7073449999998,
+      "bytes": 474557,
+      "csvBytes": 1126302,
+      "analysisRows": 2014,
+      "serverPeakRssMb": 207.859375
+    },
+    {
+      "kind": "burst",
+      "years": 1,
+      "events": 1102,
+      "settlements": 52,
+      "revisions": 24,
+      "closingRevisions": 0,
+      "concurrency": 5,
+      "requests": 5,
+      "errors": 0,
+      "p50Ms": 1113.575844,
+      "p95Ms": 1321.3859939999998,
+      "totalMs": 1322.7721849999998,
+      "bytes": 474527,
+      "csvBytes": 1126302,
+      "analysisRows": 2014,
+      "serverPeakRssMb": 316.5
+    },
+    {
+      "kind": "stages",
+      "years": 5,
+      "snapshotMs": 152.002502000003,
+      "projectionMs": 263.59224299999914,
+      "assemblyMs": 198.57833100000425,
+      "zipMs": 519.654733000003,
+      "zipBytes": 4176868,
+      "uncompressedBytes": 26248567
+    },
+    {
+      "kind": "query_budget",
+      "years": 5,
+      "closingRevisions": 20,
+      "queries": 53,
+      "budget": 64
+    },
+    {
+      "kind": "burst",
+      "years": 5,
+      "events": 10782,
+      "settlements": 260,
+      "revisions": 250,
+      "closingRevisions": 20,
+      "concurrency": 1,
+      "requests": 1,
+      "errors": 0,
+      "p50Ms": 1192.6857260000033,
+      "p95Ms": 1192.6857260000033,
+      "totalMs": 1193.6071299999967,
+      "bytes": 4176926,
+      "csvBytes": 8707108,
+      "analysisRows": 14808,
+      "serverPeakRssMb": 435.29296875
+    },
+    {
+      "kind": "burst",
+      "years": 5,
+      "events": 10782,
+      "settlements": 260,
+      "revisions": 250,
+      "closingRevisions": 20,
+      "concurrency": 5,
+      "requests": 5,
+      "errors": 0,
+      "p50Ms": 3199.1279619999987,
+      "p95Ms": 4933.495590999999,
+      "totalMs": 4935.593959999998,
+      "bytes": 4176863,
+      "csvBytes": 8707108,
+      "analysisRows": 14808,
+      "serverPeakRssMb": 590.8515625
+    },
+    {
+      "kind": "postman",
+      "profile": "fixed",
+      "peak": 5,
+      "durationMinutes": 1,
+      "exitCode": 0,
+      "summary": {
+        "event": "summary",
+        "ts": "2026-10-30T17:42:32.399Z",
+        "runNumber": null,
+        "runId": "637ae53f-77e5-478c-8216-4c56af91399d",
+        "recorded": false,
+        "metrics": {
+          "responseTime": {
+            "avg": 4811,
+            "min": 2344,
+            "max": 5122,
+            "percentile90": 5087,
+            "percentile95": 5114,
+            "percentile99": 5122
+          },
+          "errors": {
+            "percentage": 0,
+            "segmentation": {
+              "errorTypes": {}
+            },
+            "totalExecutions": 57,
+            "transportErrorExecutions": 0,
+            "scriptErrorExecutions": 0
+          },
+          "requestThroughput": {
+            "sum": 57,
+            "rate": 0.95
+          },
+          "virtualUsers": {
+            "avg": 5
+          },
+          "testFailures": {
+            "percentage": 0,
+            "totalRequests": 57,
+            "requestsWithFailedAssertions": 0
+          }
+        },
+        "durationSeconds": 60,
+        "totalRequests": 57
+      },
+      "serverPeakRssMb": 654.55078125
+    },
+    {
+      "kind": "stages",
+      "years": 10,
+      "snapshotMs": 337.11245400001644,
+      "projectionMs": 749.9860090000147,
+      "assemblyMs": 504.3086389999953,
+      "zipMs": 1267.678385999985,
+      "zipBytes": 10202917,
+      "uncompressedBytes": 63061481
+    },
+    {
+      "kind": "compression_benchmark",
+      "level": 1,
+      "ms": 891.083060999983,
+      "bytes": 10879273
+    },
+    {
+      "kind": "compression_benchmark",
+      "level": 6,
+      "ms": 1188.9366449999798,
+      "bytes": 10202021
+    },
+    {
+      "kind": "query_budget",
+      "years": 10,
+      "closingRevisions": 100,
+      "queries": 53,
+      "budget": 64
+    },
+    {
+      "kind": "burst",
+      "years": 10,
+      "events": 26623,
+      "settlements": 521,
+      "revisions": 500,
+      "closingRevisions": 100,
+      "concurrency": 1,
+      "requests": 1,
+      "errors": 0,
+      "p50Ms": 2851.2572269999946,
+      "p95Ms": 2851.2572269999946,
+      "totalMs": 2852.534538000007,
+      "bytes": 10203039,
+      "csvBytes": 20568169,
+      "analysisRows": 34565,
+      "serverPeakRssMb": 781.1640625
+    },
+    {
+      "kind": "burst",
+      "years": 10,
+      "events": 26623,
+      "settlements": 521,
+      "revisions": 500,
+      "closingRevisions": 100,
+      "concurrency": 5,
+      "requests": 5,
+      "errors": 0,
+      "p50Ms": 13498.931277000025,
+      "p95Ms": 13520.093257,
+      "totalMs": 13521.669926000002,
+      "bytes": 10203062,
+      "csvBytes": 20568169,
+      "analysisRows": 34565,
+      "serverPeakRssMb": 985.95703125
+    },
+    {
+      "kind": "burst",
+      "years": 10,
+      "events": 26623,
+      "settlements": 521,
+      "revisions": 500,
+      "closingRevisions": 100,
+      "concurrency": 10,
+      "requests": 10,
+      "errors": 0,
+      "p50Ms": 13593.086849000014,
+      "p95Ms": 30017.726689000003,
+      "totalMs": 30024.723410999984,
+      "bytes": 10203091,
+      "csvBytes": 20568169,
+      "analysisRows": 34565,
+      "serverPeakRssMb": 1007.20703125
+    },
+    {
+      "kind": "postman",
+      "profile": "spike",
+      "peak": 10,
+      "durationMinutes": 1,
+      "exitCode": 0,
+      "summary": {
+        "event": "summary",
+        "ts": "2026-10-30T17:46:00.656Z",
+        "runNumber": null,
+        "runId": "b663c188-45c4-4e55-b896-7b9338d68f13",
+        "recorded": false,
+        "metrics": {
+          "responseTime": {
+            "avg": 15285,
+            "min": 2848,
+            "max": 29308,
+            "percentile90": 28089,
+            "percentile95": 29308,
+            "percentile99": 29308
+          },
+          "errors": {
+            "percentage": 0,
+            "segmentation": {
+              "errorTypes": {}
+            },
+            "totalExecutions": 19,
+            "transportErrorExecutions": 0,
+            "scriptErrorExecutions": 0
+          },
+          "requestThroughput": {
+            "sum": 19,
+            "rate": 0.32
+          },
+          "virtualUsers": {
+            "avg": 2
+          },
+          "testFailures": {
+            "percentage": 0,
+            "totalRequests": 19,
+            "requestsWithFailedAssertions": 0
+          }
+        },
+        "durationSeconds": 60,
+        "totalRequests": 19
+      },
+      "serverPeakRssMb": 1007.20703125
+    }
+  ],
+  "gates": [],
+  "passed": true,
+  "notEstablished": [
+    "Hosted Vercel latency/capacity",
+    "AI response without prompt"
+  ],
+  "tempLogDirectory": "/tmp/fintrack-export-stress-gaFfQ8"
+}

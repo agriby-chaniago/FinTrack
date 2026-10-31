@@ -8,8 +8,8 @@ _Living source of truth untuk arah produk, aturan cashflow, UX, dan arsitektur F
 | --- | --- |
 | **Pemilik produk** | Agriby Chaniago |
 | **Status** | Aktif di production |
-| **Versi dokumen** | 0.23 |
-| **Terakhir diperbarui** | 2 Oktober 2026 (v0.23) |
+| **Versi dokumen** | 0.24 |
+| **Terakhir diperbarui** | 30 Oktober 2026 (v0.24) |
 | **Repository baru** | `/home/agribychaniago/www/fintrack_new` |
 | **Target pertama** | Website responsif |
 | **Target berikutnya** | Aplikasi mobile dengan backend yang sama |
@@ -1914,6 +1914,20 @@ Supabase menyatakan beberapa user database queries **per hari** biasanya cukup, 
 - Export diambil dari satu consistent database snapshot, di-stream ke browser, memakai `Cache-Control: no-store`, dan tidak disimpan di server/object storage
 - Password, session, token, Auth UUID binding, provider log, dan secret tidak masuk export
 - Export adalah format portability, bukan mekanisme disaster restore; import otomatis, filtered export, PDF, dan email export ditunda
+
+**LOCKED (30 Oktober 2026, disepakati pemilik setelah grilling): ekspor untuk analisis AI**
+
+- Satu proses ekspor menghasilkan CSV analisis dan ZIP lengkap dari snapshot `REPEATABLE READ, READ ONLY` yang sama. CSV dapat diunduh terpisah dan merupakan salinan byte-identik dari CSV di dalam ZIP; pemilik mengirim kedua file bersama ke AI. ZIP tetap memuat seluruh JSON/CSV sumber serta riwayat audit.
+- CSV merupakan acuan angka efektif `corrected` yang dihitung FinTrack, termasuk ringkasan bulanan, saldo/freshness, income harian yang diakui, rincian event efektif, hasil settlement, alokasi bulan, kewajiban, target, dan dana titipan. ZIP menyediakan penelusuran, bukan cashflow tambahan.
+- Revisi settlement menghasilkan satu nilai akhir: Rp300.000 → Rp250.000 → Rp275.000 dilaporkan Rp275.000 sekali. Koreksi ledger digabung melalui efek bertanda; reversal/replacement/delta tidak dipilih dengan aturan generik “ambil row terbaru”. Snapshot lama tetap tersedia untuk audit.
+- Jenis row, aturan agregasi, unit, sumber, hubungan ringkasan/rincian, status, dan batas data harus eksplisit. CSV memakai rupiah desimal exact; data mentah `_minor` tetap sen. Nilai kosong bukan nol. Transfer, saldo awal, konfirmasi, adjustment, target, dan alokasi bukan income/expense tambahan; dana titipan terpisah dari personal.
+- Instruksi analisis dalam bahasa Indonesia disertakan dalam CSV dan panduan ZIP. Hasil yang dituju: kondisi terbaru, rincian dan perubahan beserta bukti, tren seluruh riwayat, pemeriksaan data, kesimpulan, dan tiga tindakan prioritas. Biaya hidup agregat tidak boleh diberi rincian pembelian fiktif.
+- Tren utama membandingkan bulan lengkap yang sudah berakhir, tanpa kewajiban/income unresolved atau pemeriksaan gagal. Bulan berjalan dan periode onboarding parsial dilaporkan dengan keterbatasannya.
+- `export_id` dan SHA-256 menghubungkan pasangan file. Berbeda snapshot berarti tidak boleh digabung. Pemeriksaan yang gagal menahan kesimpulan pada bagian terkait; bagian valid tetap dapat dibahas. AI harus mengungkap sumber yang tidak terbaca dan pemeriksaan yang belum dilakukan, tanpa memilih angka atau memperbaikinya dengan tebakan.
+- Sasaran penggunaan adalah unggah CSV + ZIP ke ChatGPT tanpa prompt tambahan, dengan format yang dapat dibaca AI lain. Keberhasilan proyeksi/arsip diuji terpisah dari respons AI; perilaku tanpa prompt tidak dinyatakan terbukti sebelum uji unggahan nyata.
+- Tidak ada integrasi AI/API key, pengiriman finansial otomatis ke AI, penyimpanan ekspor di server, atau perubahan data finansial oleh proses ekspor.
+
+Kontrak format dan endpoint: `docs/export-format.md`.
 
 #### Installable website dan observability
 

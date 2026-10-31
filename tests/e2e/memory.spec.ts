@@ -28,7 +28,12 @@ test.beforeAll(async () => {
 
 // Every test starts from the same fixture: this month's income is still pending.
 test.beforeEach(async () => {
-  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`);
+  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`, (draft) => {
+    const includeCurrentCycle = draft.cutoverAt?.slice(0, 7) === daysAgo(0).slice(0, 7);
+    draft.routines.monthlyIncome.includeCurrentCycle = includeCurrentCycle;
+    draft.routines.subscriptions[0].includeCurrentCycle = includeCurrentCycle;
+    draft.routines.bankFee.includeCurrentCycle = includeCurrentCycle;
+  });
 });
 
 test.afterAll(async () => {
@@ -56,7 +61,7 @@ async function spendThroughCatat(page: Page) {
   await expect(page.getByText("Personal cash tercatat")).toBeVisible();
 }
 
-const jagoAmount = (page: Page) => page.locator("main a[href^='/akun/']").filter({ hasText: "Jago" }).first().locator("[data-rolling]");
+const jagoAmount = (page: Page) => page.locator("section[aria-labelledby='accounts-title'] a").filter({ hasText: "Jago" }).first().locator("[data-rolling]");
 
 /** Counts every rolling overlay added to the page from now on (runs before each document). */
 function countOverlays(page: Page) {

@@ -24,7 +24,12 @@ function daysAgo(n: number): string {
 test.beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "e2e-shell");
   // Cutover three days ago leaves this month's income and obligations pending.
-  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`);
+  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`, (draft) => {
+    const includeCurrentCycle = draft.cutoverAt?.slice(0, 7) === daysAgo(0).slice(0, 7);
+    draft.routines.monthlyIncome.includeCurrentCycle = includeCurrentCycle;
+    draft.routines.subscriptions[0].includeCurrentCycle = includeCurrentCycle;
+    draft.routines.bankFee.includeCurrentCycle = includeCurrentCycle;
+  });
 });
 
 test.afterAll(async () => {

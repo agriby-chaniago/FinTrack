@@ -42,20 +42,16 @@ export type MonthCompleteness = "LENGKAP" | "SEMENTARA" | "PERIODE_PARSIAL";
  * range; `Periode parsial` for the month in which coverage starts mid-month;
  * `Lengkap` once every covered day is settled. Missing coverage is never Rp0.
  */
-export function monthCompleteness(
+function completenessFromCoverage(
   month: string,
   coverageStart: string,
-  settledRanges: readonly { startDate: string; endDate: string }[],
+  coverage: ReadonlyMap<string, number>,
   today: string,
 ): { completeness: MonthCompleteness; coveredDays: number; expectedDays: number; gaps: string[]; overlaps: string[] } {
   const first = `${month}-01`;
   const last = `${month}-${String(lastDayOfCycle(month)).padStart(2, "0")}`;
   const from = coverageStart > first ? coverageStart : first;
   const to = today < last ? today : last;
-  const coverage = new Map<string, number>();
-  for (const range of settledRanges) {
-    for (let date = range.startDate; date <= range.endDate; date = addDays(date, 1)) coverage.set(date, (coverage.get(date) ?? 0) + 1);
-  }
   const gaps: string[] = [];
   const overlaps: string[] = [];
   let covered = 0;
@@ -74,4 +70,28 @@ export function monthCompleteness(
   const partial = coverageStart > first && cycleKeyOf(coverageStart) === month;
   const completeness: MonthCompleteness = complete ? (partial ? "PERIODE_PARSIAL" : "LENGKAP") : "SEMENTARA";
   return { completeness, coveredDays: covered, expectedDays: expected, gaps, overlaps };
+}
+
+/** Build the settlement-day index once for a multi-month report or export. */
+export function monthCompletenessByMonth(
+  months: readonly string[],
+  coverageStart: string,
+  settledRanges: readonly { startDate: string; endDate: string }[],
+  today: string,
+): Map<string, ReturnType<typeof completenessFromCoverage>> {
+  const coverage = new Map<string, number>();
+  for (const range of settledRanges) {
+    for (let date = range.startDate; date <= range.endDate; date = addDays(date, 1)) coverage.set(date, (coverage.get(date) ?? 0) + 1);
+  }
+  return new Map(months.map((month) => [month, completenessFromCoverage(month, coverageStart, coverage, today)]));
+}
+
+/** Single-month callers share the batched completeness rules. */
+export function monthCompleteness(
+  month: string,
+  coverageStart: string,
+  settledRanges: readonly { startDate: string; endDate: string }[],
+  today: string,
+) {
+  return monthCompletenessByMonth([month], coverageStart, settledRanges, today).get(month)!;
 }
