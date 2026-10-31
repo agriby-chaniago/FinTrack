@@ -79,7 +79,7 @@ Client mutations invalidate cached and prefetched app data so balances refresh a
 
 ### Prerequisites
 
-- Node.js **24 or later**
+- Node.js **24.x** (the tested deployment runtime)
 - pnpm **10** (the exact version is declared in `package.json`)
 - Docker running locally
 - Supabase CLI
