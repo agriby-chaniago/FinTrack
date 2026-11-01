@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { GET as getAccounts } from "@/app/api/v1/accounts/route";
 import { POST as correctOpening } from "@/app/api/v1/onboarding/opening-corrections/route";
+import { businessDateOf, cycleKeyOf } from "@/lib/business-time";
 import { parseIdrDecimal as rp } from "@/lib/money";
 import { accountBalances, postLedgerEntry, type CutoverDayAnswer } from "@/server/application/ledger";
 import type { LedgerEntryDraft, LedgerLeg } from "@/server/domain/ledger";
@@ -110,9 +111,16 @@ describe("posting the locked external-funds fixture", () => {
     expect(byName.Jago).toMatchObject({ physical: "180000", external: "90000", personal: "90000" });
     // DANA accrues Rp50.000 per day since the cutover and its first week is overdue.
     expect(byName.DANA).toMatchObject({ external: "0", status: "NEEDS_REVIEW", openWeekDisclosure: true });
-    expect(byName.BCA.status).toBe("CALCULATED_AFTER_CONFIRMATION");
+    const calculated = await asOwner(clients.runtime, user.id, (tx, principal) => accountBalances(tx, principal.ownerId));
+    expect(calculated.accounts.find((a) => a.displayName === "BCA")!.status).toBe("CALCULATED_AFTER_CONFIRMATION");
+    // The fixture's first monthly cycle is October. Once a later month opens,
+    // its unresolved cycle makes reconciliation due and takes badge precedence.
+    const reconciliationDue = cycleKeyOf(businessDateOf(now())) > "2026-10";
+    expect(byName.BCA.status).toBe(reconciliationDue ? "NEEDS_REVIEW" : "CALCULATED_AFTER_CONFIRMATION");
+    if (reconciliationDue) expect(byName.BCA.prompt).toMatchObject({ reason: "BCA_CYCLE_COMPLETE" });
+    else expect(byName.BCA.prompt).toBeNull();
     expect(byName.BCA.confirmedPersonal).toBe("400000");
-    expect(Number(body.data.personalCashRecorded)).toBe(110000 + Number(byName.DANA.personal));
+    expect(rp(body.data.personalCashRecorded)).toBe(rp("110000") + rp(byName.DANA.personal));
     expect(body.data.accounts.map((a: { displayName: string }) => a.displayName)).toEqual(["Jago", "BCA", "DANA"]);
   });
 
