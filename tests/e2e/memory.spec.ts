@@ -161,6 +161,14 @@ test.describe("finished tasks", () => {
   });
 
   test("the last finished tasks still celebrate before the list goes away", async ({ page, playwright }) => {
+    // Only the three monthly tasks are due. Starting daily income tomorrow keeps
+    // a legitimate weekly settlement from leaving a fourth task on Sundays.
+    await resetWithConfirmedFixture(clients, user.id, `${daysAgo(0)}T00:00:00+07:00`, (draft) => {
+      draft.routines.dailyIncome.startOnCutoverDay = false;
+      draft.routines.monthlyIncome.includeCurrentCycle = true;
+      draft.routines.subscriptions[0].includeCurrentCycle = true;
+      draft.routines.bankFee.includeCurrentCycle = true;
+    });
     await signIn(page);
     await nav(page).getByRole("link", { name: "Rutinitas" }).click();
     await page.getByRole("button", { name: "Tidak diterima", exact: true }).click();
@@ -171,7 +179,7 @@ test.describe("finished tasks", () => {
       await notCharged.first().click();
     }
     await expect(notCharged).toHaveCount(0);
-    // Resolving the cycle asks to check the Jago and BCA balances; confirm them unchanged so no task is left.
+    // Confirm Jago and BCA unchanged so reconciliation cannot leave a separate task.
     const api = await playwright.request.newContext({ baseURL: "http://127.0.0.1:3000" });
     const headers = () => ({ authorization: `Bearer ${user.accessToken}`, "idempotency-key": crypto.randomUUID() });
     const accounts: { id: string; displayName: string; physical: string }[] = (await (await api.get("/api/v1/accounts", { headers: headers() })).json()).data.accounts;
