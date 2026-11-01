@@ -42,11 +42,11 @@ _Rencana teknis turunan dari `PRD.md` v0.18 dan `docs/audit/2026-09-30-readiness
 | S11: laporan bulanan kalender, `CALENDAR_DAY_PRORATA_V1`, completeness, dashboard, riwayat settlement | Selesai; fixture satu bulan penuh (Februari 2021) direproduksi |
 | S12: UI Beranda, Rutinitas, Aktivitas, Akun, Catat, Pengaturan; tema terang/gelap/sistem; mutation menunggu server | Selesai; test end-to-end mencatat, mengoreksi, dan merender setiap halaman |
 | S13: export ZIP (JSON + CSV + manifest, snapshot `REPEATABLE READ`), registry cakupan export | Selesai; test registry gagal bila tabel baru belum diklasifikasikan |
-| S22: CSV analisis corrected + ZIP lengkap satu snapshot, panduan AI, pemeriksaan angka dan pasangan unduhan | Selesai; 226 unit + 149 DB + 57 e2e pengembangan + 4 e2e produksi lulus pada Node 24; lint/typecheck dan build webpack lulus. [Stress lokal sampai 10 tahun/10 unduhan bersamaan lulus](audit/2026-10-31-export-stress.md); uji kapasitas Vercel dan unggahan ChatGPT tanpa prompt belum dilakukan |
+| S22: CSV analisis corrected + ZIP lengkap satu snapshot, panduan AI, pemeriksaan angka dan pasangan unduhan | Aktif di production 1 November 2026. CI Node 24/Turbopack: lint/typecheck, 226 unit + 149 DB + 57 e2e pengembangan + 4 e2e produksi lulus. Regresi hosted staging 149 test unik dan smoke revisi/void, checksum, owner/401/403, serta pasangan unduhan lulus; [audit rilis](audit/2026-11-01-export-release.md). [Stress lokal sampai 10 tahun/10 unduhan bersamaan lulus](audit/2026-10-31-export-stress.md); kapasitas beban ekstrem Vercel dan unggahan ChatGPT tanpa prompt belum diuji |
 | S13: manifest PWA + ikon (termasuk maskable), tanpa service worker | Selesai |
 | S13: backup harian terenkripsi (`age`) ke R2 + restore drill otomatis setiap run dan di CI | Selesai di kode (migration `0011`); aktif setelah pemilik mengisi secret |
 | S14: uang tunai (`Tunai`, account `CASH`) di-settle bersama DANA dalam satu settlement pool; aktivasi dari settlement, hitung dompet tiap settlement, koreksi dan freshness pool | Selesai (migration `0012`); test integrasi pool + e2e UI settlement |
-| Staging hosted | Migration `0000`–`0011` diterapkan; suite database 120/120 lulus terhadap staging; bundle backup lewat session pooler + restore drill lulus |
+| Staging hosted | Migration `0000`–`0013` diterapkan; regresi 1 November 2026: 149 test unik lulus melalui rerun terarah, satu stress test khusus lokal dilewati. Bundle backup lewat session pooler + restore drill lulus pada verifikasi sebelumnya |
 
 ## 2. Hasil spike S0 (lokal, Supabase CLI 2.118.0, PostgreSQL 17.6, Supavisor 2.9.13)
 

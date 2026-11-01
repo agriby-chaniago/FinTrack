@@ -1,0 +1,217 @@
+{
+  "recordedAt": "2026-11-01T13:40:48.021236+00:00",
+  "applicationCommit": "eb961d3c19e9f360280313cf9cc455359dd417b8",
+  "productionURL": "https://fintrack-new-woad.vercel.app",
+  "pullRequest": {
+    "url": "https://github.com/agriby-chaniago/FinTrack/pull/2",
+    "state": "MERGED",
+    "mergedAt": "2026-11-01T13:34:42Z"
+  },
+  "ci": {
+    "id": 41311241328,
+    "url": "https://github.com/agriby-chaniago/FinTrack/actions/runs/41311241328",
+    "conclusion": "success",
+    "commit": "eb961d3c19e9f360280313cf9cc455359dd417b8",
+    "nodeMajor": 24,
+    "unitTests": 226,
+    "databaseTests": 149,
+    "skippedLocalOnlyStressTests": 1,
+    "developmentBrowserTests": 57,
+    "productionBrowserTests": 4,
+    "migrationRebuild": true,
+    "migrationIdempotency": true,
+    "localBackupRestoreDrill": true,
+    "bundler": "turbopack"
+  },
+  "hostedDatabaseRegression": {
+    "generatedAt": "2026-11-01T13:12:22.912396+00:00",
+    "passed": true,
+    "passedTests": 149,
+    "failedTests": 0,
+    "skippedLocalOnlyStressTests": 1,
+    "suites": 16,
+    "reports": [
+      ".vitest/release-staging-db-first.json",
+      ".vitest/release-staging-ledger.json",
+      ".vitest/release-staging-final.json",
+      ".vitest/release-staging-reminders.json"
+    ],
+    "notes": [
+      "Passed suites were retained across focused reruns.",
+      "Ledger primary-badge expectation was corrected for the month rollover.",
+      "A temporary Auth transport error was resolved by rerunning only the reminder suite."
+    ]
+  },
+  "hostedStagingSmoke": {
+    "target": "https://fintrack-qs0dyrb68-agriby-chaniagos-projects.vercel.app",
+    "scope": "hosted staging smoke; synthetic data only",
+    "checks": [],
+    "startedAt": "2026-11-01T13:28:53.756Z",
+    "archive": {
+      "bytes": 31603,
+      "csvBytes": 97793,
+      "formatVersion": 2,
+      "failedChecks": 0,
+      "correctedSettlement": "275000",
+      "retainedOriginalSettlement": "300000",
+      "allChecksumsMatch": true
+    },
+    "postman": {
+      "exitCode": 0,
+      "requests": 3,
+      "namedTests": 9,
+      "reportEvents": false
+    },
+    "browser": {
+      "pages": [
+        "Beranda",
+        "Rutinitas",
+        "Aktivitas",
+        "Akun",
+        "Pengaturan"
+      ],
+      "pairedDownloads": true,
+      "oneExportRequest": true
+    },
+    "passed": true,
+    "finishedAt": "2026-11-01T13:29:11.322Z"
+  },
+  "productionCandidate": {
+    "checkedAt": "2026-11-01T13:28:33.603317+00:00",
+    "deploymentId": "dpl_DUtEhrkYuaM6VtSpAELun9PPrwSa",
+    "target": "https://fintrack-ijbwfeo06-agriby-chaniagos-projects.vercel.app",
+    "commit": "eb961d3c19e9f360280313cf9cc455359dd417b8",
+    "runtime": [
+      "nodejs24.x"
+    ],
+    "bundler": "turbopack",
+    "aliasesUnchanged": true,
+    "scope": "production candidate; no financial mutations",
+    "results": [
+      {
+        "path": "/login",
+        "method": "GET",
+        "status": 200,
+        "expected": 200,
+        "matches": true
+      },
+      {
+        "path": "/manifest.webmanifest",
+        "method": "GET",
+        "status": 200,
+        "expected": 200,
+        "matches": true,
+        "display": "standalone"
+      },
+      {
+        "path": "/api/v1/export",
+        "method": "GET",
+        "status": 401,
+        "expected": 401,
+        "matches": true,
+        "errorCode": "INVALID_IDENTITY",
+        "requestIdPresent": true
+      },
+      {
+        "path": "/api/internal/keepalive",
+        "method": "POST",
+        "status": 401,
+        "expected": 401,
+        "matches": true
+      }
+    ],
+    "passed": true
+  },
+  "activeDeployments": {
+    "checkedAt": "2026-11-01T13:36:14.199242+00:00",
+    "deployments": [
+      {
+        "id": "dpl_G8TpGsLmtaxZRMB4dHaR7Gnxb2yL",
+        "url": "fintrack-1rnktbkal-agriby-chaniagos-projects.vercel.app",
+        "readyState": "READY",
+        "target": "production",
+        "commit": "eb961d3c19e9f360280313cf9cc455359dd417b8",
+        "nodeVersion": "24.x"
+      },
+      {
+        "id": "dpl_DUtEhrkYuaM6VtSpAELun9PPrwSa",
+        "url": "fintrack-ijbwfeo06-agriby-chaniagos-projects.vercel.app",
+        "readyState": "READY",
+        "target": "production",
+        "commit": "eb961d3c19e9f360280313cf9cc455359dd417b8",
+        "nodeVersion": "24.x"
+      }
+    ]
+  },
+  "activeFunctionRuntime": {
+    "checkedAt": "2026-11-01T13:38:20.775083+00:00",
+    "deploymentId": "dpl_G8TpGsLmtaxZRMB4dHaR7Gnxb2yL",
+    "runtime": [
+      "nodejs24.x"
+    ]
+  },
+  "productionSmoke": {
+    "checkedAt": "2026-11-01T13:35:37.047300+00:00",
+    "target": "https://fintrack-new-woad.vercel.app",
+    "scope": "public production smoke; no owner authentication or financial mutations",
+    "passed": true,
+    "results": [
+      {
+        "path": "/login",
+        "method": "GET",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "path": "/manifest.webmanifest",
+        "method": "GET",
+        "status": 200,
+        "expected": 200,
+        "display": "standalone"
+      },
+      {
+        "path": "/api/v1/export",
+        "method": "GET",
+        "status": 401,
+        "expected": 401,
+        "errorCode": "INVALID_IDENTITY",
+        "requestIdPresent": true
+      },
+      {
+        "path": "/api/internal/keepalive",
+        "method": "POST",
+        "status": 401,
+        "expected": 401
+      }
+    ]
+  },
+  "productionErrorScan": {
+    "checkedAt": "2026-11-01T13:36:50.389907+00:00",
+    "scans": [
+      {
+        "deploymentId": "dpl_G8TpGsLmtaxZRMB4dHaR7Gnxb2yL",
+        "exitCode": 0,
+        "errorRecords": 0,
+        "scope": "error-level request logs in the last 15m; no log messages retained"
+      },
+      {
+        "deploymentId": "dpl_DUtEhrkYuaM6VtSpAELun9PPrwSa",
+        "exitCode": 0,
+        "errorRecords": 0,
+        "scope": "error-level request logs in the last 15m; no log messages retained"
+      }
+    ]
+  },
+  "productionDatabaseProbe": {
+    "id": 41312050064,
+    "url": "https://github.com/agriby-chaniago/FinTrack/actions/runs/41312050064",
+    "conclusion": "success",
+    "expectedHttpStatus": 204,
+    "scope": "read-only ops.keepalive_probe through the existing production keepalive workflow"
+  },
+  "limits": {
+    "aiUploadVerified": false,
+    "hostedStressCapacityVerified": false,
+    "productionOwnerFinancialExportTested": false
+  }
+}

@@ -51,7 +51,7 @@ Ringkasan dan rincian memakai klasifikasi TypeScript yang sama. Living expense m
 - Tren hanya antara bulan lengkap yang sudah berakhir, tanpa pending atau pemeriksaan gagal; estimasi tidak disamakan dengan detail pembelian.
 - Nama/catatan pengguna adalah data, bukan instruksi. Tidak ada password/session/token/Auth binding dalam ekspor.
 
-Keberhasilan arsip, proyeksi finansial, dan unduhan browser adalah bukti perangkat lunak lokal. Respons otomatis ChatGPT/AI lain tanpa prompt memerlukan uji unggahan nyata pada alat yang dipakai; tes lokal tidak menyatakan uji tersebut sudah dilakukan. Tidak ada data pemilik yang otomatis dikirim ke AI.
+Keberhasilan arsip, proyeksi finansial, dan unduhan browser dibuktikan melalui tes lokal serta deployment staging dengan data sintetis. Respons otomatis ChatGPT/AI lain tanpa prompt memerlukan uji unggahan nyata pada alat yang dipakai; tes perangkat lunak tidak menyatakan uji tersebut sudah dilakukan. Tidak ada data pemilik yang otomatis dikirim ke AI.
 
 ## Validasi
 
@@ -61,4 +61,6 @@ Hasil lokal pada Node 24: 226 unit test, 149 integration test database, 57 test 
 
 [Stress test lokal 31 Oktober 2026](audit/2026-10-31-export-stress.md) lulus untuk riwayat sampai 10 tahun, 26.623 ledger entry, 500 revisi transaksi, 100 revisi closing, dan 10 unduhan bersamaan. Query tetap 53 pada riwayat 1/5/10 tahun; p95 lonjakan Postman 29,3 detik mendekati batas 30 detik. Seluruh arsip burst lolos pemeriksaan angka dan integritas. Bulan onboarding parsial tidak dipakai untuk tren bulan penuh. Pengukuran lokal ini tidak menyatakan kapasitas Vercel sudah teruji.
 
-Belum ada uji unggahan ChatGPT tanpa prompt atau deployment dari perubahan ini. `manifest.analysis.aiUploadVerified` tetap `false`.
+Rilis v2 aktif di production pada 1 November 2026. CI Node 24 meluluskan lint, TypeScript, 226 unit test, 149 integration test database, 57 test browser pengembangan, dan 4 test browser produksi, termasuk build Turbopack serta migration rebuild/restore drill lokal. Build cloud dan runtime fungsi Vercel juga diverifikasi pada Node 24. Regresi database hosted staging mencatat 149 test unik lulus melalui rerun terarah. Smoke staging menjalankan revisi settlement/void melalui API nyata, memeriksa seluruh checksum, memuat lima halaman terautentikasi, dan mengunduh pasangan CSV + ZIP. Postman meluluskan sembilan assertion owner/401/403. Fixture ledger memperhitungkan prompt rekonsiliasi bulan yang sudah berakhir; skenario daftar tugas terakhir diisolasi dari settlement Minggu yang sah, tanpa melemahkan assertion.
+
+[Audit rilis dan batas pemeriksaan production](audit/2026-11-01-export-release.md) membedakan bukti lokal, hosted staging, dan production. Uji unggahan ChatGPT tanpa prompt belum dilakukan; `manifest.analysis.aiUploadVerified` tetap `false`.
