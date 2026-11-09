@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { ResolveFlash } from "@/components/resolve-flash";
 import { TabPage } from "@/components/tab-page";
 import { Alert, Card, EmptyState, LinkButton, Money, PageHeader, Row, SectionTitle, Tag, type Tone } from "@/components/ui";
+import { businessDateOf, cycleKeyOf } from "@/lib/business-time";
 import { approx, formatCycle, formatDate } from "@/lib/format";
 import { cycleNoteLabel, cycleStateLabel, occurrenceStatusIcon, occurrenceStatusLabel, occurrenceTagLabel, progressLabel, settlementModeLabel } from "@/lib/labels";
 import { parseIdrDecimal } from "@/lib/money";
 import { dailyIncomeView } from "@/server/application/daily-income";
-import { listMonthlyCycles } from "@/server/application/monthly";
+import { listMonthlyCycles, type CycleView } from "@/server/application/monthly";
 import { settlementHistory } from "@/server/application/reports";
 import { settlementRouter } from "@/server/application/settlement";
 import { listTargets, transferSuggestions, type TargetView } from "@/server/application/transfers";
@@ -28,7 +29,8 @@ function targetContext(target: TargetView): string {
   return target.contextType === "BCA_CYCLE" ? `Siklus ${formatCycle(target.contextKey)}` : `Settlement s.d. ${formatDate(target.contextOrder)}`;
 }
 
-export default async function RutinitasPage() {
+export default async function RutinitasPage({ searchParams }: { searchParams: Promise<{ bulan?: string }> }) {
+  const { bulan } = await searchParams;
   const now = new Date();
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
     // Cycles may create a new month's occurrences; the rest only reads.
@@ -41,6 +43,9 @@ export default async function RutinitasPage() {
   });
   if (result.status !== "OWNER") redirect("/login");
   const { router, history, cycles, targets, suggestions, daily } = result.value;
+  const currentCycle = cycleKeyOf(businessDateOf(now));
+  const currentCycles = cycles.filter((cycle) => cycle.cycleKey === currentCycle);
+  const previousCycles = cycles.filter((cycle) => cycle.cycleKey < currentCycle);
   const openTargets = targets.filter((t) => t.version?.isActionable && parseIdrDecimal(t.remaining) > 0n);
   const doneTargets = targets.filter((t) => !openTargets.includes(t) && t.version).reverse().slice(0, 8);
   const recent = [...history].reverse().slice(0, 8);
@@ -210,120 +215,131 @@ export default async function RutinitasPage() {
         <SectionTitle>
           <span id="bca-title">Siklus bulanan</span>
         </SectionTitle>
-        {cycles.length === 0 ? <EmptyState title="Belum ada siklus bulanan" /> : null}
-        {cycles.map((cycle) => (
-          <Card key={`${cycle.accountId}-${cycle.cycleKey}`}>
-            <div id={`siklus-${cycle.cycleKey}`} className="scroll-mt-20">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-semibold">{formatCycle(cycle.cycleKey)}</h3>
-                  <p className="text-sm text-muted">{cycle.accountName}</p>
-                </div>
-                <Tag tone={stateTone[cycle.state] ?? "info"}>{cycleStateLabel[cycle.state]}</Tag>
-              </div>
-              {cycle.note ? <p className="mt-1 text-sm text-muted">{cycleNoteLabel[cycle.note]}</p> : null}
-
-              <ul className="cascade mt-3 space-y-4">
-                {cycle.income ? (
-                  <ResolveFlash status={cycle.income.status} className="bg-surface-subtle p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">Income bulanan</p>
-                      <span className="flex items-center gap-2">
-                        {cycle.income.label ? <Tag tone="review">{occurrenceTagLabel[cycle.income.label]}</Tag> : null}
-                        <Tag tone={cycle.income.status === "CONFIRMED" ? "success" : "neutral"} icon={occurrenceStatusIcon[cycle.income.status]}>
-                          {occurrenceStatusLabel[cycle.income.status]}
-                        </Tag>
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-muted">
-                      {cycle.income.actual ? (
-                        <>
-                          <Money value={cycle.income.actual.amount} /> · {formatDate(cycle.income.actual.date)}
-                        </>
-                      ) : (
-                        <>
-                          Perkiraan <Money value={cycle.income.expectedAmount} />
-                        </>
-                      )}
-                    </p>
-                    <div className="mt-3">
-                      <OccurrenceActions
-                        type="monthly-income"
-                        name="Income bulanan"
-                        occurrenceId={cycle.income.occurrenceId}
-                        cycleKey={cycle.cycleKey}
-                        status={cycle.income.status}
-                        expectedDate={null}
-                        expectedDay={null}
-                        suggestedAmount={cycle.income.expectedAmount}
-                        confirmedEntryId={cycle.income.actual?.entryId ?? null}
-                      />
-                    </div>
-                  </ResolveFlash>
-                ) : null}
-                {cycle.obligations.map((o) => (
-                  <ResolveFlash key={o.occurrenceId} status={o.status} className="bg-surface-subtle p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">{o.name}</p>
-                      <span className="flex items-center gap-2">
-                        {o.label ? <Tag tone="review">{occurrenceTagLabel[o.label]}</Tag> : null}
-                        <Tag tone={o.status === "CONFIRMED" ? "success" : "neutral"} icon={occurrenceStatusIcon[o.status]}>
-                          {occurrenceStatusLabel[o.status]}
-                        </Tag>
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-muted">
-                      {o.actual ? (
-                        <>
-                          <Money value={o.actual.amount} /> · {formatDate(o.actual.date)}
-                        </>
-                      ) : (
-                        <>
-                          {o.expectedDate ? `Perkiraan ${formatDate(o.expectedDate)}` : "Tanggal belum pasti"}
-                          {o.suggestedAmount ? (
-                            <>
-                              {" "}
-                              · saran <Money value={o.suggestedAmount} />
-                            </>
-                          ) : null}
-                        </>
-                      )}
-                    </p>
-                    <div className="mt-3">
-                      <OccurrenceActions
-                        type="recurring-expense"
-                        name={o.name}
-                        occurrenceId={o.occurrenceId}
-                        ruleId={o.ruleId}
-                        cycleKey={cycle.cycleKey}
-                        status={o.status}
-                        expectedDate={o.expectedDate}
-                        expectedDay={o.expectedDate ? Number(o.expectedDate.slice(8, 10)) : null}
-                        suggestedAmount={o.suggestedAmount}
-                        confirmedEntryId={o.actual?.entryId ?? null}
-                      />
-                    </div>
-                  </ResolveFlash>
-                ))}
-              </ul>
-
-              {cycle.target ? (
-                <dl className="mt-3 border-t border-border pt-3">
-                  <Row label="Target transfer ke reserve">
-                    <Money value={cycle.target.amount} />
-                  </Row>
-                  <Row label="Sudah ditransfer">
-                    <Money value={cycle.target.linked} />
-                  </Row>
-                  <Row label="Status">{progressLabel[cycle.target.progress]}</Row>
-                </dl>
-              ) : cycle.state === "WAITING_FOR_PRIOR_CYCLE" ? (
-                <Alert tone="review">Selesaikan siklus sebelumnya terlebih dahulu.</Alert>
-              ) : null}
-            </div>
-          </Card>
-        ))}
+        {currentCycles.length === 0 ? <EmptyState title="Belum ada siklus untuk bulan ini" /> : null}
+        {currentCycles.map((cycle) => <MonthlyCycleCard key={`${cycle.accountId}-${cycle.cycleKey}`} cycle={cycle} />)}
+        {previousCycles.length > 0 ? (
+          <details open={Boolean(bulan && bulan < currentCycle)} className="space-y-3 border-t border-border pt-3">
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-primary">Riwayat siklus bulanan ({previousCycles.length})</summary>
+            <p className="text-sm text-muted">Siklus sebelumnya tetap tersimpan. Buka untuk melihat riwayat atau menyelesaikan kewajiban yang tertunda.</p>
+            {previousCycles.map((cycle) => <MonthlyCycleCard key={`${cycle.accountId}-${cycle.cycleKey}`} cycle={cycle} />)}
+          </details>
+        ) : null}
       </section>
     </TabPage>
+  );
+}
+
+function MonthlyCycleCard({ cycle }: { cycle: CycleView }) {
+  return (
+  <Card>
+    <div id={`siklus-${cycle.cycleKey}`} className="scroll-mt-20">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-semibold">{formatCycle(cycle.cycleKey)}</h3>
+          <p className="text-sm text-muted">{cycle.accountName}</p>
+        </div>
+        <Tag tone={stateTone[cycle.state] ?? "info"}>{cycleStateLabel[cycle.state]}</Tag>
+      </div>
+      {cycle.note ? <p className="mt-1 text-sm text-muted">{cycleNoteLabel[cycle.note]}</p> : null}
+
+      <ul className="cascade mt-3 space-y-4">
+        {cycle.income ? (
+          <ResolveFlash status={cycle.income.status} className="bg-surface-subtle p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">Income bulanan</p>
+              <span className="flex items-center gap-2">
+                {cycle.income.label ? <Tag tone="review">{occurrenceTagLabel[cycle.income.label]}</Tag> : null}
+                <Tag tone={cycle.income.status === "CONFIRMED" ? "success" : "neutral"} icon={occurrenceStatusIcon[cycle.income.status]}>
+                  {occurrenceStatusLabel[cycle.income.status]}
+                </Tag>
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              {cycle.income.actual ? (
+                <>
+                  <Money value={cycle.income.actual.amount} /> · {formatDate(cycle.income.actual.date)}
+                </>
+              ) : (
+                <>
+                  Perkiraan <Money value={cycle.income.expectedAmount} />
+                </>
+              )}
+            </p>
+            <div className="mt-3">
+              <OccurrenceActions
+                type="monthly-income"
+                name="Income bulanan"
+                occurrenceId={cycle.income.occurrenceId}
+                cycleKey={cycle.cycleKey}
+                status={cycle.income.status}
+                expectedDate={null}
+                expectedDay={null}
+                suggestedAmount={cycle.income.expectedAmount}
+                confirmedEntryId={cycle.income.actual?.entryId ?? null}
+              />
+            </div>
+          </ResolveFlash>
+        ) : null}
+        {cycle.obligations.map((o) => (
+          <ResolveFlash key={o.occurrenceId} status={o.status} className="bg-surface-subtle p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">{o.name}</p>
+              <span className="flex items-center gap-2">
+                {o.label ? <Tag tone="review">{occurrenceTagLabel[o.label]}</Tag> : null}
+                <Tag tone={o.status === "CONFIRMED" ? "success" : "neutral"} icon={occurrenceStatusIcon[o.status]}>
+                  {occurrenceStatusLabel[o.status]}
+                </Tag>
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              {o.actual ? (
+                <>
+                  <Money value={o.actual.amount} /> · {formatDate(o.actual.date)}
+                </>
+              ) : (
+                <>
+                  {o.expectedDate ? `Perkiraan ${formatDate(o.expectedDate)}` : "Tanggal belum pasti"}
+                  {o.suggestedAmount ? (
+                    <>
+                      {" "}
+                      · saran <Money value={o.suggestedAmount} />
+                    </>
+                  ) : null}
+                </>
+              )}
+            </p>
+            <div className="mt-3">
+              <OccurrenceActions
+                type="recurring-expense"
+                name={o.name}
+                occurrenceId={o.occurrenceId}
+                ruleId={o.ruleId}
+                cycleKey={cycle.cycleKey}
+                status={o.status}
+                expectedDate={o.expectedDate}
+                expectedDay={o.expectedDate ? Number(o.expectedDate.slice(8, 10)) : null}
+                suggestedAmount={o.suggestedAmount}
+                confirmedEntryId={o.actual?.entryId ?? null}
+              />
+            </div>
+          </ResolveFlash>
+        ))}
+      </ul>
+
+      {cycle.target ? (
+        <dl className="mt-3 border-t border-border pt-3">
+          <Row label="Target transfer ke reserve">
+            <Money value={cycle.target.amount} />
+          </Row>
+          <Row label="Sudah ditransfer">
+            <Money value={cycle.target.linked} />
+          </Row>
+          <Row label="Status">{progressLabel[cycle.target.progress]}</Row>
+        </dl>
+      ) : cycle.state === "WAITING_FOR_PRIOR_CYCLE" ? (
+        <Alert tone="review">Selesaikan siklus sebelumnya terlebih dahulu.</Alert>
+      ) : null}
+    </div>
+  </Card>
   );
 }

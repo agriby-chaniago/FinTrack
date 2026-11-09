@@ -151,7 +151,8 @@ describe("locked full-month validation fixture", () => {
     const page = await asOwner(clients.runtime, user.id, (tx, principal) => reportPage(tx, principal.ownerId, "2021-02", new Date()));
     expect(page.month).toBe("2021-02");
     expect(page.previousMonth).toBe("2021-01");
-    expect(page.monthly.points.map((p) => p.month)).toEqual(["2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02"]);
+    expect(page.monthly.points.map((p) => p.month)).toEqual(["2021-02"]);
+    expect(page.monthly.points[0].income).toBe(page.report.income.total);
     expect(page.deltas.income).toBe(signedDelta(page.report.income.total, page.previous.income.total));
     expect(page.weekly.points.length).toBe(4);
     expect(page.weekly.eligibility).toEqual({ count: 4, needed: 4, eligible: true });
@@ -164,6 +165,15 @@ describe("locked full-month validation fixture", () => {
     expect(page.firstMonth).toBe("2021-02");
     expect(page.deltas.outflow).toBe(page.report.outflow.actualTotal);
     expect(page.deltas.reserve).toBe(page.report.reserve.netGrowth);
+  });
+
+  it("never exposes later settlements or pre-tracking zeroes in a historical chart", async () => {
+    const before = await asOwner(clients.runtime, user.id, (tx, p) => reportPage(tx, p.ownerId, "2021-01", new Date()));
+    expect(before.weekly.points).toEqual([]);
+    expect(before.weekly.eligibility.count).toBe(0);
+    expect(before.monthly.points).toEqual([]);
+    const february = await asOwner(clients.runtime, user.id, (tx, p) => reportPage(tx, p.ownerId, "2021-02", new Date()));
+    expect(february.weekly.points.every((p) => p.endDate <= "2021-02-28")).toBe(true);
   });
 
   it("builds the dashboard in reading order with tasks and summaries", async () => {

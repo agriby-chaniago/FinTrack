@@ -169,6 +169,17 @@ Rencana S15–S18: `docs/superpowers/plans/2026-10-01-visual-refresh-roadmap.md`
 
 Slice boleh dimulai hanya ketika seluruh item pada kolom "Diblokir oleh" sudah berupa keputusan LOCKED di PRD.
 
+## S23. Pemisahan Jago, Laporan, dan Rutinitas — 9 November 2026
+
+Disetujui pemilik dan dicatat LOCKED di PRD; implementasi lokal untuk preview sebelum rilis.
+
+- Rilis tanpa perubahan schema: rancangan migration `0014_primary_account_split` dibatalkan sebelum diterapkan ke production. Utama memakai UUID deterministik dari namespace `fintrack:reserve-primary:v1`, owner ID, dan reserve ID pada tabel account yang sudah ada. Jangan mengganti namespace/algoritme setelah setup dikonfirmasi. Pembacaan status memakai satu query set akun milik owner, tidak bergantung nama provider/purpose atau default expense.
+- `POST /api/v1/accounts/split`: mutation owner dengan Idempotency-Key. Owner ledger lock melindungi versi saldo dan setup. Opening Utama nol + transfer internal dari reserve lama menjaga total/ownership. Saldo nol tidak membuat fake entry. Tidak dijalankan oleh deploy/page load.
+- `/akun/pisah-jago`: tampilkan saldo/ownership, isi porsi Utama, pratinjau, konfirmasi. Riwayat lama tetap gabungan; default expense pindah ke Utama, target saving tetap pada ID reserve lama.
+- Rutinitas: current cycle di bagian utama; history dalam disclosure; deep link task lama membukanya. Loader dan aturan unresolved/transfer target tetap digunakan.
+- Laporan: hingga 12 bulan dengan query count tetap; lazy Chart.js, maksimal dua series, data pendamping, desktop/mobile dan reduced motion. Batasi chart historis sampai bulan terpilih.
+- Verifikasi lokal pada schema sampai `0013`: exact-sen conservation, immutable originals, stale/duplicate setup, retry, ownership, identitas tetap saat nama/default expense berubah, reserve growth, transfer dua arah, export consistency, page budgets, layout, history disclosure, dan kontrol chart. Rollback aplikasi tidak menghapus akun atau ledger yang dibuat melalui konfirmasi owner.
+
 ## 7. Kontrak API
 
 - Base path `/api/v1`; internal keepalive berada di `/api/internal/keepalive` di luar versioning

@@ -7,6 +7,7 @@ import { Alert, Card, LinkButton, Money, PageHeader, Row, SectionTitle, StatusBa
 import { formatDateTime, jakartaInputValue } from "@/lib/format";
 import { isUuid } from "@/server/api/responses";
 import { accountsOverview } from "@/server/application/accounts-overview";
+import { accountSplitStatus } from "@/server/application/account-split";
 import { reconciliationView } from "@/server/application/reconciliation";
 import { recordingContext } from "@/server/application/recording-context";
 import { runAsPageOwner } from "@/server/auth/page-owner";
@@ -21,10 +22,10 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
     const overview = await accountsOverview(tx, ownerId, now);
     const reconciliation = await reconciliationView(tx, ownerId, id);
     const context = await recordingContext(tx, ownerId);
-    return { overview, reconciliation, context };
+    return { overview, reconciliation, context, split: await accountSplitStatus(tx, ownerId) };
   });
   if (result.status !== "OWNER") redirect("/login");
-  const { overview, reconciliation, context } = result.value;
+  const { overview, reconciliation, context, split } = result.value;
   const account = overview.accounts.find((a) => a.id === id);
   if (!account) notFound();
   const weekly = context.accounts.find((a) => a.id === id)?.weekly ?? false;
@@ -39,6 +40,8 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
         description={`${account.providerName} · ${account.purposeLabel}`}
         action={<LinkButton href="/akun">Kembali</LinkButton>}
       />
+
+      {split.primaryId && id === split.reserveId ? <Alert tone="info">Riwayat sebelum pemisahan masih mencerminkan gabungan Utama + Tabungan. Saldo Tabungan saat ini sudah dikurangi porsi yang dialihkan ke Utama.</Alert> : null}
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-2">

@@ -128,6 +128,17 @@ Nama akun di UI:
 - `DANA — Daily`
 - `Tunai — Daily` (opsional, diaktifkan saat settlement; lihat "Uang tunai dalam settlement mingguan")
 
+### Pembaruan yang disetujui pemilik — 9 November 2026
+
+- **LOCKED:** Saldo Jago sebelum perubahan ini adalah gabungan Utama + Tabungan. Pemisahan melalui aksi eksplisit: owner mengisi porsi saldo fisik Utama serta dana titipannya, Tabungan adalah sisa total. Total fisik, uang pribadi, dan ownership per subject harus tetap sama.
+- **LOCKED:** Account ID reserve lama dipertahankan sebagai `Jago — Tabungan` agar referensi settlement/target tetap utuh. `Jago — Utama` diaktifkan saat pemisahan dengan opening nol dan transfer internal sebesar porsi Utama. Ledger/snapshot lama tidak ditulis ulang, dan riwayat sebelum pemisahan tetap gabungan. Reserve net growth turun sebesar porsi pribadi yang dialihkan ke Utama, bukan income/expense.
+- **LOCKED:** BCA/DANA → reserve tetap menuju Tabungan. Sumber awal pengeluaran khusus menjadi Utama, dengan account picker tetap tersedia. Transfer Utama ↔ Tabungan memakai alur transfer biasa dan mempertahankan ownership.
+- **LOCKED:** Setup atomik, menolak preview saldo kedaluwarsa, tidak membuat rekening Utama dua kali, dan aman untuk retry. Deploy/migration tidak memisahkan saldo otomatis.
+- **LOCKED:** Rilis ini memakai schema yang sudah ada tanpa migrasi production. ID Utama diturunkan secara deterministik dari namespace `fintrack:reserve-primary:v1`, owner ID, dan reserve ID; identitas tidak bergantung pada nama rekening/provider atau pilihan default expense. Deploy tidak menulis data keuangan; pembagian tetap memerlukan konfirmasi owner.
+- **LOCKED:** Body/content memakai lebar ruang yang tersedia setelah sidebar dan padding; modal/input tetap mengikuti kebutuhan keterbacaan.
+- **LOCKED:** Bagian utama Siklus bulanan di Rutinitas hanya bulan ini. Siklus sebelumnya berada dalam disclosure riwayat tertutup secara default, tetap dapat diselesaikan, dan terbuka bila task menautkan bulan lama. Menyembunyikan riwayat tidak menyelesaikan occurrence atau membukukan expense.
+- **LOCKED:** Chart Laporan menyediakan 3/6/12 bulan, pemasukan/pengeluaran atau reserve/pengeluaran, total/per-hari pada 4/8/12 settlement, serta batang kategori pengeluaran khusus. Nominal persis, label kelengkapan, data pendamping, eligibility threshold, reduced motion, dan aturan desktop/mobile tetap berlaku. Chart historis tidak memuat data setelah bulan yang dipilih.
+
 ### Pemisahan konsep
 
 FinTrack membedakan tiga dimensi:
@@ -1536,7 +1547,7 @@ Membuka ulang: `Tidak ada top-level page terpisah untuk report` pada `Informatio
 - Status completeness bulan ditampilkan seperti pada laporan bulanan yang sudah ada
 - Bagian tren memuat chart P4: line average daily living cost per settlement dan bar reserve growth/outflow per bulan
 - Halaman hanya membaca dan masuk query budget dengan jumlah query yang tidak tumbuh terhadap panjang history
-- Pelaksanaan S17: bulan dipilih lewat `?bulan=YYYY-MM` (default dan maksimum bulan berjalan; nilai tidak valid kembali ke bulan berjalan); delta dibanding bulan sebelumnya dianggap nol sebelum income harian dimulai; batang bulanan memakai enam bulan sampai bulan terpilih; grafik memakai font Geist dan warna token theme
+- Pelaksanaan S17, diperbarui 9 November 2026: bulan dipilih lewat `?bulan=YYYY-MM` (default dan maksimum bulan berjalan; nilai tidak valid kembali ke bulan berjalan); delta dibanding bulan sebelumnya dianggap nol sebelum income harian dimulai; grafik bulanan menyediakan 3/6/12 bulan sampai bulan terpilih, default enam; grafik memakai font Geist dan warna token theme
 
 #### P6 — Pengingat Telegram
 

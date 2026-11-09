@@ -225,7 +225,7 @@ export function AppShell({ children, theme }: { children: ReactNode; theme: Them
               <Icon name="settings" className="size-5" />
             </Link>
           </header>
-          <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-32 pt-6 md:px-8 md:pb-12">{children}</main>
+          <main className="w-full min-w-0 flex-1 px-4 pb-32 pt-6 md:px-8 md:pb-12">{children}</main>
         </div>
 
         <button
