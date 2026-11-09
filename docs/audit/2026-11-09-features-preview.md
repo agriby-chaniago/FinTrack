@@ -1,6 +1,6 @@
 **Preview fitur FinTrack — 9 November 2026**
 
-Branch `feat/jago-reports-routines`, berdasarkan rilis `eb1738d`. Perubahan belum di-commit, belum di-deploy, dan tidak mengakses database production. Preview memakai Supabase lokal tersendiri dengan data sintetis.
+Branch `feat/jago-reports-routines`, berdasarkan rilis `eb1738d`. Preview memakai Supabase lokal tersendiri dengan data sintetis. Pemilik menyetujui preview dan meminta commit/deploy, kemudian memilih rilis tanpa backup dan migrasi production. Kandidat awal yang memerlukan migration `0014` tidak diaktifkan; rancangan direvisi untuk memakai schema yang sudah ada.
 
 **Perubahan yang tersedia**
 
@@ -11,7 +11,9 @@ Branch `feat/jago-reports-routines`, berdasarkan rilis `eb1738d`. Perubahan belu
 - **Full width:** konten memakai ruang setelah sidebar dan padding, termasuk pada layar lebar.
 - **Rutinitas:** bagian utama hanya bulan ini. Disclosure riwayat menyimpan akses ke siklus sebelumnya; task bulan lama membukanya otomatis. Unresolved occurrence dan target transfer tetap mengikuti aturan yang sama, tanpa penagihan atau penyelesaian palsu.
 
-**Verifikasi lokal**
+**Verifikasi preview awal**
+
+Hasil berikut dicatat sebelum revisi tanpa migrasi. Migration `0014` hanya pernah diterapkan pada sandbox sintetis preview awal.
 
 | Pemeriksaan | Hasil |
 | --- | --- |
@@ -31,8 +33,16 @@ Pada pemeriksaan preview production build, tiga grafik desktop tampil dan mengik
 
 310 file runtime/test/migration dibandingkan dengan salinan yang diuji dan identik. Bukti JSON, log, dan screenshot tersedia lokal di `/home/agribychaniago/.cache/fintrack-features-20261109-44oupnkl/evidence`.
 
+**Verifikasi revisi tanpa migrasi**
+
+Sandbox baru `fintrack_no_migration_20261109` memakai schema bersih sampai `0013` (14 migration entries), tanpa `owner_setting.primary_account_id`. Journal migration dan definisi schema identik dengan baseline production `eb1738d`.
+
+Lint, typecheck, build, 228 tes unit, dan 165 tes database lulus pada schema lama. Delapan tes pemisahan rekening termasuk identitas yang tetap dikenali setelah label rekening dan default expense diubah. Query budget tetap Akun 23/24, setup 12/12, Laporan 21/22, dan export 52/64. Suite E2E penuh dan production-build dijalankan lagi sebelum rilis; bukti rilis disimpan di `/home/agribychaniago/.cache/fintrack-features-release-20261109-ws1kkmgr`.
+
 **Sebelum rilis**
 
-Migration `0014_primary_account_split` menambah nullable FK `owner_setting.primary_account_id` dan tidak mengubah saldo. Schema perlu diterapkan sebelum kode baru diaktifkan. Versi aplikasi lama tetap kompatibel; jangan menghapus kolom/rekening baru saat rollback aplikasi. Pemisahan dana hanya terjadi lewat konfirmasi owner, bukan deploy atau page load.
+Tidak ada migration/schema change dalam diff rilis. ID Utama menggunakan UUID deterministik dari namespace tetap, owner ID, dan reserve ID pada tabel account yang sudah tersedia. Nama/purpose rekening dan default expense tidak menjadi penentu identitas. Pemisahan nol tetap dapat dikenali tanpa financial entry palsu. Owner ledger lock dan primary key account mencegah setup ganda. Namespace/algoritme adalah kontrak identitas yang harus dipertahankan.
+
+Deploy tidak mengubah saldo, membuat akun, atau menulis ledger. Pemisahan dana hanya terjadi lewat konfirmasi owner, bukan deploy atau page load. Versi aplikasi lama tetap kompatibel dengan akun yang sudah dibuat; jangan menghapus akun/ledger saat rollback aplikasi. Tidak ada klaim backup production tersedia atau fingerprint data production telah dibandingkan; akses admin production tidak digunakan.
 
 Warning hydration/style dan “destination stream closed early” yang pernah muncul pada QA sebelumnya masih merupakan observasi terbuka; seluruh assertion pada tes ini lulus. Bukti di atas berlaku untuk lingkungan lokal sintetis, dan preview dibiarkan berjalan untuk pemeriksaan owner.

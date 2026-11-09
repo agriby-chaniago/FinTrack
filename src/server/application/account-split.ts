@@ -15,14 +15,30 @@ import { listExternalSubjects, type ExternalSubjectView } from "./external-funds
 import { accountBalances, lockLedger, postLedgerEntry, type AccountBalanceView } from "./ledger";
 import { transferDraft } from "./transfers";
 
+/**
+ * Stable, namespaced UUID for this owner's split of this reserve. Keeping the
+ * relationship in the existing account identity needs no schema extension and
+ * does not depend on editable names, provider labels, or the expense default.
+ * The namespace and version must remain stable once an owner confirms a split.
+ */
+function primaryAccountIdFor(ownerId: string, reserveId: string): string {
+  const bytes = createHash("sha256").update(`fintrack:reserve-primary:v1:${ownerId}:${reserveId}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x80;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 /** One query; the account list can offer setup without loading balances twice. */
 export async function accountSplitStatus(tx: OwnerTx, ownerId: string) {
-  const [row] = await tx.select({
-    reserveId: account.id, providerName: account.providerName, primaryId: ownerSetting.primaryAccountId,
-  }).from(ownerSetting).innerJoin(account, and(eq(account.id, ownerSetting.reserveAccountId), eq(account.ownerId, ownerId)))
+  const rows = await tx.select({
+    reserveId: ownerSetting.reserveAccountId, accountId: account.id, providerName: account.providerName,
+  }).from(ownerSetting).innerJoin(account, eq(account.ownerId, ownerId))
     .where(eq(ownerSetting.ownerId, ownerId));
-  if (!row) throw new ApiError("ONBOARDING_NOT_CONFIRMED");
-  return row;
+  const reserve = rows.find((row) => row.accountId === row.reserveId);
+  if (!reserve) throw new ApiError("ONBOARDING_NOT_CONFIRMED");
+  const primaryId = primaryAccountIdFor(ownerId, reserve.accountId);
+  return { reserveId: reserve.accountId, providerName: reserve.providerName, primaryId: rows.some((row) => row.accountId === primaryId) ? primaryId : null };
 }
 
 export async function accountSplitView(tx: OwnerTx, ownerId: string, loaded: { accounts?: AccountBalanceView[]; subjects?: ExternalSubjectView[] } = {}) {
@@ -71,6 +87,7 @@ export async function splitReserveAccount(tx: OwnerTx, ownerId: string, input: S
   }
   const existing = await tx.select({ sortOrder: account.sortOrder }).from(account).where(eq(account.ownerId, ownerId));
   const [created] = await tx.insert(account).values({
+    id: primaryAccountIdFor(ownerId, view.reserveId),
     ownerId, displayName: `${view.providerName} — Utama`, providerName: view.providerName, accountType: "BANK", purposeLabel: "Utama",
     sortOrder: Math.max(0, ...existing.map((a) => a.sortOrder)) + 10, activationCutoverAt: now,
   }).returning({ id: account.id });
@@ -87,7 +104,7 @@ export async function splitReserveAccount(tx: OwnerTx, ownerId: string, input: S
   }
   await tx.update(account).set({ displayName: `${view.providerName} — Tabungan`, purposeLabel: "Tabungan" })
     .where(and(eq(account.ownerId, ownerId), eq(account.id, view.reserveId)));
-  await tx.update(ownerSetting).set({ primaryAccountId: created.id, defaultSpecialSourceAccountId: created.id, updatedAt: now })
+  await tx.update(ownerSetting).set({ defaultSpecialSourceAccountId: created.id, updatedAt: now })
     .where(eq(ownerSetting.ownerId, ownerId));
   return { primaryAccountId: created.id, reserveAccountId: view.reserveId, primaryBalance: toIdrDecimal(primary), savingsBalance: toIdrDecimal(total - primary), total: view.total, entryId };
 }

@@ -106,6 +106,18 @@ it("allows zero in Utama without a fake transaction and serializes competing set
   expect(count.n).toBe(0);
 });
 
+it("keeps split identity after account labels and the expense default change", async () => {
+  const initial = await view();
+  const split = await run((tx, p) => splitReserveAccount(tx, p.ownerId, { primaryBalance: "0", version: initial.version, externalComponents: [] }, now()));
+  await clients.admin`update fintrack.account set display_name = 'Rekening harian', provider_name = 'Provider lain', purpose_label = 'Belanja' where id = ${split.primaryAccountId}`;
+  await clients.admin`update fintrack.owner_setting set default_special_source_account_id = ${owner.accountIds.monthly}`;
+  expect(await run((tx, p) => accountSplitStatus(tx, p.ownerId))).toMatchObject({ primaryId: split.primaryAccountId, reserveId: owner.accountIds.reserve });
+  const refreshed = await view();
+  await expect(run((tx, p) => splitReserveAccount(tx, p.ownerId, { primaryBalance: "0", version: refreshed.version, externalComponents: [] }, now()))).rejects.toMatchObject({ details: { issues: ["ACCOUNT_ALREADY_SPLIT"] } });
+  const [count] = await clients.admin`select count(*)::int as n from fintrack.account`;
+  expect(count.n).toBe(4);
+});
+
 it("replays the same financial mutation key without splitting twice", async () => {
   const initial = await view();
   const key = randomUUID();
