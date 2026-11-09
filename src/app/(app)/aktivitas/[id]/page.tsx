@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation";
 
 import { Alert, Card, LinkButton, Money, PageHeader, Row, SectionTitle, Tag } from "@/components/ui";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { parseIdrDecimal, toIdrDecimal } from "@/lib/money";
 import { isUuid } from "@/server/api/responses";
 import { listActivity } from "@/server/application/activity";
 import { listCategories } from "@/server/application/events";
 import { runAsPageOwner } from "@/server/auth/page-owner";
+import { combineCorrectionLegs } from "@/server/domain/correction-legs";
 
 import { correctableClasses, entryAmount, entryTitle, statusTag } from "../describe";
 import { CorrectionForm } from "./correction-form";
@@ -24,9 +26,27 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
   const entry = entries.find((item) => item.id === id);
   if (!entry) notFound();
   const corrections = entries.filter((item) => item.correctsEntryId === id);
+  const postings = corrections.filter((item) => item.kind === "CORRECTION_POSTING");
+  const family = [entry, ...postings];
+  const effects = combineCorrectionLegs(family.flatMap((item) => item.legs.map((leg) => ({
+    accountId: leg.accountId,
+    holdingId: null,
+    categoryId: item.category?.id ?? null,
+    physicalEffect: parseIdrDecimal(leg.physical),
+    externalEffect: parseIdrDecimal(leg.external),
+  }))));
+  const names = new Map(family.flatMap((item) => item.legs.map((leg) => [leg.accountId, leg.accountName] as const)));
+  const correctedAmount = entryAmount({ ...entry, legs: effects.map((leg) => ({
+    accountId: leg.accountId,
+    accountName: names.get(leg.accountId)!,
+    physical: toIdrDecimal(leg.physicalEffect),
+    external: toIdrDecimal(leg.externalEffect),
+    personal: toIdrDecimal(leg.physicalEffect - leg.externalEffect),
+  })) });
+  const correctedCategoryId = effects.find((leg) => leg.physicalEffect < 0n)?.categoryId ?? entry.category?.id ?? null;
   const amount = entryAmount(entry);
   const correctable =
-    entry.status === "ACTIVE" && entry.kind !== "CORRECTION_POSTING" && entry.correctionRole !== "REVERSAL" && correctableClasses.has(entry.eventClass);
+    (entry.status === "ACTIVE" || postings.length > 0) && entry.kind !== "CORRECTION_POSTING" && entry.correctionRole !== "REVERSAL" && correctableClasses.has(entry.eventClass);
   const occurrence = entry.eventClass === "MONTHLY_INCOME" || entry.eventClass === "RECURRING_EXPENSE";
 
   return (
@@ -104,14 +124,15 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
             Catatan asli tetap tersimpan. FinTrack menambah catatan pembalik dan pengganti, atau koreksi riwayat settlement jika tanggalnya sudah disettle.
           </p>
           <CorrectionForm
+            key={`${entry.id}:${postings.length}`}
             entryId={entry.id}
             eventClass={entry.eventClass}
-            amount={amount.value.replace(/^-/, "")}
+            amount={correctedAmount.value.replace(/^-/, "")}
             businessDate={entry.businessDate}
             note={entry.note}
-            categoryId={entry.category?.id ?? null}
+            categoryId={correctedCategoryId}
             categories={result.value.categories.map((c) => ({ id: c.id, name: c.displayName }))}
-            allowVoid={!occurrence}
+            allowVoid={!occurrence && entry.status !== "VOIDED"}
           />
           {occurrence ? (
             <div className="mt-3">

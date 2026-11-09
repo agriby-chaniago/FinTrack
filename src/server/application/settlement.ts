@@ -31,11 +31,16 @@ import { sqlRows } from "@/server/db/rows";
 type Boundary = { date: string; recordedAt: Date };
 const FAR_FUTURE = new Date("9999-12-31T00:00:00.000Z");
 
-/** Entries counted in a position as of a boundary (PRD v0.18); a settlement's own living contribution always counts on its end date. */
+/** Corrections inherit their original record's closing boundary; new post-closing movements do not. */
 function included(boundary: Boundary) {
   return sql`(e.effective_business_date < ${boundary.date}::date
     or (e.effective_business_date = ${boundary.date}::date
-        and (e.recorded_at <= ${boundary.recordedAt.toISOString()}::timestamptz or e.event_class = 'LIVING')))`;
+        and (e.recorded_at <= ${boundary.recordedAt.toISOString()}::timestamptz
+          or e.event_class = 'LIVING'
+          or (e.kind = 'CORRECTION_POSTING' and exists (
+            select 1 from fintrack.ledger_entry original
+            where original.owner_id = e.owner_id and original.id = e.corrects_entry_id
+              and original.recorded_at <= ${boundary.recordedAt.toISOString()}::timestamptz)))))`;
 }
 
 async function openingPosition(tx: OwnerTx, ownerId: string, accountId: string): Promise<{ physical: MinorUnits; external: MinorUnits }> {

@@ -12,7 +12,8 @@ const env = Object.fromEntries(
     .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]),
 );
 Object.assign(process.env, env);
-const { closeClients, createAuthUser, resetWithConfirmedFixture, testClients } = await import("../helpers/owner");
+const { asOwner, closeClients, createAuthUser, resetWithConfirmedFixture, testClients } = await import("../helpers/owner");
+const { createSubscription } = await import("@/server/application/monthly");
 
 const clients = testClients();
 let user: Awaited<ReturnType<typeof createAuthUser>>;
@@ -79,4 +80,21 @@ test("ending an obligation this month says it will end, not that it is active", 
 test("downloads a matching analytical CSV and full ZIP from one export request", async ({ page }) => {
   await signInToPengaturan(page);
   await expectExportPair(page);
+});
+
+test("ending a subscription that starts next month defaults to its first valid month", async ({ page }) => {
+  const rule = await asOwner(clients.runtime, user.id, (tx, p) => createSubscription(tx, p.ownerId, {
+    name: "Langganan terjadwal", expectedDay: 5, expectedAmount: "50000", includeCurrentCycle: false,
+  }, new Date()));
+  await signInToPengaturan(page);
+  const row = page.getByRole("listitem").filter({ hasText: "Langganan terjadwal" });
+  await row.getByRole("button", { name: "Akhiri", exact: true }).click();
+  await expect(row.getByLabel("Bulan terakhir")).toHaveValue(rule.firstCycle);
+  await expect(row.getByLabel("Bulan terakhir")).toHaveAttribute("min", rule.firstCycle);
+  const response = page.waitForResponse((r) => r.request().method() === "PATCH" && r.url().endsWith(`/recurring-expense-rules/${rule.ruleId}`));
+  await row.getByRole("button", { name: "Akhiri", exact: true }).click();
+  expect((await response).ok()).toBe(true);
+  await expect(row.getByText(`sampai ${nextMonth()}`, { exact: false })).toBeVisible();
+  await row.getByRole("button", { name: "Akhiri", exact: true }).click();
+  await expect(row.getByLabel("Bulan terakhir")).toHaveValue(rule.firstCycle);
 });

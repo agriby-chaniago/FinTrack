@@ -1,0 +1,464 @@
+{
+  "date": "2026-11-09",
+  "baseCommit": "adac4a6c9f0169f16e9380e7a5856b0d4251ca90",
+  "status": "local fixes verified; not committed or deployed",
+  "productionFinancialDataAccessed": false,
+  "featuresDeferred": [
+    "separate Jago accounts",
+    "richer charts",
+    "full-width content",
+    "current-month-only cycles"
+  ],
+  "migrationsAdded": false,
+  "resolvedFindings": [
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6"
+  ],
+  "exportPerformanceComparison": {
+    "unchangedBaselineProjectionMs": 45022.69282000001,
+    "unchangedBaselineSlowestQueryMs": 44024.274943,
+    "afterProjectionMs": 1162.2534210000013,
+    "afterSingleExportMs": 3067.1923499999975,
+    "initialStressPassed": false,
+    "initialStressGates": [
+      "Latency gate failed: 10 years/1 requests",
+      "Not all stress profiles completed; no readiness claim is supported"
+    ]
+  },
+  "sourceComparison": {
+    "filesCompared": 271,
+    "differences": [
+      "tests/stress/export-load.integration.test.ts"
+    ],
+    "expectedDifference": "Only the isolated stress report output path is redirected."
+  },
+  "changedSourceSha256": {
+    "src/app/(app)/aktivitas/[id]/correction-form.tsx": "485af05b846a964be8b877af0d3c8a641bd0f3e4dd76e2061b86e5af3969b38b",
+    "src/app/(app)/aktivitas/[id]/page.tsx": "5b62dc0d316cd751bc7a330779336639c4c122027232da421b372fd869e652fb",
+    "src/app/(app)/pengaturan/page.tsx": "0c55b01c50841da314522a76263b7a3488dad42638fcba3267fe9fee41b066c7",
+    "src/app/(app)/pengaturan/sections.tsx": "38c14a7bcf7577a78b81d42d4ef784c8ba022eeec08ccd4edc6d1f7f5a31be9e",
+    "src/server/application/activity.ts": "bef08cf86e7d1a2b2b906071e342e8e36ed2a02d5f08c5895d3108de8faf4028",
+    "src/server/application/corrections.ts": "591aaa6f1e68f248296a072c48428d7b628f5bf4127c8fea98edaa31921ec46d",
+    "src/server/application/export-analysis.test.ts": "f6a60639130821a3c4a85b0e1f06366ab7ebb4725d38a6544af7775f38aaa390",
+    "src/server/application/export-analysis.ts": "9420b3691be06f886b5385f0a05d085899ac3566e40b31193a124f766883847d",
+    "src/server/application/reports.ts": "a761681a62baf5056cd2aaf695927fc05ae5ba0d328f9798022e2eddb19ff9e2",
+    "src/server/application/settlement-corrections.ts": "fed70d121f999983a3d94bc2095112c4a52dbc1130749502331f1faca9cb5ee3",
+    "src/server/application/settlement.ts": "6165859513acd5a58996830e8e425044054951f5038d19ad74e1164c2a8f02af",
+    "src/server/domain/correction-legs.ts": "e1eaaf3fafc1aeb8b1a360c7cc6e273d5f6b1e031e53fbf216ad223e2b5f45da",
+    "tests/corrections/corrections.integration.test.ts": "a73ab5ea8187b364d85c0297b695400c850c6d59e697fa86fe9a46468a4b8cb6",
+    "tests/e2e-prod/corrections.spec.ts": "e2ac278a10f1e17fce7ac650cf8611cea6d376f97b30badd469854b4e47d1575",
+    "tests/e2e/motion.spec.ts": "1a9179498a000c11797311b0b2167c719ad97bc6fb254a360c656858662c4b82",
+    "tests/e2e/pengaturan.spec.ts": "f2d9d24d4f1e0e160016df9d26aebdc83b038b9f5a1dcd674e4a59bc9f8d5657"
+  },
+  "tests": {
+    "unit": {
+      "passed": 228,
+      "failed": 0
+    },
+    "database": {
+      "passed": 155,
+      "failed": 0,
+      "skippedOptInStress": 1
+    },
+    "browser": {
+      "startTime": "2026-11-09T03:49:58.063Z",
+      "duration": 192882.36299999998,
+      "expected": 58,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "productionBrowser": {
+      "startTime": "2026-11-09T03:45:50.458Z",
+      "duration": 15040.381,
+      "expected": 5,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "stress": {
+      "passed": true,
+      "gates": []
+    }
+  },
+  "actions": {
+    "lint": {
+      "exitCode": 0,
+      "seconds": 5.51
+    },
+    "typecheck": {
+      "exitCode": 0,
+      "seconds": 2.53
+    },
+    "unit": {
+      "exitCode": 0,
+      "seconds": 1.78
+    },
+    "db": {
+      "exitCode": 0,
+      "seconds": 34.1
+    },
+    "build": {
+      "exitCode": 0,
+      "seconds": 6.76
+    },
+    "e2e": {
+      "exitCode": 0,
+      "seconds": 193.53
+    },
+    "e2e-prod": {
+      "exitCode": 0,
+      "seconds": 15.62
+    },
+    "stress": {
+      "exitCode": 0,
+      "seconds": 231.83
+    }
+  },
+  "stress": {
+    "generatedAt": "2026-11-09T03:49:57.142Z",
+    "target": "http://127.0.0.1:3200",
+    "data": "synthetic, local Supabase only",
+    "scope": "full stress profiles",
+    "node": "v24.22.2",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12450HX",
+    "logicalCpus": 12,
+    "nodeHeapLimitMiB": 1024,
+    "serverPeakRssMb": 1043.59375,
+    "generatorPeakRssMb": 808.2265625,
+    "sourceHashes": {
+      "src/server/application/export.ts": "9ffd20c1a33ffbd107c958d583817b39c673fc0f19890fdefe72bbd44849a42b",
+      "src/server/application/export-analysis.ts": "9420b3691be06f886b5385f0a05d085899ac3566e40b31193a124f766883847d",
+      "src/server/application/settlement.ts": "6165859513acd5a58996830e8e425044054951f5038d19ad74e1164c2a8f02af",
+      "src/lib/export-contract.ts": "14ff65d66996c20ae5e2f07f7d2b7eec1255cb41000b2b30156486b9a01150a3",
+      "src/lib/export-download.ts": "a29f3e3d6a53ee8f15e56db38e5e1791f47175d8aa7bc3022e70f4fbcdbbfebf"
+    },
+    "results": [
+      {
+        "kind": "stages",
+        "years": 1,
+        "snapshotMs": 38.01227499999982,
+        "projectionMs": 73.24941000000013,
+        "assemblyMs": 25.981929000000036,
+        "zipMs": 73.41725300000007,
+        "zipBytes": 475858,
+        "uncompressedBytes": 3147436
+      },
+      {
+        "kind": "query_budget",
+        "years": 1,
+        "closingRevisions": 0,
+        "queries": 54,
+        "budget": 64
+      },
+      {
+        "kind": "burst",
+        "years": 1,
+        "events": 1103,
+        "settlements": 53,
+        "revisions": 24,
+        "closingRevisions": 0,
+        "concurrency": 1,
+        "requests": 1,
+        "errors": 0,
+        "p50Ms": 325.0999999999999,
+        "p95Ms": 325.0999999999999,
+        "totalMs": 325.59364600000004,
+        "bytes": 475842,
+        "csvBytes": 1130341,
+        "analysisRows": 2022,
+        "serverPeakRssMb": 248.2265625
+      },
+      {
+        "kind": "burst",
+        "years": 1,
+        "events": 1103,
+        "settlements": 53,
+        "revisions": 24,
+        "closingRevisions": 0,
+        "concurrency": 5,
+        "requests": 5,
+        "errors": 0,
+        "p50Ms": 484.97905400000036,
+        "p95Ms": 688.99307,
+        "totalMs": 690.3247799999999,
+        "bytes": 475861,
+        "csvBytes": 1130341,
+        "analysisRows": 2022,
+        "serverPeakRssMb": 356.91015625
+      },
+      {
+        "kind": "stages",
+        "years": 5,
+        "snapshotMs": 143.5871619999998,
+        "projectionMs": 289.16380300000037,
+        "assemblyMs": 188.06063899999936,
+        "zipMs": 414.83500000000004,
+        "zipBytes": 4178490,
+        "uncompressedBytes": 26262302
+      },
+      {
+        "kind": "query_budget",
+        "years": 5,
+        "closingRevisions": 20,
+        "queries": 54,
+        "budget": 64
+      },
+      {
+        "kind": "burst",
+        "years": 5,
+        "events": 10783,
+        "settlements": 261,
+        "revisions": 250,
+        "closingRevisions": 20,
+        "concurrency": 1,
+        "requests": 1,
+        "errors": 0,
+        "p50Ms": 1115.2635220000002,
+        "p95Ms": 1115.2635220000002,
+        "totalMs": 1115.8274999999994,
+        "bytes": 4178438,
+        "csvBytes": 8712220,
+        "analysisRows": 14818,
+        "serverPeakRssMb": 468.078125
+      },
+      {
+        "kind": "burst",
+        "years": 5,
+        "events": 10783,
+        "settlements": 261,
+        "revisions": 250,
+        "closingRevisions": 20,
+        "concurrency": 5,
+        "requests": 5,
+        "errors": 0,
+        "p50Ms": 3738.982818999999,
+        "p95Ms": 4509.910195,
+        "totalMs": 4510.617218000001,
+        "bytes": 4178557,
+        "csvBytes": 8712220,
+        "analysisRows": 14818,
+        "serverPeakRssMb": 624.52734375
+      },
+      {
+        "kind": "postman",
+        "profile": "fixed",
+        "peak": 5,
+        "durationMinutes": 1,
+        "exitCode": 0,
+        "summary": {
+          "event": "summary",
+          "ts": "2026-11-09T03:47:23.741Z",
+          "runNumber": null,
+          "runId": "66eca406-f5ec-4c61-8b6a-a16b3706315e",
+          "recorded": false,
+          "metrics": {
+            "responseTime": {
+              "avg": 4327,
+              "min": 2268,
+              "max": 5433,
+              "percentile90": 5125,
+              "percentile95": 5331,
+              "percentile99": 5433
+            },
+            "errors": {
+              "percentage": 0,
+              "segmentation": {
+                "errorTypes": {}
+              },
+              "totalExecutions": 65,
+              "transportErrorExecutions": 0,
+              "scriptErrorExecutions": 0
+            },
+            "requestThroughput": {
+              "sum": 65,
+              "rate": 1.08
+            },
+            "virtualUsers": {
+              "avg": 5
+            },
+            "testFailures": {
+              "percentage": 0,
+              "totalRequests": 65,
+              "requestsWithFailedAssertions": 0
+            }
+          },
+          "durationSeconds": 60,
+          "totalRequests": 65
+        },
+        "serverPeakRssMb": 708.046875
+      },
+      {
+        "kind": "stages",
+        "years": 10,
+        "snapshotMs": 310.1960620000027,
+        "projectionMs": 1162.2534210000013,
+        "assemblyMs": 395.1483540000045,
+        "zipMs": 1158.0977640000056,
+        "zipBytes": 10201529,
+        "uncompressedBytes": 63074308
+      },
+      {
+        "kind": "compression_benchmark",
+        "level": 1,
+        "ms": 878.8382100000017,
+        "bytes": 10877282
+      },
+      {
+        "kind": "compression_benchmark",
+        "level": 6,
+        "ms": 1089.5652599999885,
+        "bytes": 10200675
+      },
+      {
+        "kind": "query_budget",
+        "years": 10,
+        "closingRevisions": 100,
+        "queries": 54,
+        "budget": 64
+      },
+      {
+        "kind": "burst",
+        "years": 10,
+        "events": 26624,
+        "settlements": 522,
+        "revisions": 500,
+        "closingRevisions": 100,
+        "concurrency": 1,
+        "requests": 1,
+        "errors": 0,
+        "p50Ms": 3067.1923499999975,
+        "p95Ms": 3067.1923499999975,
+        "totalMs": 3069.894997999989,
+        "bytes": 10201537,
+        "csvBytes": 20572345,
+        "analysisRows": 34573,
+        "serverPeakRssMb": 811.5859375
+      },
+      {
+        "kind": "burst",
+        "years": 10,
+        "events": 26624,
+        "settlements": 522,
+        "revisions": 500,
+        "closingRevisions": 100,
+        "concurrency": 5,
+        "requests": 5,
+        "errors": 0,
+        "p50Ms": 12701.664990999998,
+        "p95Ms": 12719.4185,
+        "totalMs": 12720.200039000003,
+        "bytes": 10201681,
+        "csvBytes": 20572345,
+        "analysisRows": 34573,
+        "serverPeakRssMb": 1020.70703125
+      },
+      {
+        "kind": "burst",
+        "years": 10,
+        "events": 26624,
+        "settlements": 522,
+        "revisions": 500,
+        "closingRevisions": 100,
+        "concurrency": 10,
+        "requests": 10,
+        "errors": 0,
+        "p50Ms": 13059.951914000005,
+        "p95Ms": 25625.172038999997,
+        "totalMs": 25627.323086999997,
+        "bytes": 10201526,
+        "csvBytes": 20572345,
+        "analysisRows": 34573,
+        "serverPeakRssMb": 1043.59375
+      },
+      {
+        "kind": "postman",
+        "profile": "spike",
+        "peak": 10,
+        "durationMinutes": 1,
+        "exitCode": 0,
+        "summary": {
+          "event": "summary",
+          "ts": "2026-11-09T03:49:56.291Z",
+          "runNumber": null,
+          "runId": "2d76920f-bb9c-47f8-a333-896ba8a96d14",
+          "recorded": false,
+          "metrics": {
+            "responseTime": {
+              "avg": 12987,
+              "min": 2892,
+              "max": 25497,
+              "percentile90": 25021,
+              "percentile95": 25156,
+              "percentile99": 25497
+            },
+            "errors": {
+              "percentage": 0,
+              "segmentation": {
+                "errorTypes": {}
+              },
+              "totalExecutions": 21,
+              "transportErrorExecutions": 0,
+              "scriptErrorExecutions": 0
+            },
+            "requestThroughput": {
+              "sum": 21,
+              "rate": 0.35
+            },
+            "virtualUsers": {
+              "avg": 3
+            },
+            "testFailures": {
+              "percentage": 0,
+              "totalRequests": 21,
+              "requestsWithFailedAssertions": 0
+            }
+          },
+          "durationSeconds": 60,
+          "totalRequests": 21
+        },
+        "serverPeakRssMb": 1043.59375
+      }
+    ],
+    "gates": [],
+    "passed": true,
+    "notEstablished": [
+      "Hosted Vercel latency/capacity",
+      "AI response without prompt"
+    ]
+  },
+  "warnings": {
+    "e2e": {
+      "hydrationWarnings": 1,
+      "closedStreamMessages": 1
+    },
+    "e2e-prod": {
+      "hydrationWarnings": 0,
+      "closedStreamMessages": 1
+    }
+  },
+  "initialBrowserRun": {
+    "passed": 55,
+    "failed": 3,
+    "sameThreeFailuresReproducedOnBaseline": true
+  },
+  "localEvidenceDirectory": "/home/agribychaniago/.cache/fintrack-fix-20261108-z_ekm_48/evidence",
+  "cleanup": {
+    "atUtc": "2026-11-09T03:53:37Z",
+    "stoppedProject": "fintrack_fix_20261108",
+    "remainingTestContainers": [],
+    "originalStackRunning": {
+      "supabase_pooler_fintrack_new": "Up Less than a second (healthy)",
+      "supabase_rest_fintrack_new": "Up Less than a second",
+      "supabase_inbucket_fintrack_new": "Up Less than a second (healthy)",
+      "supabase_auth_fintrack_new": "Up Less than a second (healthy)",
+      "supabase_kong_fintrack_new": "Up Less than a second (healthy)",
+      "supabase_db_fintrack_new": "Up Less than a second (healthy)"
+    },
+    "originalStackMutated": false
+  }
+}

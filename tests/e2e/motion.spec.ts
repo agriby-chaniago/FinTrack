@@ -23,8 +23,10 @@ function daysAgo(n: number): string {
 
 test.beforeAll(async () => {
   user = await createAuthUser(clients.authAdmin, "e2e-motion");
-  // Cutover three days ago leaves this month's income and obligations pending.
-  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(3)}T20:00:00+07:00`, (draft) => {
+  // Start the open period on this Monday so its strip always includes today
+  // and at least three markers, even when the test runs early in the week.
+  const daysSinceSunday = new Date(`${daysAgo(0)}T00:00:00Z`).getUTCDay() || 7;
+  await resetWithConfirmedFixture(clients, user.id, `${daysAgo(daysSinceSunday)}T20:00:00+07:00`, (draft) => {
     const includeCurrentCycle = draft.cutoverAt?.slice(0, 7) === daysAgo(0).slice(0, 7);
     draft.routines.monthlyIncome.includeCurrentCycle = includeCurrentCycle;
     draft.routines.subscriptions[0].includeCurrentCycle = includeCurrentCycle;
@@ -246,6 +248,7 @@ test("+ Catat turns into a close mark while the sheet is open", async ({ page })
 test("account cards give a little when pressed", async ({ page }) => {
   await signIn(page);
   const card = page.locator("main a[href^='/akun/']").first();
+  await card.scrollIntoViewIfNeeded();
   const box = (await card.boundingBox())!;
   await page.mouse.move(box.x + 12, box.y + 12);
   await page.mouse.down();

@@ -107,8 +107,8 @@ const monthBounds = (month: string) => ({ first: `${month}-01`, last: `${month}-
 
 /**
  * Recorded ledger totals per calendar month, classified once for every report
- * (month reports and the Beranda summary share this function), with one query
- * for all requested months. Living expense is not here: it comes from settlements.
+ * (month reports and the Beranda summary share this function), with a fixed
+ * number of queries for all requested months. Living expense comes from settlements.
  */
 async function ledgerTotalsByMonth(tx: OwnerTx, ownerId: string, months: string[], reserve: string, view: ReportView): Promise<Map<string, LedgerTotals>> {
   const sorted = [...months].sort();
@@ -124,23 +124,51 @@ async function ledgerTotalsByMonth(tx: OwnerTx, ownerId: string, months: string[
             and e.effective_business_date between s.start_date and s.end_date and e.recorded_at > s.settled_at)`
       : sql``;
 
-  const legs = await sqlRows<ReportLeg>(tx, sql`
-    select to_char(e.effective_business_date, 'YYYY-MM') as month, e.kind, e.event_class, e.reporting_classification as classification, e.correction_role as role,
-           l.account_id, e.category_id, c.display_name as category_name,
-           (l.physical_effect_minor - l.external_effect_minor)::text as personal,
-           (select sum(o.physical_effect_minor - o.external_effect_minor) > 0 from fintrack.ledger_leg o
-             where o.entry_id = e.corrects_entry_id and o.account_id = ${reserve}::uuid) as original_reserve_inflow
-    from fintrack.ledger_leg l
-    join fintrack.ledger_entry e on e.id = l.entry_id
-    left join fintrack.special_expense_category c on c.id = e.category_id
-    where e.owner_id = ${ownerId} and l.owner_id = ${ownerId}
-      and e.effective_business_date between ${first}::date and ${last}::date
-      and e.event_class <> 'LIVING' ${asSettledFilter}`);
+  type Entry = Omit<ReportLeg, "account_id" | "personal" | "original_reserve_inflow"> & { entry_id: string; corrects_entry_id: string | null };
+  type Leg = Entry & { account_id: string; personal: string };
+  const entryFields = sql`e.id as entry_id, e.corrects_entry_id,
+           to_char(e.effective_business_date, 'YYYY-MM') as month, e.kind, e.event_class, e.reporting_classification as classification, e.correction_role as role,
+           e.category_id, c.display_name as category_name`;
+  let legs: Leg[];
+  if (view === "as_settled") {
+    legs = await sqlRows<Leg>(tx, sql`
+      select ${entryFields}, l.account_id,
+             (l.physical_effect_minor - l.external_effect_minor)::text as personal
+      from fintrack.ledger_leg l join fintrack.ledger_entry e on e.id = l.entry_id
+      left join fintrack.special_expense_category c on c.id = e.category_id
+      where e.owner_id = ${ownerId} and l.owner_id = ${ownerId}
+        and e.effective_business_date between ${first}::date and ${last}::date
+        and e.event_class <> 'LIVING' ${asSettledFilter}`);
+  } else {
+    // Separate batches prevent a nested-loop plan from scanning an owner's
+    // entire leg index again for every entry in a long export.
+    const entries = await sqlRows<Entry>(tx, sql`
+      select ${entryFields} from fintrack.ledger_entry e
+      left join fintrack.special_expense_category c on c.id = e.category_id
+      where e.owner_id = ${ownerId}
+        and e.effective_business_date between ${first}::date and ${last}::date
+        and e.event_class <> 'LIVING'`);
+    const byId = new Map(entries.map((entry) => [entry.entry_id, entry]));
+    const values = entries.length ? await sqlRows<Pick<Leg, "entry_id" | "account_id" | "personal">>(tx, sql`
+      select entry_id, account_id, (physical_effect_minor - external_effect_minor)::text as personal
+      from fintrack.ledger_leg where owner_id = ${ownerId}
+        and entry_id = any(${sql.param(entries.map((entry) => entry.entry_id))}::uuid[])`) : [];
+    legs = values.map((leg) => ({ ...byId.get(leg.entry_id)!, ...leg }));
+  }
 
+  // A settled posting shares its original's business date, so both are already
+  // in this range. Sum reserve effects once instead of querying per ledger leg.
+  const reserveEffects = new Map<string, MinorUnits>();
+  for (const leg of legs) {
+    if (leg.account_id === reserve) {
+      reserveEffects.set(leg.entry_id, (reserveEffects.get(leg.entry_id) ?? 0n) + BigInt(leg.personal));
+    }
+  }
   const byMonth = new Map(sorted.map((month) => [month, emptyLedgerTotals()] as const));
   for (const leg of legs) {
     const bucket = byMonth.get(leg.month);
-    if (bucket) addReportLeg(bucket, leg, reserve);
+    const original = leg.corrects_entry_id ? reserveEffects.get(leg.corrects_entry_id) : undefined;
+    if (bucket) addReportLeg(bucket, { ...leg, original_reserve_inflow: original === undefined ? null : original > 0n }, reserve);
   }
   return byMonth;
 }

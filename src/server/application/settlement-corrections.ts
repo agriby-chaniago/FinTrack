@@ -7,6 +7,7 @@ import { ApiError } from "@/server/api/errors";
 import type { OwnerTx } from "@/server/db/owner";
 import { ledgerEntry, ledgerLeg } from "@/server/db/schema/ledger";
 import { transferAllocation } from "@/server/db/schema/transfers";
+import { combineCorrectionLegs, type CorrectionLeg } from "@/server/domain/correction-legs";
 import type { LedgerEntryDraft, LedgerLeg } from "@/server/domain/ledger";
 
 import { weeklySettlementAccountIds } from "./accounts";
@@ -24,25 +25,26 @@ export async function settledSettlementFor(tx: OwnerTx, ownerId: string, entry: 
   return found?.id ?? null;
 }
 
-type LegKey = string;
-const keyOf = (leg: { accountId: string; holdingId: string | null }): LegKey => `${leg.accountId}|${leg.holdingId ?? ""}`;
+export type SettledEntryEffects = { legs: CorrectionLeg[]; postingIds: string[] };
 
 /** Original legs plus every earlier CORRECTION_POSTING delta: the record's current effect. */
-async function effectiveLegs(tx: OwnerTx, ownerId: string, entry: LoadedEntry): Promise<{ legs: Map<LegKey, LedgerLeg>; postingIds: string[] }> {
+export async function settledEntryEffects(tx: OwnerTx, ownerId: string, entry: LoadedEntry): Promise<SettledEntryEffects> {
   const postings = await tx
-    .select({ id: ledgerEntry.id })
+    .select({ id: ledgerEntry.id, categoryId: ledgerEntry.categoryId })
     .from(ledgerEntry)
     .where(and(eq(ledgerEntry.ownerId, ownerId), eq(ledgerEntry.correctsEntryId, entry.id), eq(ledgerEntry.kind, "CORRECTION_POSTING")));
   const postingIds = postings.map((row) => row.id);
   const deltaLegs = postingIds.length
     ? await tx.select().from(ledgerLeg).where(and(eq(ledgerLeg.ownerId, ownerId), inArray(ledgerLeg.entryId, postingIds)))
     : [];
-  const legs = new Map<LegKey, LedgerLeg>();
-  for (const leg of [...entry.legs, ...deltaLegs]) {
-    const key = keyOf(leg);
-    const current = legs.get(key) ?? { accountId: leg.accountId, holdingId: leg.holdingId, physicalEffect: 0n, externalEffect: 0n };
-    legs.set(key, { ...current, physicalEffect: current.physicalEffect + leg.physicalEffectMinor, externalEffect: current.externalEffect + leg.externalEffectMinor });
-  }
+  const categories = new Map(postings.map((posting) => [posting.id, posting.categoryId]));
+  const legs = combineCorrectionLegs([...entry.legs, ...deltaLegs].map((leg) => ({
+    accountId: leg.accountId,
+    holdingId: leg.holdingId,
+    physicalEffect: leg.physicalEffectMinor,
+    externalEffect: leg.externalEffectMinor,
+    categoryId: leg.entryId === entry.id ? entry.categoryId : (categories.get(leg.entryId) ?? null),
+  })));
   return { legs, postingIds };
 }
 
@@ -52,51 +54,42 @@ export async function correctSettledEntry(
   entry: LoadedEntry,
   replacement: { draft: LedgerEntryDraft; categoryId: string | null } | null,
   now: Date,
+  knownEffects?: SettledEntryEffects,
 ): Promise<CorrectionResult> {
-  const { legs: current, postingIds } = await effectiveLegs(tx, ownerId, entry);
-  const desired = new Map<LegKey, LedgerLeg>();
-  for (const leg of replacement?.draft.legs ?? []) {
-    const key = keyOf(leg);
-    const existing = desired.get(key) ?? { accountId: leg.accountId, holdingId: leg.holdingId, physicalEffect: 0n, externalEffect: 0n };
-    desired.set(key, { ...existing, physicalEffect: existing.physicalEffect + leg.physicalEffect, externalEffect: existing.externalEffect + leg.externalEffect });
-  }
-
-  const deltas: LedgerLeg[] = [];
-  for (const key of new Set([...current.keys(), ...desired.keys()])) {
-    const from = current.get(key);
-    const to = desired.get(key);
-    const physical = (to?.physicalEffect ?? 0n) - (from?.physicalEffect ?? 0n);
-    const external = (to?.externalEffect ?? 0n) - (from?.externalEffect ?? 0n);
-    if (physical !== 0n || external !== 0n) {
-      const base = (to ?? from)!;
-      deltas.push({ accountId: base.accountId, holdingId: external === 0n ? null : base.holdingId, physicalEffect: physical, externalEffect: external });
-    }
-  }
+  const { legs: current, postingIds } = knownEffects ?? await settledEntryEffects(tx, ownerId, entry);
+  const deltas = combineCorrectionLegs([
+    ...current.map((leg) => ({ ...leg, physicalEffect: -leg.physicalEffect, externalEffect: -leg.externalEffect })),
+    ...(replacement?.draft.legs ?? []).map((leg) => ({ ...leg, categoryId: replacement!.categoryId })),
+  ]);
   if (deltas.length === 0) throw new ApiError("VALIDATION_FAILED", { issues: ["NO_CHANGE"] });
 
-  const posting = await postLedgerEntry(
-    tx,
-    ownerId,
-    {
-      kind: "CORRECTION_POSTING",
-      eventClass: entry.eventClass as LedgerEntryDraft["eventClass"],
-      correctedKind: entry.kind as LedgerEntryDraft["kind"],
-      movementType: entry.movementType as LedgerEntryDraft["movementType"],
-      reportingClassification: entry.reportingClassification as LedgerEntryDraft["reportingClassification"],
-      correctsEntryId: entry.id,
-      // Historical correction is effective on the original business date.
-      effectiveBusinessDate: entry.effectiveBusinessDate,
-      legs: deltas,
-    },
-    {
-      now,
-      categoryId: entry.eventClass === "SPECIAL_EXPENSE" ? (replacement?.categoryId ?? entry.categoryId) : null,
-      cutoverDayAnswer: "NOT_IN_OPENING",
-      deferHoldingCheck: true,
-      skipSettlementResync: true,
-    },
-  );
-  if (!posting.recorded) throw new ApiError("INTERNAL_ERROR");
+  // A category change reverses the old category and applies the full corrected
+  // effect to the new one. Both postings commit together, even when cash is unchanged.
+  const byCategory = new Map<string | null, LedgerLeg[]>();
+  for (const { categoryId, ...leg } of deltas) {
+    byCategory.set(categoryId, [...(byCategory.get(categoryId) ?? []), { ...leg, holdingId: leg.externalEffect === 0n ? null : leg.holdingId }]);
+  }
+  const entryIds: string[] = [];
+  for (const [categoryId, legs] of byCategory) {
+    const posting = await postLedgerEntry(
+      tx,
+      ownerId,
+      {
+        kind: "CORRECTION_POSTING",
+        eventClass: entry.eventClass as LedgerEntryDraft["eventClass"],
+        correctedKind: entry.kind as LedgerEntryDraft["kind"],
+        movementType: entry.movementType as LedgerEntryDraft["movementType"],
+        reportingClassification: entry.reportingClassification as LedgerEntryDraft["reportingClassification"],
+        correctsEntryId: entry.id,
+        effectiveBusinessDate: entry.effectiveBusinessDate,
+        legs,
+      },
+      { now, categoryId, cutoverDayAnswer: "NOT_IN_OPENING", deferHoldingCheck: true, skipSettlementResync: true },
+    );
+    if (!posting.recorded) throw new ApiError("INTERNAL_ERROR");
+    entryIds.push(posting.entryId);
+  }
+  const allocationEntryId = entryIds[0];
 
   if (entry.eventClass === "PERSONAL_TRANSFER") {
     // Undo the net fulfillment of the original and its earlier postings, then allocate the corrected personal component.
@@ -110,7 +103,7 @@ export async function correctSettledEntry(
       if (total !== 0n) {
         await tx.insert(transferAllocation).values({
           ownerId,
-          entryId: posting.entryId,
+          entryId: allocationEntryId,
           targetId: row.targetId,
           magnitudeMinor: total > 0n ? total : -total,
           sign: total > 0n ? -1 : 1,
@@ -123,7 +116,7 @@ export async function correctSettledEntry(
         replacement.draft.legs.map((leg) => ({ accountId: leg.accountId, physicalEffectMinor: leg.physicalEffect, externalEffectMinor: leg.externalEffect })),
         shape.route.destinationAccountId,
       );
-      await allocatePersonalComponent(tx, ownerId, posting.entryId, shape.route, personal, entry.effectiveBusinessDate);
+      await allocatePersonalComponent(tx, ownerId, allocationEntryId, shape.route, personal, entry.effectiveBusinessDate);
     }
   }
 
@@ -132,5 +125,5 @@ export async function correctSettledEntry(
   for (const accountId of new Set(deltas.map((leg) => leg.accountId))) {
     if (weekly.has(accountId)) await resyncSettlements(tx, ownerId, accountId, entry.effectiveBusinessDate, now);
   }
-  return { mode: "SETTLED_HISTORY", entryIds: [posting.entryId] };
+  return { mode: "SETTLED_HISTORY", entryIds };
 }
