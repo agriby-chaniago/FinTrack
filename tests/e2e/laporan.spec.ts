@@ -11,7 +11,8 @@ const env = Object.fromEntries(
     .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]),
 );
 Object.assign(process.env, env);
-const { closeClients, createAuthUser, resetWithConfirmedFixture, testClients } = await import("../helpers/owner");
+const { asOwner, closeClients, createAuthUser, resetWithConfirmedFixture, testClients } = await import("../helpers/owner");
+const { recordOtherEvent, recordSpecialExpense } = await import("@/server/application/events");
 
 const clients = testClients();
 type User = Awaited<ReturnType<typeof createAuthUser>>;
@@ -36,6 +37,37 @@ async function signInAs(page: Page, user: User) {
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Masuk" }).click();
   await expect(page.getByText("Personal cash tercatat")).toBeVisible();
+}
+
+async function expectThemeColors(page: Page) {
+  const charts = page.locator("canvas[role='img']");
+  // Inspect the rendered pixels so stale shared bar/point colors cannot pass
+  // merely because the canvas still exists after a theme change.
+  const primaryPixels = () => charts.evaluateAll((canvases) => {
+    const sample = document.createElement("canvas").getContext("2d")!;
+    sample.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim();
+    sample.fillRect(0, 0, 1, 1);
+    const color = sample.getImageData(0, 0, 1, 1).data;
+    return canvases.map((element) => {
+      const canvas = element as HTMLCanvasElement;
+      const pixels = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index + 3] > 200 && [0, 1, 2].every((channel) => Math.abs(pixels[index + channel] - color[channel]) <= 5)) count++;
+      }
+      return count;
+    });
+  });
+  await page.waitForTimeout(1000);
+  const ids = await page.locator("[data-chart-id]").evaluateAll((frames) => frames.map((frame) => (frame as HTMLElement).dataset.chartId));
+  const lightPixels = await primaryPixels();
+  lightPixels.forEach((count) => expect(count).toBeGreaterThan(100));
+  await page.evaluate(() => { document.documentElement.dataset.theme = "fintrack-dark"; });
+  await expect.poll(async () => {
+    const darkPixels = await primaryPixels();
+    return darkPixels.every((count, index) => count >= lightPixels[index] * 0.8);
+  }).toBe(true);
+  expect(await page.locator("[data-chart-id]").evaluateAll((frames) => frames.map((frame) => (frame as HTMLElement).dataset.chartId))).toEqual(ids);
 }
 
 test.afterAll(async () => {
@@ -122,6 +154,7 @@ test.describe("with four settled weeks", () => {
     // The line draws in over 700 ms (PRD v0.21 P9); its animation callbacks must not throw.
     await page.waitForTimeout(1000);
     expect(errors).toEqual([]);
+    await expectThemeColors(page);
     // A refresh with the same data keeps the drawn chart instead of rebuilding and replaying it.
     const chartId = () => page.locator("[data-chart-id]").first().getAttribute("data-chart-id");
     const before = await chartId();
@@ -134,5 +167,22 @@ test.describe("with four settled weeks", () => {
     await page.reload();
     await expect(page.getByRole("list", { name: "Data tren mingguan" })).toBeVisible();
     await expect(page.locator("canvas")).toHaveCount(0);
+  });
+
+  test("weekly controls change the metric and category bars retain exact adjacent data", async ({ page }) => {
+    const [setting] = await clients.admin<{ reserve_account_id: string }[]>`select reserve_account_id from fintrack.owner_setting`;
+    await asOwner(clients.runtime, user.id, (tx, p) => recordOtherEvent(tx, p.ownerId, { direction: "INCOME", accountId: setting.reserve_account_id, amount: "100000", businessDate: todayJakarta() }, new Date()));
+    await asOwner(clients.runtime, user.id, (tx, p) => recordSpecialExpense(tx, p.ownerId, { amount: "10000.03", sourceAccountId: setting.reserve_account_id, newCategoryName: "Transport contoh", businessDate: todayJakarta() }, new Date()));
+    await signInAs(page, user);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/aktivitas/laporan");
+    await page.getByLabel("Ukuran biaya hidup", { exact: true }).selectOption("total");
+    await page.getByLabel("Rentang settlement", { exact: true }).selectOption("4");
+    await expect(page.getByRole("img", { name: /^Total biaya hidup terakhir/ })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Data tren mingguan" }).locator("li")).toHaveCount(4);
+    await expect(page.getByRole("img", { name: /^Pengeluaran khusus per kategori/ })).toBeVisible();
+    await expect(page.getByText("Transport contoh", { exact: true })).toBeVisible();
+    await expect(page.getByText(/10\.000,03/).first()).toBeVisible();
+    await expectThemeColors(page);
   });
 });

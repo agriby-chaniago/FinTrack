@@ -1,0 +1,2 @@
+ALTER TABLE "fintrack"."owner_setting" ADD COLUMN "primary_account_id" uuid;--> statement-breakpoint
+ALTER TABLE "fintrack"."owner_setting" ADD CONSTRAINT "owner_setting_primary_account_id_account_id_fk" FOREIGN KEY ("primary_account_id") REFERENCES "fintrack"."account"("id") ON DELETE no action ON UPDATE no action;

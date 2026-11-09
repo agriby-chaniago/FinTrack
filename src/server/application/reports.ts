@@ -446,11 +446,11 @@ export async function settlementHistory(tx: OwnerTx, ownerId: string) {
 
 /**
  * Laporan (PRD v0.20 P5): one calendar month, its previous month for deltas,
- * and six trailing months plus the settlement series for the trends (P4).
+ * and twelve trailing months plus the settlement series for the trends.
  * The query count is fixed: it does not grow with weeks or months of history.
  */
 export async function reportPage(tx: OwnerTx, ownerId: string, month: string, now: Date) {
-  const months = trailingCycleKeys(month, 6);
+  const months = trailingCycleKeys(month, 12);
   const { reports, rule, settledRows, correctedLiving } = await loadMonthReports(tx, ownerId, months, "corrected", now);
   const cycles = await listMonthlyCycles(tx, ownerId, now);
   const report = reports.get(month)!;
@@ -459,11 +459,15 @@ export async function reportPage(tx: OwnerTx, ownerId: string, month: string, no
   const startMonth = rule ? cycleKeyOf(rule.effectiveStartDate) : month;
   // Before daily income began there is nothing to compare against.
   const before = (value: string) => (startMonth <= previousMonth ? value : null);
-  const weeklyPoints = settlementPoints(settledRows, correctedLiving ?? new Map()).slice(-12);
-  const monthlyPoints = months.map((m) => ({ month: m, reserveGrowth: reports.get(m)!.reserve.netGrowth, outflow: reports.get(m)!.outflow.actualTotal }));
+  const completedByMonth = settledRows.filter((row) => row.endDate <= monthBounds(month).last);
+  const weeklyPoints = settlementPoints(completedByMonth, correctedLiving ?? new Map()).slice(-12);
+  const monthlyPoints = months.filter((m) => m >= startMonth).map((m) => ({
+    month: m, income: reports.get(m)!.income.total, reserveGrowth: reports.get(m)!.reserve.netGrowth,
+    outflow: reports.get(m)!.outflow.actualTotal, completeness: reports.get(m)!.completeness,
+  }));
   const eligibility = chartEligibility({
-    settlements: settledRows.length,
-    cycles: cycles.filter((c) => c.state === "COMPLETE" || c.state === "CLOSED_NO_INCOME").length,
+    settlements: completedByMonth.length,
+    cycles: cycles.filter((c) => c.cycleKey <= month && (c.state === "COMPLETE" || c.state === "CLOSED_NO_INCOME")).length,
   });
   return {
     month,

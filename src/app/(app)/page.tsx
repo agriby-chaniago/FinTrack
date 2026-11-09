@@ -23,9 +23,9 @@ function taskView(task: DashboardTask, accountName: (id: string) => string): { h
     case "SETTLEMENT":
       return { href: "/rutinitas/settlement", title: taskTitle(task, accountName), detail: `${formatDate(task.periodStart)} – ${formatDate(task.normalEnd)}`, tag: task.mode === "OVERDUE" ? "Terlambat" : undefined };
     case "CONFIRM_INCOME":
-      return { href: `/rutinitas#siklus-${task.cycleKey}`, title: taskTitle(task, accountName), detail: `${formatCycle(task.cycleKey)} · perkiraan ${money(task.expectedAmount)}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
+      return { href: `/rutinitas?bulan=${task.cycleKey}#siklus-${task.cycleKey}`, title: taskTitle(task, accountName), detail: `${formatCycle(task.cycleKey)} · perkiraan ${money(task.expectedAmount)}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
     case "CONFIRM_OBLIGATION":
-      return { href: `/rutinitas#siklus-${task.cycleKey}`, title: taskTitle(task, accountName), detail: `${formatCycle(task.cycleKey)}${task.expectedDate ? ` · perkiraan ${formatDate(task.expectedDate)}` : ""}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
+      return { href: `/rutinitas?bulan=${task.cycleKey}#siklus-${task.cycleKey}`, title: taskTitle(task, accountName), detail: `${formatCycle(task.cycleKey)}${task.expectedDate ? ` · perkiraan ${formatDate(task.expectedDate)}` : ""}`, tag: task.label ? occurrenceTagLabel[task.label] : undefined };
     case "TRANSFER":
       return { href: `/catat/transfer?target=${task.targetId}`, title: taskTitle(task, accountName), detail: `Sisa saran ${money(task.remaining)} · bisa ditransfer sekarang ${money(task.transferNow)}` };
     case "RECONCILE":

@@ -10,6 +10,7 @@ import { POST as settleRoute } from "@/app/api/v1/settlements/[id]/settle/route"
 import { POST as createSettlement } from "@/app/api/v1/settlements/route";
 import { POST as postTransfer } from "@/app/api/v1/transfers/route";
 import { accountsOverview } from "@/server/application/accounts-overview";
+import { accountSplitStatus, accountSplitView } from "@/server/application/account-split";
 import { listActivity } from "@/server/application/activity";
 import { dailyIncomeView } from "@/server/application/daily-income";
 import { listExternalSubjects } from "@/server/application/external-funds";
@@ -96,7 +97,8 @@ describe("query budget per page (grows with neither weeks nor months)", () => {
         await dailyIncomeView(tx, o, now);
       },
     ],
-    ["Akun", 24, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); }],
+    ["Akun", 24, async (tx, o) => { await accountsOverview(tx, o, now); await listExternalSubjects(tx, o); await accountSplitStatus(tx, o); }],
+    ["Pemisahan rekening", 12, (tx, o) => accountSplitView(tx, o)],
     ["Aktivitas", 7, (tx, o) => listActivity(tx, o, { limit: 50 })],
     ["Laporan", 22, (tx, o) => reportPage(tx, o, cycleKeyOf(businessDateOf(now)), now)],
     ["Ekspor CSV + ZIP", 64, async (tx, o) => { const snapshot = await readExportSnapshot(tx, o); await readExportAnalysis(tx, o, snapshot, now); }],

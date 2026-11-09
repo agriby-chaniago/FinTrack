@@ -4,14 +4,14 @@ import { redirect } from "next/navigation";
 import { TabPage } from "@/components/tab-page";
 import { buttonClass, Card, Money, PageHeader, ProgressBar, Row, SectionTitle, Tag } from "@/components/ui";
 import { businessDateOf, cycleKeyOf, isCycleKey, nextCycleKey } from "@/lib/business-time";
-import { approx, formatCycle, formatDate } from "@/lib/format";
+import { approx, formatCycle } from "@/lib/format";
 import { completenessLabel } from "@/lib/labels";
 import { categoryShares, deltaLabel } from "@/lib/report-view";
 import { reportPage } from "@/server/application/reports";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
 import { AktivitasTabs } from "../tabs";
-import { TrendChart } from "./trend-chart";
+import { CategoryChart, MonthlyTrend, WeeklyTrend } from "./report-trends";
 
 function Stat({ label, value, delta, previousMonth, signed }: { label: string; value: string; delta: string; previousMonth: string; signed?: boolean }) {
   return (
@@ -128,26 +128,28 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
                 <Money value={report.outflow.actualTotal} />
               </Row>
             </dl>
-            {shares.length > 0 ? (
-              <div className="mt-4 space-y-3 border-t border-border pt-4">
-                <p className="text-sm font-medium">Pengeluaran khusus per kategori</p>
-                <ul className="cascade space-y-3">
-                  {shares.map((share) => (
-                    <li key={share.name} className="space-y-1">
-                      <p className="flex justify-between text-sm">
-                        <span>{share.name}</span>
-                        <span>
-                          <Money value={share.amount} /> · {share.percent}%
-                        </span>
-                      </p>
-                      <ProgressBar percent={share.percent} label={`Bagian ${share.name}`} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </Card>
         </div>
+
+        {shares.length > 0 ? (
+          <Card>
+            <SectionTitle>Pengeluaran khusus per kategori</SectionTitle>
+            <div className={`grid items-center gap-6 ${weekly.eligibility.eligible || monthly.eligibility.eligible ? "md:grid-cols-2" : ""}`}>
+              {weekly.eligibility.eligible || monthly.eligibility.eligible ? <CategoryChart categories={shares} /> : null}
+              <ul className="cascade space-y-3">
+                {shares.map((share) => (
+                  <li key={share.name} className="space-y-1">
+                    <p className="flex flex-wrap justify-between gap-x-3 text-sm">
+                      <span>{share.name}</span>
+                      <span><Money value={share.amount} /> · {share.percent}%</span>
+                    </p>
+                    <ProgressBar percent={share.percent} label={`Bagian ${share.name}`} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
+        ) : null}
 
         <section aria-labelledby="tren-title" className="space-y-3">
           <SectionTitle icon="trend">
@@ -157,28 +159,7 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
             <Card>
               <h3 className="mb-3 font-medium">Biaya hidup per hari</h3>
               {weekly.eligibility.eligible ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted">{weekly.summary}</p>
-                  <TrendChart
-                    kind="line"
-                    labels={weekly.points.map((point) => formatDate(point.endDate))}
-                    series={[{ label: "Rata-rata biaya hidup per hari", values: weekly.points.map((point) => point.averagePerDay), style: "solid" }]}
-                    summary={weekly.summary}
-                    unit="Rupiah per hari"
-                  />
-                  <ul aria-label="Data tren mingguan" className="divide-y divide-border text-sm">
-                    {weekly.points.map((point) => (
-                      <li key={point.settlementId} className="flex justify-between gap-3 py-1.5">
-                        <span className="text-muted">
-                          {formatDate(point.startDate)} – {formatDate(point.endDate)}
-                        </span>
-                        <span className="tabular">
-                          <Money value={point.averagePerDay} /> / hari
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <WeeklyTrend points={weekly.points} />
               ) : (
                 <EligibilityNote
                   text={`Grafik muncul setelah ${weekly.eligibility.needed} settlement selesai.`}
@@ -190,31 +171,9 @@ export default async function LaporanPage({ searchParams }: { searchParams: Prom
               )}
             </Card>
             <Card>
-              <h3 className="mb-3 font-medium">Reserve dan pengeluaran per bulan</h3>
+              <h3 className="mb-3 font-medium">Arus kas dan reserve per bulan</h3>
               {monthly.eligibility.eligible ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted">{monthly.summary}</p>
-                  <TrendChart
-                    kind="bar"
-                    labels={monthly.points.map((point) => formatCycle(point.month))}
-                    series={[
-                      { label: "Pertumbuhan reserve", values: monthly.points.map((point) => point.reserveGrowth), style: "solid" },
-                      { label: "Pengeluaran", values: monthly.points.map((point) => point.outflow), style: "outline" },
-                    ]}
-                    summary={monthly.summary}
-                    unit="Rupiah"
-                  />
-                  <ul aria-label="Data tren bulanan" className="divide-y divide-border text-sm">
-                    {monthly.points.map((point) => (
-                      <li key={point.month} className="flex flex-wrap justify-between gap-x-3 py-1.5">
-                        <span className="text-muted">{formatCycle(point.month)}</span>
-                        <span className="tabular">
-                          reserve <Money value={point.reserveGrowth} signed /> · keluar <Money value={point.outflow} />
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <MonthlyTrend points={monthly.points} />
               ) : (
                 <EligibilityNote
                   text={`Grafik muncul setelah ${monthly.eligibility.needed} siklus BCA selesai.`}

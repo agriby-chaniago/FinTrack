@@ -7,6 +7,7 @@ import { TabPage } from "@/components/tab-page";
 import { Card, cardLinkClass, LinkButton, Money, PageHeader, SectionTitle, StatusBadge, Tag } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { accountsOverview } from "@/server/application/accounts-overview";
+import { accountSplitStatus } from "@/server/application/account-split";
 import { listExternalSubjects } from "@/server/application/external-funds";
 import { runAsPageOwner } from "@/server/auth/page-owner";
 
@@ -15,10 +16,10 @@ export default async function AkunPage() {
   const result = await runAsPageOwner(async (tx, { ownerId }) => {
     const overview = await accountsOverview(tx, ownerId, now);
     const subjects = await listExternalSubjects(tx, ownerId);
-    return { overview, subjects };
+    return { overview, subjects, split: await accountSplitStatus(tx, ownerId) };
   });
   if (result.status !== "OWNER") redirect("/login");
-  const { overview, subjects } = result.value;
+  const { overview, subjects, split } = result.value;
   const open = subjects.filter((s) => s.status === "OPEN");
   const cleared = subjects.filter((s) => s.status === "CLEARED");
 
@@ -121,6 +122,18 @@ export default async function AkunPage() {
           </details>
         ) : null}
       </section>
+
+      <Card>
+        <SectionTitle>{split.providerName} Utama dan Tabungan</SectionTitle>
+        {split.primaryId ? (
+          <p className="text-sm text-muted">Saldo Utama dan Tabungan sudah terpisah. Riwayat sebelum pemisahan tetap mencerminkan saldo gabungan. Saran transfer ke reserve menuju Tabungan.</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted">Masih mencatat saldo gabungan? Bagi saldo yang sudah tercatat ke rekening Utama dan Tabungan.</p>
+            <div className="mt-3"><LinkButton href="/akun/pisah-jago">Pisahkan {split.providerName}</LinkButton></div>
+          </>
+        )}
+      </Card>
 
       <Card>
         <SectionTitle>Saldo awal</SectionTitle>

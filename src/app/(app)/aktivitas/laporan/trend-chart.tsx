@@ -13,6 +13,7 @@ export type TrendChartProps = {
   series: { label: string; values: string[]; style: "solid" | "outline" }[];
   summary: string;
   unit: string;
+  horizontal?: boolean;
 };
 
 const ChartCanvas = dynamic(() => import("./chart-canvas"), { ssr: false, loading: () => <Skeleton className="h-64" /> });

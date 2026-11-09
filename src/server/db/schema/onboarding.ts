@@ -79,6 +79,8 @@ export const ownerSetting = fintrack.table("owner_setting", {
   defaultSpecialSourceAccountId: uuid("default_special_source_account_id").references(() => account.id),
   /** Destination of saving routes (DANA → reserve, BCA → reserve); initially Jago. */
   reserveAccountId: uuid("reserve_account_id").references(() => account.id),
+  /** Spending account created when the owner's combined reserve is explicitly split. */
+  primaryAccountId: uuid("primary_account_id").references(() => account.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

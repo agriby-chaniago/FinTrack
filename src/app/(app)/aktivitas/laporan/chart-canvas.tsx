@@ -14,12 +14,18 @@ Chart.register(LineController, LineElement, PointElement, BarController, BarElem
 const compact = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", notation: "compact", maximumFractionDigits: 1 });
 const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-function config({ kind, labels, series, unit }: TrendChartProps): ChartConfiguration {
+function config({ kind, labels, series, unit, horizontal = false }: TrendChartProps): ChartConfiguration {
   // Geist is the only typeface (PRD: Typography), on the canvas too.
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
   const colors = [token("--primary"), token("--plum")];
   const muted = token("--muted");
   const line = token("--line");
+  const valueAxis = {
+    beginAtZero: true, grid: { color: line }, border: { color: line },
+    ticks: { color: muted, callback: (value: string | number) => compact.format(Number(value)) },
+    title: { display: true, text: unit, color: muted },
+  };
+  const labelAxis = { grid: { display: false }, ticks: { color: muted }, border: { color: line } };
   return {
     type: kind,
     data: {
@@ -38,15 +44,11 @@ function config({ kind, labels, series, unit }: TrendChartProps): ChartConfigura
       ...chartMotion(kind, labels.length, matchMedia("(prefers-reduced-motion: reduce)").matches),
       responsive: true,
       maintainAspectRatio: false,
+      indexAxis: horizontal ? "y" : "x",
+      interaction: { mode: "index", intersect: false },
       scales: {
-        x: { grid: { display: false }, ticks: { color: muted }, border: { color: line } },
-        y: {
-          beginAtZero: true,
-          grid: { color: line },
-          border: { color: line },
-          ticks: { color: muted, callback: (value) => compact.format(Number(value)) },
-          title: { display: true, text: unit, color: muted },
-        },
+        x: horizontal ? valueAxis : labelAxis,
+        y: horizontal ? labelAxis : valueAxis,
       },
       plugins: { tooltip: { callbacks: { label: (item) => `${item.dataset.label}: ${money(series[item.datasetIndex].values[item.dataIndex])}` } } },
     },
@@ -63,9 +65,21 @@ export default function ChartCanvas({ trend }: { trend: TrendChartProps }) {
     // A theme switch recolors the chart without replaying the draw-in.
     const recolor = () => {
       const next = config(trend);
-      chart.data = next.data;
-      chart.options = next.options ?? {};
-      chart.update("none");
+      // Keep the data and chart instance while applying the new palette.
+      chart.data.datasets.forEach((dataset, index) => {
+        const colors = next.data.datasets[index];
+        dataset.borderColor = colors.borderColor;
+        dataset.backgroundColor = colors.backgroundColor;
+        if ("pointBackgroundColor" in dataset && "pointBackgroundColor" in colors) {
+          dataset.pointBackgroundColor = colors.pointBackgroundColor;
+        }
+      });
+      chart.options.scales = next.options?.scales;
+      // Chart.js skips shared bar/point colors in mode "none". A regular
+      // update with animation disabled refreshes those colors immediately.
+      chart.stop();
+      chart.options.animation = false;
+      chart.update();
     };
     const observer = new MutationObserver(recolor);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
