@@ -113,9 +113,10 @@ function nextCycle(current: string): string {
  * so ending in the current month keeps this month's expectation; `noEvent` names the
  * Rutinitas action that resolves it when nothing happens.
  */
-export function EndRuleForm({ path, currentCycle, label, noEvent }: { path: string; currentCycle: string; label: string; noEvent: string }) {
+export function EndRuleForm({ path, currentCycle, firstCycle, lastCycle: existingLastCycle, label, noEvent }: { path: string; currentCycle: string; firstCycle: string; lastCycle: string | null; label: string; noEvent: string }) {
   const [open, setOpen] = useState(false);
-  const [lastCycle, setLastCycle] = useState(currentCycle);
+  const minimumCycle = firstCycle > currentCycle ? firstCycle : currentCycle;
+  const [lastCycle, setLastCycle] = useState(existingLastCycle ?? minimumCycle);
   const end = useMutation<{ lastCycle: string }>(path, "PATCH");
   return (
     <Swap swapKey={open ? "form" : "button"}>
@@ -130,7 +131,7 @@ export function EndRuleForm({ path, currentCycle, label, noEvent }: { path: stri
             }
           }}
         >
-          <DateField type="month" label="Bulan terakhir" value={lastCycle} min={currentCycle} onChange={setLastCycle} />
+          <DateField type="month" label="Bulan terakhir" value={lastCycle} min={minimumCycle} onChange={setLastCycle} />
           <p className="text-sm text-muted">Tidak ada perkiraan setelah {formatCycle(lastCycle)}. Riwayat tetap tersimpan.</p>
           {lastCycle === currentCycle ? (
             <p className="text-sm text-muted">

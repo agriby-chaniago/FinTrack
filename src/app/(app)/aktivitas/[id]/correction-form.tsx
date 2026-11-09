@@ -54,7 +54,7 @@ export function CorrectionForm(props: Props) {
     const result = await correct.submit(body(cutoverDayAnswer));
     if (result.ok) {
       const replacement = result.data.entryIds.at(-1);
-      router.push(replacement ? `/aktivitas/${replacement}` : "/aktivitas");
+      router.push(result.data.mode === "SETTLED_HISTORY" ? `/aktivitas/${props.entryId}` : replacement ? `/aktivitas/${replacement}` : "/aktivitas");
     }
   }
 

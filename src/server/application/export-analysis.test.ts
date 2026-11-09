@@ -105,6 +105,35 @@ describe("effective analysis export", () => {
     expect(projection.failedChecks).toBe(0);
   });
 
+  it("reclassifies a settled expense without depending on the UUID order of its paired postings", () => {
+    const data = datasets({
+      special_expense_category: [{ id: "old", display_name: "Old" }, { id: "new", display_name: "New" }],
+      ledger_entry: [entry("root", { event_class: "SPECIAL_EXPENSE", category_id: "old" }),
+        entry("z-old-category", { kind: "CORRECTION_POSTING", event_class: "SPECIAL_EXPENSE", category_id: "old", corrects_entry_id: "root", recorded_at: "2026-03-04T00:00:00Z" }),
+        entry("a-new-category", { kind: "CORRECTION_POSTING", event_class: "SPECIAL_EXPENSE", category_id: "new", corrects_entry_id: "root", recorded_at: "2026-03-04T00:00:00Z" })],
+      ledger_leg: [leg("root", "-2000000"), leg("z-old-category", "2000000"), leg("a-new-category", "-2000000")],
+    });
+    const projection = buildExportAnalysis(data, now, inputs([report("2026-02", "0", "20000")]));
+    expect(projection.rows.filter((row) => row.row_type === "EVENT")).toEqual([
+      expect.objectContaining({ category: "New", outflow_effect_idr: "20000" }),
+    ]);
+    expect(projection.failedChecks).toBe(0);
+  });
+
+  it("keeps distinct record identities for nonzero category effects in an existing correction family", () => {
+    const data = datasets({
+      special_expense_category: [{ id: "old", display_name: "Old" }, { id: "new", display_name: "New" }],
+      ledger_entry: [entry("root", { event_class: "SPECIAL_EXPENSE", category_id: "old" }),
+        entry("delta", { kind: "CORRECTION_POSTING", event_class: "SPECIAL_EXPENSE", category_id: "new", corrects_entry_id: "root" })],
+      ledger_leg: [leg("root", "-15000000"), leg("delta", "3000000")],
+    });
+    const projection = buildExportAnalysis(data, now, inputs([report("2026-02", "0", "120000")]));
+    const events = projection.rows.filter((row) => row.row_type === "EVENT");
+    expect(events).toHaveLength(2);
+    expect(new Set(events.map((row) => row.record_id)).size).toBe(2);
+    expect(projection.failedChecks).toBe(0);
+  });
+
   it("holds conclusions on mismatched totals while leaving unrelated months available", () => {
     const projection = buildExportAnalysis(datasets({ ledger_entry: [entry("a")], ledger_leg: [leg("a", "-8000000")] }), now, inputs([report("2026-01"), report("2026-02", "0", "90000")]));
     expect(projection.rows.find((row) => row.record_id === "MONTH_outflow:2026-02")).toMatchObject({ status: "FAIL" });

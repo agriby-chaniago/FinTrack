@@ -83,7 +83,7 @@ export default async function PengaturanPage() {
                 </span>
                 <RuleStatusTag status={rule.status} lastCycle={rule.lastExpectedCycle} />
               </div>
-              {rule.status !== "ENDED" ? <EndRuleForm path={`/api/v1/monthly-income-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri income bulanan" noEvent="Tidak diterima" /> : null}
+              {rule.status !== "ENDED" ? <EndRuleForm path={`/api/v1/monthly-income-rules/${rule.id}`} currentCycle={currentCycle} firstCycle={rule.firstExpectedCycle} lastCycle={rule.lastExpectedCycle} label="Akhiri income bulanan" noEvent="Tidak diterima" /> : null}
             </li>
           ))}
         </ul>
@@ -124,7 +124,7 @@ export default async function PengaturanPage() {
               {rule.status !== "ENDED" ? (
                 <div className="flex flex-wrap gap-4">
                   <RevisionForm ruleId={rule.id} name={rule.name} currentCycle={currentCycle} expectedDay={rule.expectedDay} expectedAmount={rule.expectedAmount} subscription={rule.kind === "SUBSCRIPTION"} />
-                  <EndRuleForm path={`/api/v1/recurring-expense-rules/${rule.id}`} currentCycle={currentCycle} label="Akhiri" noEvent="Tidak ditagih" />
+                  <EndRuleForm path={`/api/v1/recurring-expense-rules/${rule.id}`} currentCycle={currentCycle} firstCycle={rule.firstCycle} lastCycle={rule.lastCycle} label="Akhiri" noEvent="Tidak ditagih" />
                 </div>
               ) : null}
             </li>

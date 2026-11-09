@@ -42,6 +42,9 @@ export async function listActivity(
     : sql``;
   // A thread is one record plus the corrections linked to it (detail view).
   const thread = options.thread ? sql`and (e.id = ${options.thread}::uuid or e.corrects_entry_id = ${options.thread}::uuid)` : sql``;
+  // A detail page needs its original and every linked correction, even after
+  // the family grows beyond the timeline page size.
+  const pageLimit = options.thread ? sql`` : sql`limit ${limit + 1}`;
 
   const entries = await sqlRows<{
     id: string;
@@ -92,9 +95,9 @@ export async function listActivity(
     left join fintrack.special_expense_category c on c.id = e.category_id
     where e.owner_id = ${ownerId} ${before} ${thread}
     order by e.recorded_at desc, e.id desc
-    limit ${limit + 1}`);
+    ${pageLimit}`);
 
-  const page = entries.slice(0, limit);
+  const page = options.thread ? entries : entries.slice(0, limit);
   const ids = page.map((row) => row.id);
   const legs = ids.length
     ? await sqlRows<{ entry_id: string; account_id: string; account_name: string; physical: string; external: string }>(tx, sql`
@@ -160,6 +163,6 @@ export async function listActivity(
   }
 
   const last = page.at(-1);
-  const nextCursor = entries.length > limit && last ? `${last.recorded_at}|${last.id}` : null;
+  const nextCursor = !options.thread && entries.length > limit && last ? `${last.recorded_at}|${last.id}` : null;
   return { items, nextCursor };
 }

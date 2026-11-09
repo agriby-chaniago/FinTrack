@@ -14,9 +14,9 @@ import type { EventClass, LedgerEntryDraft, LedgerEntryKind, MovementType, Repor
 import { requireActiveCashAccounts, weeklySettlementAccountIds } from "./accounts";
 import { otherEventDraft, specialExpenseDraft, createOrReuseCategory } from "./events";
 import { externalMovementDraft } from "./external-funds";
-import { assertExternalHoldingsNonNegative, postLedgerEntry } from "./ledger";
+import { assertExternalHoldingsNonNegative, lockLedger, postLedgerEntry } from "./ledger";
 import { postTransfer, resolveComponents, reverseAllocations, transferDraft, transferShape } from "./transfers";
-import { correctSettledEntry, settledSettlementFor } from "./settlement-corrections";
+import { correctSettledEntry, settledEntryEffects, settledSettlementFor } from "./settlement-corrections";
 import { sqlRows } from "@/server/db/rows";
 
 export const correctionSchema = z.discriminatedUnion("action", [
@@ -101,16 +101,17 @@ async function replacementFor(
   ownerId: string,
   entry: LoadedEntry,
   input: Extract<CorrectionInput, { action: "REPLACE" }>,
+  defaults?: { accountId: string; categoryId: string | null },
 ): Promise<{ draft: LedgerEntryDraft; categoryId: string | null }> {
   const amount = parseIdrDecimal(input.amount);
-  const originalAccount = entry.legs[0].accountId;
+  const originalAccount = defaults?.accountId ?? entry.legs[0].accountId;
   switch (entry.eventClass as EventClass) {
     case "SPECIAL_EXPENSE": {
       const accountId = input.accountId ?? originalAccount;
       await requireActiveCashAccounts(tx, ownerId, [accountId]);
       const categoryId = input.newCategoryName
         ? await createOrReuseCategory(tx, ownerId, input.newCategoryName)
-        : (input.categoryId ?? entry.categoryId);
+        : (input.categoryId ?? defaults?.categoryId ?? entry.categoryId);
       return { draft: specialExpenseDraft(accountId, amount, input.businessDate), categoryId };
     }
     case "OTHER_INCOME":
@@ -160,6 +161,8 @@ export async function correctEntry(
   now: Date,
   options: { allowOccurrenceVoid?: boolean } = {},
 ): Promise<CorrectionResult> {
+  // Read the current correction state only after earlier owner writes commit.
+  await lockLedger(tx, ownerId);
   const entry = await loadEntry(tx, ownerId, entryId);
   await assertCurrentRecord(tx, ownerId, entry);
   if (!correctableClasses.has(entry.eventClass as EventClass)) {
@@ -184,11 +187,14 @@ async function correctEntryInner(tx: OwnerTx, ownerId: string, entry: LoadedEntr
 
   if (entry.eventClass === "PERSONAL_TRANSFER") return correctTransfer(tx, ownerId, entry, input, now);
 
-  const replacement = input.action === "REPLACE" ? await replacementFor(tx, ownerId, entry, input) : null;
-
   const settlementId = await settledSettlementFor(tx, ownerId, entry);
+  const effects = settlementId ? await settledEntryEffects(tx, ownerId, entry) : undefined;
+  const current = effects?.legs.find((leg) => leg.physicalEffect < 0n || leg.externalEffect < 0n) ?? effects?.legs[0];
+  const replacement = input.action === "REPLACE"
+    ? await replacementFor(tx, ownerId, entry, input, current && { accountId: current.accountId, categoryId: current.categoryId })
+    : null;
   if (settlementId) {
-    return correctSettledEntry(tx, ownerId, entry, replacement, now);
+    return correctSettledEntry(tx, ownerId, entry, replacement, now, effects);
   }
 
   const reversal = await postLedgerEntry(tx, ownerId, reversalDraft(entry), {
@@ -219,17 +225,23 @@ async function correctEntryInner(tx: OwnerTx, ownerId: string, entry: LoadedEntr
  */
 async function correctTransfer(tx: OwnerTx, ownerId: string, entry: LoadedEntry, input: CorrectionInput, now: Date): Promise<CorrectionResult> {
   const shape = await transferShape(tx, ownerId, entry.id);
+  const settled = await settledSettlementFor(tx, ownerId, entry);
+  const effects = settled ? await settledEntryEffects(tx, ownerId, entry) : undefined;
+  const currentComponents = effects
+    ? effects.legs.filter((leg) => leg.accountId === shape.route.destinationAccountId && leg.holdingId && leg.externalEffect > 0n)
+        .map((leg) => ({ holdingId: leg.holdingId!, amount: leg.externalEffect }))
+    : shape.components;
   const components =
     input.action === "REPLACE" && input.externalComponents
       ? await resolveComponents(tx, ownerId, input.externalComponents)
-      : shape.components;
+      : currentComponents;
 
-  if (await settledSettlementFor(tx, ownerId, entry)) {
+  if (settled) {
     const replacement =
       input.action === "REPLACE"
         ? { draft: transferDraft(shape.route, parseIdrDecimal(input.amount), components, input.businessDate), categoryId: null }
         : null;
-    return correctSettledEntry(tx, ownerId, entry, replacement, now);
+    return correctSettledEntry(tx, ownerId, entry, replacement, now, effects);
   }
 
   const reversal = await postLedgerEntry(tx, ownerId, reversalDraft(entry), {

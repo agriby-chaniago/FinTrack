@@ -152,7 +152,7 @@ export function buildExportAnalysis(datasets: ExportDataset[], now: Date, inputs
     if (entry.event_class === "LIVING") continue;
     const root = rootOf(text(entry, "id"));
     for (const leg of legsByEntry.get(text(entry, "id")) ?? []) {
-      const key = JSON.stringify([root, entry.effective_business_date, entry.event_class, entry.reporting_classification, leg.account_id, leg.holding_id]);
+      const key = JSON.stringify([root, entry.effective_business_date, entry.event_class, entry.reporting_classification, leg.account_id, leg.holding_id, entry.category_id]);
       const existing = effects.get(key);
       effects.set(key, {
         root, entry, account: text(leg, "account_id"), holding: text(leg, "holding_id"),
@@ -189,7 +189,7 @@ export function buildExportAnalysis(datasets: ExportDataset[], now: Date, inputs
     const outflow = t.specialOutflow + t.recurringExpense + t.otherExpense + t.ownershipOutflow;
     addDetail(date, income, outflow);
     add({
-      row_type: "EVENT", aggregation_role: "DETAIL_FLOW", record_id: `event:${effect.root}:${effect.account}:${effect.holding}:${date}:${text(e, "event_class")}`,
+      row_type: "EVENT", aggregation_role: "DETAIL_FLOW", record_id: `event:${effect.root}:${effect.account}:${effect.holding}:${date}:${text(e, "event_class")}${e.category_id ? `:${text(e, "category_id")}` : ""}`,
       parent_id: effect.root, metric: text(e, "event_class"), business_date: date,
       account_id: effect.account, category: categories.get(text(e, "category_id")) ?? "",
       status: (familyIds.get(effect.root)?.length ?? 0) > 1 ? "EFFECTIVE_CORRECTED" : "RECORDED",
